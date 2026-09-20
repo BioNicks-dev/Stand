@@ -129,6 +129,7 @@
   <div class="satir"><span>Dikey eksen</span><b id="yDeger">510</b></div>
   <div class="satir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
   <div class="satir"><span>Başlangıca göre dönüş</span><b id="donus">0°</b></div>
+  <button class="genis" id="sifirlaBtn" style="min-height:40px;font-size:14px;margin-top:4px">Dönüş sayacını sıfırla</button>
   <div class="satir"><span>Son paket</span><b id="sonPaket">—</b></div>
 
   <details>
@@ -158,7 +159,7 @@
   var ORTA = 510, EN_AZ = 0, EN_COK = 1023;
 
   var cihaz = null, rxKarakter = null, yaziyor = false, bekleyen = null;
-  var gonderim = null, canliTut = null;
+  var gonderim = null, canliTut = null, diziSayac = null;
   var aktif = false, sonX = ORTA, sonY = ORTA;
   var paketSayisi = 0, netDonus = 0, mesgul = false;
 
@@ -340,10 +341,11 @@
     var ara = Number(E("araInput").value) || 120;
     var guc = Number(E("gucInput").value) || 700;
     var baslangic = Date.now(), tik = 0;
-    var sayac = setInterval(function(){
+    clearInterval(diziSayac);
+    diziSayac = setInterval(function(){
       var gecen = Date.now() - baslangic;
       if (gecen >= sure || !rxKarakter){
-        clearInterval(sayac);
+        clearInterval(diziSayac); diziSayac = null;
         mesgul = false;
         bosta();
         donusEkle(yon, Math.min(gecen, sure));
@@ -377,6 +379,7 @@
     var hiz = Number(E("hizInput").value) || 60;
     var ms = Math.round(Math.abs(netDonus) / hiz * 1000);
     if (ms < 150){ yaz("Zaten başlangıç konumunda."); return; }
+    if (ms > 20000){ ms = 20000; yaz("Sapma çok büyük, en fazla 20 saniye dönülecek."); }
     yaz("Başlangıca dönülüyor: " + ms + " ms.");
     surekli(netDonus > 0 ? -1 : 1, ms);
   });
@@ -390,12 +393,28 @@
     }, 70);
     yaz("Auto track komutu gönderildi.");
   });
-  E("durBtn").addEventListener("click", function(){
-    clearInterval(gonderim);
+  function herSeyiDurdur(){
+    clearInterval(gonderim); gonderim = null;
+    clearInterval(diziSayac); diziSayac = null;
     mesgul = false; aktif = false;
+    bekleyen = null;
+    sonX = ORTA; sonY = ORTA;
     topuzEl.style.transform = "";
+    E("xDeger").textContent = ORTA;
+    E("yDeger").textContent = ORTA;
     bosta();
+    setTimeout(bosta, 150);
+    setTimeout(bosta, 400);
+  }
+  E("durBtn").addEventListener("click", function(){
+    herSeyiDurdur();
     yaz("Durduruldu.");
+  });
+  E("sifirlaBtn").addEventListener("click", function(){
+    netDonus = 0;
+    E("donus").textContent = "0°";
+    E("donus").className = "";
+    yaz("Dönüş sayacı sıfırlandı. Şu anki konum başlangıç kabul edildi.");
   });
   E("temizleBtn").addEventListener("click", function(){ E("kayit").textContent = ""; });
   E("baglanBtn").addEventListener("click", function(){ baglan(false); });
