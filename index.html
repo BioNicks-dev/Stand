@@ -119,6 +119,8 @@
     <button id="sagBtn">Sağa çevir</button>
     <button id="evBtn">Başlangıca dön</button>
     <button id="trackBtn">Auto track</button>
+    <button id="azSolBtn">Az sola</button>
+    <button id="azSagBtn">Az sağa</button>
     <button id="olcBtn">2 sn sağa (ölçüm)</button>
     <button class="dur" id="durBtn">Dur</button>
   </div>
@@ -229,7 +231,28 @@
 
   // --- bağlantı ------------------------------------------------------------
   function baglan(hepsi){
-    if (!navigator.bluetooth){
+    // --- ayarları telefonda sakla ---
+  var ayarlar = ["araInput","gucInput","hizInput","sureInput","tersX","tersY"];
+  ayarlar.forEach(function(id){
+    var el = E(id);
+    try {
+      var kayitli = localStorage.getItem("stand_" + id);
+      if (kayitli !== null){
+        if (el.type === "checkbox") el.checked = kayitli === "1";
+        else el.value = kayitli;
+      }
+    } catch(h){}
+    el.addEventListener("change", function(){
+      try {
+        localStorage.setItem("stand_" + id, el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value);
+      } catch(h){}
+    });
+  });
+
+  E("azSagBtn").addEventListener("click", function(){ surekli(1, 400); });
+  E("azSolBtn").addEventListener("click", function(){ surekli(-1, 400); });
+
+  if (!navigator.bluetooth){
       durumYaz("Bluetooth yok", "uyari");
       yaz("Bu tarayıcı Web Bluetooth desteklemiyor. Android'de Chrome kullanın.");
       return;
@@ -419,6 +442,27 @@
   E("temizleBtn").addEventListener("click", function(){ E("kayit").textContent = ""; });
   E("baglanBtn").addEventListener("click", function(){ baglan(false); });
   E("hepsiBtn").addEventListener("click", function(){ baglan(true); });
+
+  // --- ayarları telefonda sakla ---
+  var ayarlar = ["araInput","gucInput","hizInput","sureInput","tersX","tersY"];
+  ayarlar.forEach(function(id){
+    var el = E(id);
+    try {
+      var kayitli = localStorage.getItem("stand_" + id);
+      if (kayitli !== null){
+        if (el.type === "checkbox") el.checked = kayitli === "1";
+        else el.value = kayitli;
+      }
+    } catch(h){}
+    el.addEventListener("change", function(){
+      try {
+        localStorage.setItem("stand_" + id, el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value);
+      } catch(h){}
+    });
+  });
+
+  E("azSagBtn").addEventListener("click", function(){ surekli(1, 400); });
+  E("azSolBtn").addEventListener("click", function(){ surekli(-1, 400); });
 
   if (!navigator.bluetooth){
     E("destekNotu").textContent = "Bu tarayıcı Bluetooth'a erişemiyor. Sayfayı Android telefonda Chrome ile açın; iPhone'daki Safari bunu desteklemiyor.";
