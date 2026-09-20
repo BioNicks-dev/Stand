@@ -122,6 +122,7 @@
     <button id="azSolBtn">Az sola</button>
     <button id="azSagBtn">Az sağa</button>
     <button id="olcBtn">2 sn sağa (ölçüm)</button>
+    <button id="dinleBtn">Standı dinle</button>
     <button class="dur" id="durBtn">Dur</button>
   </div>
 </div>
@@ -158,6 +159,11 @@
 
   var NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
   var RX  = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+  var TX  = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+  var AE0 = "0000ae00-0000-1000-8000-00805f9b34fb";
+  var AE2 = "0000ae02-0000-1000-8000-00805f9b34fb";
+  var BILGI = "device_information";
+  var sunucuRef = null;
   var ORTA = 510, EN_AZ = 0, EN_COK = 1023;
 
   var cihaz = null, rxKarakter = null, yaziyor = false, bekleyen = null;
@@ -249,6 +255,40 @@
     });
   });
 
+  function veriGeldi(olay){
+    var v = olay.target.value, b = new Uint8Array(v.buffer);
+    yaz("STANDDAN: " + onalti(b));
+  }
+  function dinlemeyiDene(servisId, karakterId, etiket){
+    if (!sunucuRef) return Promise.resolve();
+    return sunucuRef.getPrimaryService(servisId)
+      .then(function(sv){ return sv.getCharacteristic(karakterId); })
+      .then(function(k){ return k.startNotifications(); })
+      .then(function(k){
+        k.addEventListener("characteristicvaluechanged", veriGeldi);
+        yaz(etiket + ": dinleme açıldı.");
+      })
+      .catch(function(h){ yaz(etiket + ": olmadı (" + h.message + ")"); });
+  }
+  E("dinleBtn").addEventListener("click", function(){
+    if (!sunucuRef){ yaz("Önce bağlanın."); return; }
+    yaz("Dinleme deneniyor…");
+    dinlemeyiDene(NUS, TX, "UART TX")
+      .then(function(){ return dinlemeyiDene(AE0, AE2, "AE02"); })
+      .then(function(){ return sunucuRef.getPrimaryService(BILGI); })
+      .then(function(sv){ return sv.getCharacteristics(); })
+      .then(function(liste){
+        return Promise.all(liste.map(function(k){
+          return k.readValue().then(function(v){
+            var m = "";
+            for (var i=0;i<v.byteLength;i++) m += String.fromCharCode(v.getUint8(i));
+            yaz("Cihaz bilgisi " + k.uuid.slice(4,8) + ": " + m);
+          }).catch(function(){});
+        }));
+      })
+      .catch(function(h){ yaz("Cihaz bilgisi okunamadı: " + h.message); });
+  });
+
   E("azSagBtn").addEventListener("click", function(){ surekli(1, 400); });
   E("azSolBtn").addEventListener("click", function(){ surekli(-1, 400); });
 
@@ -259,14 +299,15 @@
     }
     durumYaz("Aranıyor…");
     var secenek = hepsi
-      ? { acceptAllDevices: true, optionalServices: [NUS] }
-      : { filters: [{ namePrefix: "COMITOK" }, { services: [NUS] }], optionalServices: [NUS] };
+      ? { acceptAllDevices: true, optionalServices: [NUS, AE0, BILGI] }
+      : { filters: [{ namePrefix: "COMITOK" }, { services: [NUS] }], optionalServices: [NUS, AE0, BILGI] };
     navigator.bluetooth.requestDevice(secenek).then(function(d){
       cihaz = d;
       d.addEventListener("gattserverdisconnected", koptu);
       yaz("Bulundu: " + (d.name || "adsız"));
       return d.gatt.connect();
     }).then(function(sunucu){
+      sunucuRef = sunucu;
       return sunucu.getPrimaryService(NUS);
     }).then(function(servis){
       return servis.getCharacteristic(RX);
@@ -459,6 +500,40 @@
         localStorage.setItem("stand_" + id, el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value);
       } catch(h){}
     });
+  });
+
+  function veriGeldi(olay){
+    var v = olay.target.value, b = new Uint8Array(v.buffer);
+    yaz("STANDDAN: " + onalti(b));
+  }
+  function dinlemeyiDene(servisId, karakterId, etiket){
+    if (!sunucuRef) return Promise.resolve();
+    return sunucuRef.getPrimaryService(servisId)
+      .then(function(sv){ return sv.getCharacteristic(karakterId); })
+      .then(function(k){ return k.startNotifications(); })
+      .then(function(k){
+        k.addEventListener("characteristicvaluechanged", veriGeldi);
+        yaz(etiket + ": dinleme açıldı.");
+      })
+      .catch(function(h){ yaz(etiket + ": olmadı (" + h.message + ")"); });
+  }
+  E("dinleBtn").addEventListener("click", function(){
+    if (!sunucuRef){ yaz("Önce bağlanın."); return; }
+    yaz("Dinleme deneniyor…");
+    dinlemeyiDene(NUS, TX, "UART TX")
+      .then(function(){ return dinlemeyiDene(AE0, AE2, "AE02"); })
+      .then(function(){ return sunucuRef.getPrimaryService(BILGI); })
+      .then(function(sv){ return sv.getCharacteristics(); })
+      .then(function(liste){
+        return Promise.all(liste.map(function(k){
+          return k.readValue().then(function(v){
+            var m = "";
+            for (var i=0;i<v.byteLength;i++) m += String.fromCharCode(v.getUint8(i));
+            yaz("Cihaz bilgisi " + k.uuid.slice(4,8) + ": " + m);
+          }).catch(function(){});
+        }));
+      })
+      .catch(function(h){ yaz("Cihaz bilgisi okunamadı: " + h.message); });
   });
 
   E("azSagBtn").addEventListener("click", function(){ surekli(1, 400); });
