@@ -371,7 +371,7 @@
         clearInterval(diziSayac); diziSayac = null;
         mesgul = false;
         bosta();
-        donusEkle(yon, Math.min(gecen, sure));
+        donusEkle(yon, Math.max(0, Math.min(gecen, sure) - 250));
         E("donus").textContent = Math.round(netDonus) + "°";
         if (bitince) bitince();
         return;
@@ -402,8 +402,8 @@
     var hiz = Number(E("hizInput").value) || 60;
     var ms = Math.round(Math.abs(netDonus) / hiz * 1000);
     if (ms < 150){ yaz("Zaten başlangıç konumunda."); return; }
-    if (ms > 20000){ ms = 20000; yaz("Sapma çok büyük, en fazla 20 saniye dönülecek."); }
-    yaz("Başlangıca dönülüyor: " + ms + " ms.");
+    if (ms > 10000){ ms = 10000; yaz("Sapma büyük, en fazla 10 saniye dönülecek. Gerekirse tekrar basın."); }
+    yaz("Başlangıca dönülüyor: " + Math.round(netDonus) + "° geri, " + ms + " ms.");
     surekli(netDonus > 0 ? -1 : 1, ms);
   });
   E("trackBtn").addEventListener("click", function(){
