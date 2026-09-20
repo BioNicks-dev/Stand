@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stand kumandası</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    --bg:#ecebe6;
+    --panel:#f7f6f2;
+    --ink:#1d2321;
+    --ink-soft:#5d6764;
+    --line:#cfcdc4;
+    --line-strong:#a9a79d;
+    --live:#1f6f4a;
+    --warn:#9a5b18;
+    --stop:#8e2f2f;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14191a;
+      --panel:#1c2224;
+      --ink:#e9eae6;
+      --ink-soft:#9aa5a3;
+      --line:#2c3437;
+      --line-strong:#43504f;
+      --live:#57c48c;
+      --warn:#d99a4e;
+      --stop:#e08585;
+    }
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html,body{margin:0}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:Archivo,"Segoe UI",system-ui,sans-serif;
+    font-size:16px;
+    line-height:1.45;
+    -webkit-user-select:none;user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:14px 14px 28px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
+  h1{font-size:19px;font-weight:600;margin:0;letter-spacing:-0.01em}
+  .durum{font-size:13px;color:var(--ink-soft)}
+  .durum b{font-weight:500;color:var(--ink)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px}
+  button{
+    font:inherit;font-weight:500;color:var(--ink);background:var(--panel);
+    border:1px solid var(--line-strong);border-radius:var(--radius);
+    padding:12px 10px;min-height:48px;cursor:pointer;
+  }
+  button:active{background:var(--bg)}
+  button:disabled{opacity:.45;cursor:default}
+  button:focus-visible{outline:2px solid var(--live);outline-offset:2px}
+  .genis{width:100%}
+  .baglan{font-size:17px;padding:16px;border-color:var(--live);color:var(--live)}
+  .izgara{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .dur{border-color:var(--stop);color:var(--stop)}
+  #pad{
+    position:relative;width:100%;aspect-ratio:1;max-width:320px;margin:4px auto 10px;
+    border:1px solid var(--line-strong);border-radius:50%;background:var(--panel);
+    touch-action:none;display:grid;place-items:center;
+  }
+  #pad::before,#pad::after{content:"";position:absolute;background:var(--line)}
+  #pad::before{left:8%;right:8%;height:1px}
+  #pad::after{top:8%;bottom:8%;width:1px}
+  #topuz{
+    width:27%;height:27%;border-radius:50%;
+    background:var(--bg);border:1px solid var(--line-strong);
+    position:relative;z-index:1;transition:transform .12s ease-out;
+  }
+  #pad.tutuluyor #topuz{transition:none;border-color:var(--live)}
+  .yon{position:absolute;font-size:12px;color:var(--ink-soft);z-index:0}
+  .yon.u{top:10px}.yon.d{bottom:10px}.yon.l{left:12px}.yon.r{right:12px}
+  .satir{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--ink-soft);padding:5px 0}
+  .satir b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+  details{margin-top:2px}
+  summary{cursor:pointer;font-size:14px;color:var(--ink-soft);padding:6px 0}
+  label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:7px 0;border-top:1px solid var(--line)}
+  input[type=number]{width:84px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:6px 8px}
+  input[type=checkbox]{width:22px;height:22px;accent-color:var(--live)}
+  #kayit{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;color:var(--ink-soft);
+    max-height:120px;overflow:auto;margin:0;white-space:pre-wrap;word-break:break-all;-webkit-user-select:text;user-select:text}
+  .uyari{color:var(--warn)}
+  .gizle{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Stand kumandası</h1>
+  <span class="durum" id="durum">Bağlı değil</span>
+</header>
+
+<div class="panel" id="girisPanel">
+  <button class="genis baglan" id="baglanBtn">Standa bağlan</button>
+  <button class="genis" id="hepsiBtn" style="margin-top:8px">Tüm cihazları listele</button>
+  <p class="durum" id="destekNotu">Chrome ile açın, Bluetooth ve konum açık olsun. Stand listede çıkmazsa kumandayı kapatıp standı kapatıp açın, sonra tüm cihazları listeleyin.</p>
+</div>
+
+<div class="panel gizle" id="kontrolPanel">
+  <div id="pad">
+    <span class="yon u">yukarı</span><span class="yon d">aşağı</span>
+    <span class="yon l">sol</span><span class="yon r">sağ</span>
+    <div id="topuz"></div>
+  </div>
+  <div class="izgara">
+    <button id="solBtn">Sola çevir</button>
+    <button id="sagBtn">Sağa çevir</button>
+    <button id="evBtn">Başlangıca dön</button>
+    <button id="trackBtn">Auto track</button>
+    <button id="olcBtn">2 sn sağa (ölçüm)</button>
+    <button class="dur" id="durBtn">Dur</button>
+  </div>
+</div>
+
+<div class="panel gizle" id="bilgiPanel">
+  <div class="satir"><span>Yatay eksen</span><b id="xDeger">510</b></div>
+  <div class="satir"><span>Dikey eksen</span><b id="yDeger">510</b></div>
+  <div class="satir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
+  <div class="satir"><span>Başlangıca göre dönüş</span><b id="donus">0°</b></div>
+  <div class="satir"><span>Son paket</span><b id="sonPaket">—</b></div>
+
+  <details>
+    <summary>Ayarlar</summary>
+    <label>Gönderim aralığı (ms)<input type="number" id="araInput" value="120" min="40" max="500" step="10"></label>
+    <label>Düğmelerde hareket şiddeti<input type="number" id="gucInput" value="700" min="520" max="1023" step="10"></label>
+    <label>Dönüş hızı (° / saniye)<input type="number" id="hizInput" value="60" min="5" max="360" step="5"></label>
+    <label>Çevirme süresi (ms)<input type="number" id="sureInput" value="3000" min="200" max="15000" step="100"></label>
+    <label>Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
+    <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
+  </details>
+</div>
+
+<div class="panel gizle" id="kayitPanel">
+  <div class="satir"><span>Kayıt</span><button id="temizleBtn" style="min-height:32px;padding:4px 10px;font-size:13px">Temizle</button></div>
+  <pre id="kayit"></pre>
+</div>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+  var RX  = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+  var ORTA = 510, EN_AZ = 0, EN_COK = 1023;
+
+  var cihaz = null, rxKarakter = null, yaziyor = false, bekleyen = null;
+  var gonderim = null, canliTut = null;
+  var aktif = false, sonX = ORTA, sonY = ORTA;
+  var paketSayisi = 0, netDonus = 0, mesgul = false;
+
+  var E = function(id){ return document.getElementById(id); };
+  var durumEl=E("durum"), padEl=E("pad"), topuzEl=E("topuz");
+
+  function yaz(metin){
+    var k = E("kayit");
+    var t = new Date().toLocaleTimeString("tr-TR");
+    k.textContent = t + "  " + metin + "\n" + k.textContent;
+    if (k.textContent.length > 4000) k.textContent = k.textContent.slice(0, 4000);
+  }
+  function durumYaz(metin, sinif){
+    durumEl.innerHTML = sinif ? '<b class="'+sinif+'">'+metin+'</b>' : '<b>'+metin+'</b>';
+  }
+
+  // --- paket üretimi -------------------------------------------------------
+  function crc16(bayt, uzunluk){
+    var crc = 0;
+    for (var i = 0; i < uzunluk; i++){
+      crc ^= bayt[i];
+      for (var k = 0; k < 8; k++){
+        crc = (crc & 1) ? ((crc >> 1) ^ 0xA001) : (crc >> 1);
+      }
+    }
+    return crc & 0xFFFF;
+  }
+  function paket(x, y, kameraTus, standTus){
+    var b = new Uint8Array(14);
+    b[0]=0x55; b[1]=0x0E; b[2]=0x69; b[3]=0x13; b[4]=0x50;
+    b[5]=kameraTus||0; b[6]=0;
+    b[7]=x & 0xFF; b[8]=(x >> 8) & 0xFF;
+    b[9]=y & 0xFF; b[10]=(y >> 8) & 0xFF;
+    b[11]=standTus||0;
+    var c = crc16(b, 12);
+    b[12]=(c >> 8) & 0xFF; b[13]=c & 0xFF;
+    return b;
+  }
+  function onalti(b){
+    var s = "";
+    for (var i=0;i<b.length;i++) s += ("0"+b[i].toString(16)).slice(-2).toUpperCase();
+    return s;
+  }
+
+  // --- yazma kuyruğu (tek seferde tek işlem) -------------------------------
+  function gonder(b){
+    if (!rxKarakter) return;
+    if (yaziyor){ bekleyen = b; return; }
+    yaziyor = true;
+    var islem = rxKarakter.writeValueWithoutResponse
+      ? rxKarakter.writeValueWithoutResponse(b)
+      : rxKarakter.writeValue(b);
+    islem.then(function(){
+      paketSayisi++;
+      E("sayac").textContent = paketSayisi;
+      E("sonPaket").textContent = onalti(b);
+      E("donus").textContent = Math.round(netDonus) + "°";
+      E("donus").className = Math.abs(netDonus) > 360 ? "uyari" : "";
+    }).catch(function(h){
+      yaz("Gönderilemedi: " + h.message);
+    }).then(function(){
+      yaziyor = false;
+      if (bekleyen){ var s = bekleyen; bekleyen = null; gonder(s); }
+    });
+  }
+  function bosta(){ gonder(paket(ORTA, ORTA, 0, 0)); }
+
+  // --- bağlantı ------------------------------------------------------------
+  function baglan(hepsi){
+    if (!navigator.bluetooth){
+      durumYaz("Bluetooth yok", "uyari");
+      yaz("Bu tarayıcı Web Bluetooth desteklemiyor. Android'de Chrome kullanın.");
+      return;
+    }
+    durumYaz("Aranıyor…");
+    var secenek = hepsi
+      ? { acceptAllDevices: true, optionalServices: [NUS] }
+      : { filters: [{ namePrefix: "COMITOK" }, { services: [NUS] }], optionalServices: [NUS] };
+    navigator.bluetooth.requestDevice(secenek).then(function(d){
+      cihaz = d;
+      d.addEventListener("gattserverdisconnected", koptu);
+      yaz("Bulundu: " + (d.name || "adsız"));
+      return d.gatt.connect();
+    }).then(function(sunucu){
+      return sunucu.getPrimaryService(NUS);
+    }).then(function(servis){
+      return servis.getCharacteristic(RX);
+    }).then(function(k){
+      rxKarakter = k;
+      durumYaz("Bağlı", null);
+      E("girisPanel").classList.add("gizle");
+      E("kontrolPanel").classList.remove("gizle");
+      E("bilgiPanel").classList.remove("gizle");
+      E("kayitPanel").classList.remove("gizle");
+      yaz("Bağlandı, boşta paketi gönderiliyor.");
+      bosta();
+      canliTut = setInterval(function(){ if (!aktif && !mesgul) bosta(); }, 3000);
+    }).catch(function(h){
+      durumYaz("Bağlanamadı", "uyari");
+      yaz("Hata: " + h.message);
+    });
+  }
+  function koptu(){
+    rxKarakter = null;
+    clearInterval(canliTut); clearInterval(gonderim);
+    aktif = false; mesgul = false;
+    durumYaz("Bağlantı koptu", "uyari");
+    E("girisPanel").classList.remove("gizle");
+    E("kontrolPanel").classList.add("gizle");
+    yaz("Bağlantı koptu. Standın açık olduğundan emin olup tekrar bağlanın.");
+  }
+
+  // --- joystick ------------------------------------------------------------
+  function eksene(oran){
+    var d = Math.round(ORTA + oran * 513);
+    return Math.max(EN_AZ, Math.min(EN_COK, d));
+  }
+  function padHareket(olay){
+    var kutu = padEl.getBoundingClientRect();
+    var yaricap = kutu.width / 2;
+    var dx = (olay.clientX - (kutu.left + yaricap)) / yaricap;
+    var dy = (olay.clientY - (kutu.top + yaricap)) / yaricap;
+    var uzaklik = Math.hypot(dx, dy);
+    if (uzaklik > 1){ dx /= uzaklik; dy /= uzaklik; uzaklik = 1; }
+    topuzEl.style.transform = "translate(" + (dx*yaricap*0.62) + "px," + (dy*yaricap*0.62) + "px)";
+    if (uzaklik < 0.12){ sonX = ORTA; sonY = ORTA; }
+    else {
+      sonX = eksene(E("tersX").checked ? -dx : dx);
+      sonY = eksene(E("tersY").checked ? dy : -dy);
+    }
+    E("xDeger").textContent = sonX;
+    E("yDeger").textContent = sonY;
+  }
+  function padBasla(olay){
+    if (!rxKarakter || mesgul) return;
+    padEl.setPointerCapture(olay.pointerId);
+    padEl.classList.add("tutuluyor");
+    aktif = true;
+    padHareket(olay);
+    clearInterval(gonderim);
+    var ara = Number(E("araInput").value) || 120;
+    gonderim = setInterval(function(){
+      if (sonX !== ORTA || sonY !== ORTA){
+        gonder(paket(sonX, sonY, 0, 0));
+        donusEkle((sonX - ORTA) / 513, ara);
+        E("donus").textContent = Math.round(netDonus) + "°";
+      }
+    }, ara);
+    gonder(paket(sonX, sonY, 0, 0));
+  }
+  function padBirak(olay){
+    if (!aktif) return;
+    aktif = false;
+    clearInterval(gonderim);
+    padEl.classList.remove("tutuluyor");
+    topuzEl.style.transform = "";
+    sonX = ORTA; sonY = ORTA;
+    E("xDeger").textContent = ORTA;
+    E("yDeger").textContent = ORTA;
+    bosta();
+    if (olay && olay.pointerId != null && padEl.hasPointerCapture(olay.pointerId)){
+      padEl.releasePointerCapture(olay.pointerId);
+    }
+  }
+  padEl.addEventListener("pointerdown", padBasla);
+  padEl.addEventListener("pointermove", function(o){ if (aktif) padHareket(o); });
+  padEl.addEventListener("pointerup", padBirak);
+  padEl.addEventListener("pointercancel", padBirak);
+  padEl.addEventListener("pointerleave", function(o){ if (aktif) padBirak(o); });
+
+  // --- otomatik hareketler -------------------------------------------------
+  function donusEkle(yon, ms){
+    var hiz = Number(E("hizInput").value) || 60;
+    netDonus += yon * hiz * (ms / 1000);
+  }
+  function surekli(yon, sure, bitince){
+    if (!rxKarakter || mesgul) return;
+    mesgul = true;
+    var ara = Number(E("araInput").value) || 120;
+    var guc = Number(E("gucInput").value) || 700;
+    var baslangic = Date.now(), tik = 0;
+    var sayac = setInterval(function(){
+      var gecen = Date.now() - baslangic;
+      if (gecen >= sure || !rxKarakter){
+        clearInterval(sayac);
+        mesgul = false;
+        bosta();
+        donusEkle(yon, Math.min(gecen, sure));
+        E("donus").textContent = Math.round(netDonus) + "°";
+        if (bitince) bitince();
+        return;
+      }
+      var sapma = (guc - ORTA) + (tik % 3);
+      var x = Math.max(EN_AZ, Math.min(EN_COK, yon > 0 ? (ORTA + sapma) : (ORTA - sapma)));
+      gonder(paket(x, ORTA, 0, 0));
+      tik++;
+    }, ara);
+  }
+
+  E("sagBtn").addEventListener("click", function(){
+    var sure = Number(E("sureInput").value) || 3000;
+    yaz("Sağa " + sure + " ms.");
+    surekli(1, sure);
+  });
+  E("solBtn").addEventListener("click", function(){
+    var sure = Number(E("sureInput").value) || 3000;
+    yaz("Sola " + sure + " ms.");
+    surekli(-1, sure);
+  });
+  E("olcBtn").addEventListener("click", function(){
+    yaz("Ölçüm: 2 saniye sağa. Kaç derece döndüğünü sayın, ayarlardaki hıza yazın.");
+    surekli(1, 2000);
+  });
+  E("evBtn").addEventListener("click", function(){
+    if (mesgul) return;
+    var hiz = Number(E("hizInput").value) || 60;
+    var ms = Math.round(Math.abs(netDonus) / hiz * 1000);
+    if (ms < 150){ yaz("Zaten başlangıç konumunda."); return; }
+    yaz("Başlangıca dönülüyor: " + ms + " ms.");
+    surekli(netDonus > 0 ? -1 : 1, ms);
+  });
+  E("trackBtn").addEventListener("click", function(){
+    if (mesgul) return;
+    var kez = 0;
+    var t = setInterval(function(){
+      if (kez >= 3 || !rxKarakter){ clearInterval(t); bosta(); return; }
+      gonder(paket(ORTA, ORTA, 0, 0x04));
+      kez++;
+    }, 70);
+    yaz("Auto track komutu gönderildi.");
+  });
+  E("durBtn").addEventListener("click", function(){
+    clearInterval(gonderim);
+    mesgul = false; aktif = false;
+    topuzEl.style.transform = "";
+    bosta();
+    yaz("Durduruldu.");
+  });
+  E("temizleBtn").addEventListener("click", function(){ E("kayit").textContent = ""; });
+  E("baglanBtn").addEventListener("click", function(){ baglan(false); });
+  E("hepsiBtn").addEventListener("click", function(){ baglan(true); });
+
+  if (!navigator.bluetooth){
+    E("destekNotu").textContent = "Bu tarayıcı Bluetooth'a erişemiyor. Sayfayı Android telefonda Chrome ile açın; iPhone'daki Safari bunu desteklemiyor.";
+    E("destekNotu").className = "durum uyari";
+  }
+})();
+</script>
+</body>
+</html>
