@@ -52,6 +52,9 @@
   .gosterge{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
   .gosterge span{display:block;font-size:12px;color:var(--ink-soft)}
   .gosterge b{display:block;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #izinKutu{cursor:pointer}
+  #izinKutu.dokunulur{border-color:var(--line-strong)}
+  #izinKutu.dokunulur span::after{content:" · dokun";}
   .iyi{color:var(--live)} .uyari{color:var(--warn)} .kotu{color:var(--stop)} .soluk{color:var(--ink-soft)}
 
   #pad{position:relative;width:100%;aspect-ratio:1;max-width:290px;margin:4px auto 12px;
@@ -112,7 +115,7 @@
 
   <div class="gostergeler">
     <div class="gosterge"><span>Stand</span><b id="gStand" class="soluk">bağlı değil</b></div>
-    <div class="gosterge"><span>İzin</span><b id="gIzin" class="soluk">kapalı</b></div>
+    <div class="gosterge" id="izinKutu" role="button" tabindex="0" aria-label="Uzaktan kontrol iznini aç veya kapat"><span>İzin</span><b id="gIzin" class="soluk">kapalı</b></div>
     <div class="gosterge"><span>Uzak bağlantı</span><b id="gUzak" class="soluk">bağlı değil</b></div>
     <div class="gosterge"><span>Sunucu</span><b id="gSunucu" class="soluk">çevrimdışı</b></div>
   </div>
@@ -140,9 +143,9 @@
 
   <button class="genis dur" id="durBtn">Dur</button>
 
-  <div class="izinSatir gizle" id="izinSatir">
-    <span>Uzaktan kontrol izni</span>
-    <button id="izinBtn" class="kucuk" style="min-width:90px">Kapalı</button>
+  <div class="izgara2" style="margin-top:10px">
+    <button class="kucuk" id="sifirlaBtn">Başlangıç yap</button>
+    <button class="kucuk" id="konumEkleBtn">Konumu kaydet</button>
   </div>
 
   <div class="altbilgi" id="altbilgi"></div>
@@ -168,8 +171,6 @@
     <div class="panel">
       <div class="satir"><span>Başlangıca göre dönüş</span><b id="donus">0°</b></div>
       <div class="satir"><span>Eğme</span><b id="tiltDeger">0°</b></div>
-      <button class="genis kucuk" id="sifirlaBtn" style="margin-top:6px">Şu anki konumu başlangıç yap</button>
-      <button class="genis kucuk" id="konumEkleBtn" style="margin-top:8px">Bu konumu kaydet</button>
       <div id="konumSilListe"></div>
     </div>
 
@@ -421,6 +422,7 @@
       case "ev": hedefeGit(0,0); break;
       case "konum": hedefeGit(k.derece,k.tilt); break;
       case "dur": herSeyiDurdur(); break;
+      case "sifirla": netDonus=0; netTilt=0; sayaclariYaz(); durumYayinla(); yaz("Şu anki konum başlangıç yapıldı."); break;
     }
   }
   function yonuCevir(k){
@@ -589,17 +591,18 @@
   E("azAsaBtn").onclick=function(){ komutGonder({t:"azasa"}); };
   E("olcBtn").onclick=function(){ if(rol==="evde"){ yaz("Ölçüm: 2 sn sağa."); surekli(1,2000); } else yaz("Ölçüm evdeki telefondan yapılır."); };
   E("sifirlaBtn").onclick=function(){
-    if(rol!=="evde"){ yaz("Başlangıcı evdeki telefon belirler."); return; }
-    netDonus=0; netTilt=0; sayaclariYaz(); durumYayinla(); yaz("Şu anki konum başlangıç yapıldı.");
+    if(!confirm("Standın şu anki konumu başlangıç olarak ayarlansın mı?")) return;
+    komutGonder({t:"sifirla"});
   };
-  E("izinBtn").onclick=function(){
+  function izinDegistir(){
+    if(rol!=="evde"){ yaz("İzni evdeki telefon açıp kapatır."); return; }
     izin=!izin;
-    E("izinBtn").textContent=izin?"Açık":"Kapalı";
-    E("izinBtn").className="kucuk "+(izin?"vurgu":"");
     if(!izin) herSeyiDurdur();
     durumYayinla(); guncelle();
     yaz("Uzaktan kontrol "+(izin?"açıldı":"kapatıldı")+".");
-  };
+  }
+  E("izinKutu").onclick=izinDegistir;
+  E("izinKutu").onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); izinDegistir(); } };
   E("baglanBtn").onclick=function(){ baglan(false); };
   E("hepsiBtn").onclick=function(){ baglan(true); };
   E("sonBtn").onclick=sonCihazaBagla;
@@ -663,7 +666,7 @@
     E("altbilgi").textContent=(rol==="evde"?"Evdeki telefon":"Uzaktaki telefon")+" · Oda: "+(kod||"yok");
     if(rol==="evde"){
       E("baglanPanel").classList.remove("gizle");
-      E("izinSatir").classList.remove("gizle");
+      E("izinKutu").classList.add("dokunulur");
       if(navigator.bluetooth&&navigator.bluetooth.getDevices){
         navigator.bluetooth.getDevices().then(function(l){
           var d=l.filter(function(x){return (x.name||"").indexOf("COMITOK")>=0;})[0]||l[0];
