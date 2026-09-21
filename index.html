@@ -314,7 +314,15 @@
     else if(k.t==="dur") herSeyiDurdur();
     else if(k.t==="konum") konumaGit(k.derece,k.tilt);
   }
+  function yonuCevir(k){
+    var eslesX={sag:"sol",sol:"sag",azsag:"azsol",azsol:"azsag"};
+    var eslesY={azyuk:"azasa",azasa:"azyuk"};
+    if(E("tersX").checked && eslesX[k.t]) k.t=eslesX[k.t];
+    if(E("tersY").checked && eslesY[k.t]) k.t=eslesY[k.t];
+    return k;
+  }
   function komutGonder(k){
+    k=yonuCevir(k);
     if(rol==="evde"){ k.kaynak="yerel"; komutUygula(k); }
     else if(istemci&&istemci.connected){ k.kaynak="uzak"; istemci.publish("comitok/"+kod+"/komut",JSON.stringify(k)); }
   }
