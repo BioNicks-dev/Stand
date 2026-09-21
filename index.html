@@ -163,7 +163,7 @@
   var rxKarakter=null, yaziyor=false, bekleyen=null;
   var gonderim=null, canliTut=null, diziSayac=null, durumTik=null;
   var aktif=false, sonX=ORTA, sonY=ORTA, sonUzakKomut=0, uzakX=ORTA, uzakY=ORTA;
-  var paketSayisi=0, netDonus=0, mesgul=false, uyanik=null, standBagli=false, uzakHareketVardi=false;
+  var paketSayisi=0, netDonus=0, hareketTik=0, mesgul=false, uyanik=null, standBagli=false, uzakHareketVardi=false;
 
   var E=function(id){return document.getElementById(id);};
   var padEl=E("pad"), topuzEl=E("topuz");
@@ -239,18 +239,22 @@
   function uzakAktif(){ return Date.now()-sonUzakKomut < BEKLEME && (uzakX!==ORTA||uzakY!==ORTA); }
   function dongu(){
     if(!rxKarakter||mesgul) return;
+    var ara=Number(E("araInput").value)||120;
     if(aktif&&(sonX!==ORTA||sonY!==ORTA)){
       gonder(paket(sonX,sonY,0,0));
-      donusEkle((sonX-ORTA)/513, Number(E("araInput").value)||120);
+      hareketTik++;
+      if(hareketTik>2) donusEkle(yonu(sonX), ara);
     } else if(uzakAktif()){
       gonder(paket(uzakX,uzakY,0,0));
-      donusEkle((uzakX-ORTA)/513, Number(E("araInput").value)||120);
+      hareketTik++;
+      if(hareketTik>2) donusEkle(yonu(uzakX), ara);
       uzakHareketVardi=true;
-    } else if(uzakHareketVardi){
-      uzakHareketVardi=false;
-      durdurmaDarbesi();
+    } else {
+      hareketTik=0;
+      if(uzakHareketVardi){ uzakHareketVardi=false; durdurmaDarbesi(); }
     }
   }
+  function yonu(x){ return x>ORTA?1:(x<ORTA?-1:0); }
   function donusEkle(yon,ms){
     netDonus += yon*(Number(E("hizInput").value)||27)*(ms/1000);
     E("donus").textContent=Math.round(netDonus)+"°";
@@ -312,8 +316,8 @@
     var ms=Math.round(Math.abs(netDonus)/hiz*1000);
     if(ms<150){ yaz("Zaten başlangıç konumunda."); return; }
     if(ms>10000){ ms=10000; yaz("Sapma büyük, en fazla 10 sn dönülecek."); }
-    yaz("Başlangıca: "+Math.round(netDonus)+"° geri.");
-    surekli(netDonus>0?-1:1,ms);
+    yaz("Başlangıca: "+Math.round(netDonus)+"° geri, "+(ms+250)+" ms.");
+    surekli(netDonus>0?-1:1,ms+250);
   }
   function konumaGit(hedef){
     if(mesgul){ yaz("Konum: stand şu an meşgul."); return; }
@@ -323,7 +327,7 @@
     yaz("Konum: hedef "+Math.round(hedef)+"°, şu an "+Math.round(netDonus)+"°, fark "+Math.round(fark)+"°, süre "+ms+" ms.");
     if(ms<150){ yaz("Zaten o konumda."); return; }
     if(ms>10000){ ms=10000; yaz("En fazla 10 sn dönülecek."); }
-    surekli(fark>0?1:-1,ms);
+    surekli(fark>0?1:-1,ms+250);
   }
 
   // --- bulut ----------------------------------------------------------------
