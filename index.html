@@ -95,6 +95,8 @@
 <div class="panel gizle" id="baglanPanel">
   <button class="genis vurgu" id="baglanBtn">Standa bağlan</button>
   <button class="genis kucuk" id="hepsiBtn" style="margin-top:8px">Tüm cihazları listele</button>
+  <button class="genis kucuk gizle" id="sonBtn" style="margin-top:8px">Son cihaza bağlan</button>
+  <p class="durum" id="ipucu">Stand listede yoksa NFC ile eşleşme moduna alın. Sayfa her yenilendiğinde seçim sormasın diye Chrome'da şu ayarı açın: chrome://flags/#enable-web-bluetooth-new-permissions-backend</p>
 </div>
 
 <div class="panel gizle" id="kontrolPanel">
@@ -143,6 +145,7 @@
     <label>Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
     <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
     <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
+    <label>Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
   </details>
 </div>
 
@@ -161,11 +164,11 @@
   var RX ="6e400002-b5a3-f393-e0a9-e50e24dcca9e";
   var ORTA=510, EN_AZ=0, EN_COK=1023, BEKLEME=600;
 
-  var rol=null, kod="", istemci=null, izin=false;
+  var rol=null, kod="", istemci=null, izin=false, cihazRef=null, yenidenDene=null;
   var rxKarakter=null, yaziyor=false, bekleyen=null;
   var gonderim=null, canliTut=null, diziSayac=null, durumTik=null;
   var aktif=false, sonX=ORTA, sonY=ORTA, sonUzakKomut=0, uzakX=ORTA, uzakY=ORTA;
-  var paketSayisi=0, netDonus=0, netTilt=0, hareketTik=0, mesgul=false, uyanik=null, standBagli=false, uzakHareketVardi=false;
+  var sonHareket=Date.now(), paketSayisi=0, netDonus=0, netTilt=0, hareketTik=0, mesgul=false, uyanik=null, standBagli=false, uzakHareketVardi=false;
 
   var E=function(id){return document.getElementById(id);};
   var padEl=E("pad"), topuzEl=E("topuz");
@@ -190,6 +193,8 @@
   }
   function gonder(b){
     if(!rxKarakter) return;
+    var x=b[7]|(b[8]<<8), y=b[9]|(b[10]<<8);
+    if(x!==ORTA||y!==ORTA) sonHareket=Date.now();
     if(yaziyor){bekleyen=b;return;}
     yaziyor=true;
     var islem=rxKarakter.writeValueWithoutResponse?rxKarakter.writeValueWithoutResponse(b):rxKarakter.writeValue(b);
@@ -208,24 +213,48 @@
     var s=hepsi?{acceptAllDevices:true,optionalServices:[NUS]}
                :{filters:[{namePrefix:"COMITOK"},{services:[NUS]}],optionalServices:[NUS]};
     navigator.bluetooth.requestDevice(s).then(function(d){
-      d.addEventListener("gattserverdisconnected",koptu);
-      yaz("Bulundu: "+(d.name||"adsız"));
-      return d.gatt.connect();
+      return cihazaBagla(d);
     }).then(function(sv){ return sv.getPrimaryService(NUS); })
       .then(function(sr){ return sr.getCharacteristic(RX); })
-      .then(function(k){
-        rxKarakter=k; standBagli=true;
-        durumYaz("Stand bağlı","iyi");
-        E("baglanPanel").classList.add("gizle");
-        E("kontrolPanel").classList.remove("gizle");
-        E("bilgiPanel").classList.remove("gizle");
-        yaz("Bağlandı.");
-        bosta();
-        clearInterval(canliTut);
-        canliTut=setInterval(function(){ if(!aktif&&!mesgul&&!uzakAktif()) bosta(); },3000);
-        clearInterval(gonderim);
-        gonderim=setInterval(dongu,Number(E("araInput").value)||120);
-      }).catch(function(h){ durumYaz("Bağlanamadı","kotu"); yaz("Hata: "+h.message); });
+      .then(hazir).catch(function(h){ durumYaz("Bağlanamadı","kotu"); yaz("Hata: "+h.message); });
+  }
+  function hazir(k){
+    rxKarakter=k; standBagli=true;
+    durumYaz("Stand bağlı","iyi");
+    E("baglanPanel").classList.add("gizle");
+    E("kontrolPanel").classList.remove("gizle");
+    E("bilgiPanel").classList.remove("gizle");
+    yaz("Bağlandı.");
+    bosta();
+    clearInterval(canliTut);
+    canliTut=setInterval(function(){ if(!aktif&&!mesgul&&!uzakAktif()) bosta(); },3000);
+    clearInterval(gonderim);
+    gonderim=setInterval(dongu,Number(E("araInput").value)||120);
+  }
+  function cihazaBagla(d){
+    cihazRef=d;
+    d.removeEventListener("gattserverdisconnected",koptu);
+    d.addEventListener("gattserverdisconnected",koptu);
+    yaz("Bağlanılıyor: "+(d.name||"adsız"));
+    return d.gatt.connect();
+  }
+  function sonCihazaBagla(){
+    if(!cihazRef){ yaz("Kayıtlı cihaz yok."); return; }
+    durumYaz("Bağlanılıyor…");
+    cihazaBagla(cihazRef)
+      .then(function(sv){ return sv.getPrimaryService(NUS); })
+      .then(function(sr){ return sr.getCharacteristic(RX); })
+      .then(hazir)
+      .catch(function(h){ yaz("Olmadı: "+h.message+" — stand kapalı veya yayın yapmıyor olabilir, NFC ile uyandırın."); });
+  }
+  function otomatikDene(){
+    if(!cihazRef||rxKarakter) return;
+    clearTimeout(yenidenDene);
+    yenidenDene=setTimeout(function(){
+      if(rxKarakter) return;
+      yaz("Otomatik yeniden bağlanma deneniyor…");
+      sonCihazaBagla();
+    },4000);
   }
   function koptu(){
     rxKarakter=null; standBagli=false;
@@ -235,6 +264,7 @@
     E("baglanPanel").classList.remove("gizle");
     E("kontrolPanel").classList.add("gizle");
     yaz("Bağlantı koptu. Stand açıksa tekrar bağlanın.");
+    if(rol==="evde"){ E("sonBtn").classList.remove("gizle"); otomatikDene(); }
   }
 
   // --- hareket döngüsü (evdeki telefon) -------------------------------------
@@ -504,6 +534,13 @@
     if(navigator.share) navigator.share({title:"Stand kaydı",text:m}).catch(function(){});
     else elleKopyala(m);
   });
+  E("sonBtn").addEventListener("click",sonCihazaBagla);
+  if(navigator.bluetooth&&navigator.bluetooth.getDevices){
+    navigator.bluetooth.getDevices().then(function(liste){
+      var d=liste.filter(function(x){ return (x.name||"").indexOf("COMITOK")>=0; })[0]||liste[0];
+      if(d){ cihazRef=d; E("sonBtn").classList.remove("gizle"); yaz("Hatırlanan cihaz: "+(d.name||"adsız")); }
+    }).catch(function(){});
+  }
   E("baglanBtn").addEventListener("click",function(){ baglan(false); });
   E("hepsiBtn").addEventListener("click",function(){ baglan(true); });
   E("izinBtn").addEventListener("click",function(){
@@ -516,6 +553,15 @@
     yaz("Uzaktan kontrol "+(izin?"açıldı":"kapatıldı")+".");
   });
 
+  // --- standı uyanık tut ------------------------------------------------------
+  setInterval(function(){
+    if(rol!=="evde"||!rxKarakter||mesgul||aktif||uzakAktif()) return;
+    if(!(izin||E("uyanikTut").checked)) return;
+    if(Date.now()-sonHareket < 4*60*1000) return;
+    yaz("Uyanık tutma: küçük kıpırdama.");
+    surekli(1,450,function(){ setTimeout(function(){ surekli(-1,450); },300); });
+  },15000);
+
   // --- ekranı açık tut -------------------------------------------------------
   function ekraniTut(){
     if(!E("ekranAcik").checked||!navigator.wakeLock) return;
@@ -526,7 +572,7 @@
   });
 
   // --- ayarlar ---------------------------------------------------------------
-  ["araInput","gucInput","hizInput","sureInput","tiltHizInput","tersX","tersY","ekranAcik"].forEach(function(id){
+  ["araInput","gucInput","hizInput","sureInput","tiltHizInput","tersX","tersY","ekranAcik","uyanikTut"].forEach(function(id){
     var el=E(id);
     try{
       var v=localStorage.getItem("stand_"+id);
