@@ -130,6 +130,7 @@
   <div class="satir"><span>Yatay eksen</span><b id="xDeger">510</b></div>
   <div class="satir"><span>Dikey eksen</span><b id="yDeger">510</b></div>
   <div class="satir"><span>Başlangıca göre dönüş</span><b id="donus">0°</b></div>
+  <div class="satir"><span>Eğme açısı</span><b id="tiltDeger">0°</b></div>
   <div class="satir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
   <button class="genis kucuk" id="sifirlaBtn">Dönüş sayacını sıfırla</button>
   <details>
@@ -138,6 +139,7 @@
     <label>Hareket şiddeti<input type="number" id="gucInput" value="700" min="520" max="1023" step="10"></label>
     <label>Dönüş hızı (° / sn)<input type="number" id="hizInput" value="27" min="5" max="360" step="1"></label>
     <label>Yarım tur süresi (ms)<input type="number" id="sureInput" value="6600" min="200" max="15000" step="100"></label>
+    <label>Eğme hızı (° / sn)<input type="number" id="tiltHizInput" value="20" min="2" max="180" step="1"></label>
     <label>Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
     <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
     <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
@@ -163,7 +165,7 @@
   var rxKarakter=null, yaziyor=false, bekleyen=null;
   var gonderim=null, canliTut=null, diziSayac=null, durumTik=null;
   var aktif=false, sonX=ORTA, sonY=ORTA, sonUzakKomut=0, uzakX=ORTA, uzakY=ORTA;
-  var paketSayisi=0, netDonus=0, hareketTik=0, mesgul=false, uyanik=null, standBagli=false, uzakHareketVardi=false;
+  var paketSayisi=0, netDonus=0, netTilt=0, hareketTik=0, mesgul=false, uyanik=null, standBagli=false, uzakHareketVardi=false;
 
   var E=function(id){return document.getElementById(id);};
   var padEl=E("pad"), topuzEl=E("topuz");
@@ -243,11 +245,11 @@
     if(aktif&&(sonX!==ORTA||sonY!==ORTA)){
       gonder(paket(sonX,sonY,0,0));
       hareketTik++;
-      if(hareketTik>2) donusEkle(yonu(sonX), ara);
+      if(hareketTik>2){ donusEkle(yonu(sonX), ara); tiltEkle(yonu(sonY), ara); }
     } else if(uzakAktif()){
       gonder(paket(uzakX,uzakY,0,0));
       hareketTik++;
-      if(hareketTik>2) donusEkle(yonu(uzakX), ara);
+      if(hareketTik>2){ donusEkle(yonu(uzakX), ara); tiltEkle(yonu(uzakY), ara); }
       uzakHareketVardi=true;
     } else {
       hareketTik=0;
@@ -255,6 +257,11 @@
     }
   }
   function yonu(x){ return x>ORTA?1:(x<ORTA?-1:0); }
+  function tiltEkle(yon,ms){
+    netTilt += yon*(Number(E("tiltHizInput").value)||20)*(ms/1000);
+    netTilt = Math.max(-45, Math.min(45, netTilt));
+    E("tiltDeger").textContent = Math.round(netTilt)+"°";
+  }
   function donusEkle(yon,ms){
     netDonus += yon*(Number(E("hizInput").value)||27)*(ms/1000);
     E("donus").textContent=Math.round(netDonus)+"°";
@@ -271,7 +278,8 @@
       if(gecen>=sure||!rxKarakter){
         clearInterval(diziSayac);diziSayac=null;mesgul=false;
         durdurmaDarbesi();
-        if(eksen!=="y") donusEkle(yon,Math.max(0,Math.min(gecen,sure)-250));
+        var etkin=Math.max(0,Math.min(gecen,sure)-250);
+        if(eksen==="y") tiltEkle(yon,etkin); else donusEkle(yon,etkin);
         if(bitince) bitince();
         return;
       }
@@ -304,7 +312,7 @@
     else if(k.t==="azasa") surekli(-1,350,null,"y");
     else if(k.t==="ev") baslangicaDon();
     else if(k.t==="dur") herSeyiDurdur();
-    else if(k.t==="konum") konumaGit(k.derece);
+    else if(k.t==="konum") konumaGit(k.derece,k.tilt);
   }
   function komutGonder(k){
     if(rol==="evde"){ k.kaynak="yerel"; komutUygula(k); }
@@ -319,15 +327,24 @@
     yaz("Başlangıca: "+Math.round(netDonus)+"° geri, "+(ms+250)+" ms.");
     surekli(netDonus>0?-1:1,ms+250);
   }
-  function konumaGit(hedef){
+  function tilteGit(hedef){
+    if(hedef==null) return;
+    var fark=hedef-netTilt, hiz=Number(E("tiltHizInput").value)||20;
+    var ms=Math.round(Math.abs(fark)/hiz*1000);
+    if(ms<150) return;
+    if(ms>6000) ms=6000;
+    yaz("Eğme: "+Math.round(netTilt)+"° -> "+Math.round(hedef)+"°, "+ms+" ms.");
+    surekli(fark>0?1:-1,ms+250,null,"y");
+  }
+  function konumaGit(hedef,tiltHedef){
     if(mesgul){ yaz("Konum: stand şu an meşgul."); return; }
     if(!rxKarakter){ yaz("Konum: stand bağlı değil."); return; }
     var fark=hedef-netDonus, hiz=Number(E("hizInput").value)||27;
     var ms=Math.round(Math.abs(fark)/hiz*1000);
-    yaz("Konum: hedef "+Math.round(hedef)+"°, şu an "+Math.round(netDonus)+"°, fark "+Math.round(fark)+"°, süre "+ms+" ms.");
-    if(ms<150){ yaz("Zaten o konumda."); return; }
+    yaz("Konum: dönüş "+Math.round(netDonus)+"° -> "+Math.round(hedef)+"°, "+ms+" ms.");
     if(ms>10000){ ms=10000; yaz("En fazla 10 sn dönülecek."); }
-    surekli(fark>0?1:-1,ms+250);
+    if(ms<150){ tilteGit(tiltHedef); return; }
+    surekli(fark>0?1:-1,ms+250,function(){ setTimeout(function(){ tilteGit(tiltHedef); },300); });
   }
 
   // --- bulut ----------------------------------------------------------------
@@ -418,8 +435,8 @@
     var liste=konumListesi();
     liste.forEach(function(kn,i){
       var git=document.createElement("button");
-      git.textContent=kn.ad+" "+Math.round(kn.derece)+"°";
-      git.addEventListener("click",function(){ komutGonder({t:"konum",derece:kn.derece}); });
+      git.textContent=kn.ad;
+      git.addEventListener("click",function(){ komutGonder({t:"konum",derece:kn.derece,tilt:kn.tilt}); });
       kap.appendChild(git);
       var sil=document.createElement("button");
       sil.textContent="×";
@@ -437,10 +454,10 @@
     var ad=prompt("Konum adı (örn. kanepe)");
     if(!ad) return;
     var liste=konumListesi();
-    liste.push({ad:ad,derece:netDonus});
+    liste.push({ad:ad,derece:netDonus,tilt:netTilt});
     konumKaydet(liste);
     konumlariCiz();
-    yaz("Konum kaydedildi: "+ad+" = "+Math.round(netDonus)+"°");
+    yaz("Konum kaydedildi: "+ad+" = dönüş "+Math.round(netDonus)+"°, eğme "+Math.round(netTilt)+"°");
   });
 
   // --- düğmeler --------------------------------------------------------------
@@ -453,8 +470,10 @@
   E("evBtn").addEventListener("click",function(){ komutGonder({t:"ev"}); });
   E("durBtn").addEventListener("click",function(){ komutGonder({t:"dur"}); yaz("Dur gönderildi."); });
   E("sifirlaBtn").addEventListener("click",function(){
-    netDonus=0; E("donus").textContent="0°"; E("donus").className="";
-    yaz("Sayaç sıfırlandı.");
+    netDonus=0; netTilt=0;
+    E("donus").textContent="0°"; E("donus").className="";
+    E("tiltDeger").textContent="0°";
+    yaz("Dönüş ve eğme sayacı sıfırlandı.");
   });
   E("temizleBtn").addEventListener("click",function(){ E("kayit").textContent=""; });
   function kayitMetni(){ return E("kayit").textContent; }
@@ -499,7 +518,7 @@
   });
 
   // --- ayarlar ---------------------------------------------------------------
-  ["araInput","gucInput","hizInput","sureInput","tersX","tersY","ekranAcik"].forEach(function(id){
+  ["araInput","gucInput","hizInput","sureInput","tiltHizInput","tersX","tersY","ekranAcik"].forEach(function(id){
     var el=E(id);
     try{
       var v=localStorage.getItem("stand_"+id);
