@@ -3,81 +3,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14191a">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Stand kumandası</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
 <style>
   :root{
     box-sizing:border-box;
     padding-top:env(safe-area-inset-top,0px);
     padding-bottom:env(safe-area-inset-bottom,0px);
-    --bg:#ecebe6;
-    --panel:#f7f6f2;
-    --ink:#1d2321;
-    --ink-soft:#5d6764;
-    --line:#cfcdc4;
-    --line-strong:#a9a79d;
-    --live:#1f6f4a;
-    --warn:#9a5b18;
-    --stop:#8e2f2f;
-    --radius:10px;
+    --bg:#ecebe6; --panel:#f7f6f2; --ink:#1d2321; --ink-soft:#5d6764;
+    --line:#cfcdc4; --line-strong:#a9a79d;
+    --live:#1f6f4a; --warn:#9a5b18; --stop:#8e2f2f; --radius:10px;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
-      --bg:#14191a;
-      --panel:#1c2224;
-      --ink:#e9eae6;
-      --ink-soft:#9aa5a3;
-      --line:#2c3437;
-      --line-strong:#43504f;
-      --live:#57c48c;
-      --warn:#d99a4e;
-      --stop:#e08585;
+      --bg:#14191a; --panel:#1c2224; --ink:#e9eae6; --ink-soft:#9aa5a3;
+      --line:#2c3437; --line-strong:#43504f;
+      --live:#57c48c; --warn:#d99a4e; --stop:#e08585;
     }
   }
   *,*::before,*::after{box-sizing:inherit}
   html,body{margin:0}
-  body{
-    background:var(--bg);
-    color:var(--ink);
-    font-family:Archivo,"Segoe UI",system-ui,sans-serif;
-    font-size:16px;
-    line-height:1.45;
-    -webkit-user-select:none;user-select:none;
-    -webkit-tap-highlight-color:transparent;
-  }
-  .wrap{max-width:520px;margin:0 auto;padding:14px 14px 28px}
-  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px}
-  h1{font-size:19px;font-weight:600;margin:0;letter-spacing:-0.01em}
+  body{background:var(--bg);color:var(--ink);font-family:Archivo,"Segoe UI",system-ui,sans-serif;
+    font-size:16px;line-height:1.45;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:520px;margin:0 auto;padding:12px 14px 28px}
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+  h1{font-size:19px;font-weight:600;margin:0;letter-spacing:-.01em}
   .durum{font-size:13px;color:var(--ink-soft)}
   .durum b{font-weight:500;color:var(--ink)}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px}
-  button{
-    font:inherit;font-weight:500;color:var(--ink);background:var(--panel);
-    border:1px solid var(--line-strong);border-radius:var(--radius);
-    padding:12px 10px;min-height:48px;cursor:pointer;
-  }
+  button{font:inherit;font-weight:500;color:var(--ink);background:var(--panel);
+    border:1px solid var(--line-strong);border-radius:var(--radius);padding:12px 10px;min-height:48px;cursor:pointer}
   button:active{background:var(--bg)}
-  button:disabled{opacity:.45;cursor:default}
+  button:disabled{opacity:.4;cursor:default}
   button:focus-visible{outline:2px solid var(--live);outline-offset:2px}
   .genis{width:100%}
-  .baglan{font-size:17px;padding:16px;border-color:var(--live);color:var(--live)}
-  .izgara{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .vurgu{border-color:var(--live);color:var(--live)}
   .dur{border-color:var(--stop);color:var(--stop)}
-  #pad{
-    position:relative;width:100%;aspect-ratio:1;max-width:320px;margin:4px auto 10px;
+  .kucuk{min-height:38px;padding:6px 10px;font-size:14px}
+  .izgara{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .izgara3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  #pad{position:relative;width:100%;aspect-ratio:1;max-width:300px;margin:2px auto 10px;
     border:1px solid var(--line-strong);border-radius:50%;background:var(--panel);
-    touch-action:none;display:grid;place-items:center;
-  }
+    touch-action:none;display:grid;place-items:center}
   #pad::before,#pad::after{content:"";position:absolute;background:var(--line)}
   #pad::before{left:8%;right:8%;height:1px}
   #pad::after{top:8%;bottom:8%;width:1px}
-  #topuz{
-    width:27%;height:27%;border-radius:50%;
-    background:var(--bg);border:1px solid var(--line-strong);
-    position:relative;z-index:1;transition:transform .12s ease-out;
-  }
+  #topuz{width:27%;height:27%;border-radius:50%;background:var(--bg);
+    border:1px solid var(--line-strong);position:relative;z-index:1;transition:transform .12s ease-out}
   #pad.tutuluyor #topuz{transition:none;border-color:var(--live)}
   .yon{position:absolute;font-size:12px;color:var(--ink-soft);z-index:0}
   .yon.u{top:10px}.yon.d{bottom:10px}.yon.l{left:12px}.yon.r{right:12px}
@@ -86,12 +63,16 @@
   details{margin-top:2px}
   summary{cursor:pointer;font-size:14px;color:var(--ink-soft);padding:6px 0}
   label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:7px 0;border-top:1px solid var(--line)}
-  input[type=number]{width:84px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:6px 8px}
+  input[type=number],input[type=text]{width:120px;font:inherit;color:var(--ink);background:var(--bg);
+    border:1px solid var(--line-strong);border-radius:6px;padding:8px}
+  input[type=number]{width:90px}
   input[type=checkbox]{width:22px;height:22px;accent-color:var(--live)}
-  #kayit{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;color:var(--ink-soft);
-    max-height:120px;overflow:auto;margin:0;white-space:pre-wrap;word-break:break-all;-webkit-user-select:text;user-select:text}
-  .uyari{color:var(--warn)}
+  #kayit{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ink-soft);
+    max-height:130px;overflow:auto;margin:0;white-space:pre-wrap;word-break:break-all;-webkit-user-select:text;user-select:text}
+  .uyari{color:var(--warn)} .iyi{color:var(--live)} .kotu{color:var(--stop)}
   .gizle{display:none}
+  .konumlar{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .konumlar button{min-height:36px;padding:6px 10px;font-size:14px}
 </style>
 </head>
 <body>
@@ -99,13 +80,21 @@
 
 <header>
   <h1>Stand kumandası</h1>
-  <span class="durum" id="durum">Bağlı değil</span>
+  <span class="durum" id="durum">Rol seçin</span>
 </header>
 
-<div class="panel" id="girisPanel">
-  <button class="genis baglan" id="baglanBtn">Standa bağlan</button>
-  <button class="genis" id="hepsiBtn" style="margin-top:8px">Tüm cihazları listele</button>
-  <p class="durum" id="destekNotu">Chrome ile açın, Bluetooth ve konum açık olsun. Stand listede çıkmazsa kumandayı kapatıp standı kapatıp açın, sonra tüm cihazları listeleyin.</p>
+<div class="panel" id="rolPanel">
+  <div class="izgara">
+    <button id="evdeBtn" class="vurgu">Evdeki telefon</button>
+    <button id="uzakBtn">Uzaktaki telefon</button>
+  </div>
+  <label style="border-top:none">Oda kodu<input type="text" id="kodInput" placeholder="ornek-kod-42" autocomplete="off"></label>
+  <p class="durum">Evdeki telefon standa bağlanır ve komutları uygular. Uzaktaki telefon internetten komut gönderir. İkisinde de aynı oda kodu yazılı olmalı. Kodu kimseyle paylaşmayın, kontrolü o sağlıyor.</p>
+</div>
+
+<div class="panel gizle" id="baglanPanel">
+  <button class="genis vurgu" id="baglanBtn">Standa bağlan</button>
+  <button class="genis kucuk" id="hepsiBtn" style="margin-top:8px">Tüm cihazları listele</button>
 </div>
 
 <div class="panel gizle" id="kontrolPanel">
@@ -117,37 +106,44 @@
   <div class="izgara">
     <button id="solBtn">Sola çevir</button>
     <button id="sagBtn">Sağa çevir</button>
-    <button id="evBtn">Başlangıca dön</button>
-    <button id="trackBtn">Auto track</button>
     <button id="azSolBtn">Az sola</button>
     <button id="azSagBtn">Az sağa</button>
-    <button id="olcBtn">2 sn sağa (ölçüm)</button>
-    <button id="dinleBtn">Standı dinle</button>
+    <button id="evBtn">Başlangıca dön</button>
     <button class="dur" id="durBtn">Dur</button>
   </div>
+  <div class="konumlar" id="konumlar"></div>
+  <button class="genis kucuk" id="konumEkleBtn" style="margin-top:8px">Bu konumu kaydet</button>
+</div>
+
+<div class="panel gizle" id="izinPanel">
+  <div class="satir">
+    <span>Uzaktan kontrol izni</span>
+    <button id="izinBtn" class="kucuk">Kapalı</button>
+  </div>
+  <div class="satir"><span>Oda</span><b id="odaAd">—</b></div>
+  <div class="satir"><span>Bulut</span><b id="bulutDurum">bağlı değil</b></div>
 </div>
 
 <div class="panel gizle" id="bilgiPanel">
   <div class="satir"><span>Yatay eksen</span><b id="xDeger">510</b></div>
   <div class="satir"><span>Dikey eksen</span><b id="yDeger">510</b></div>
-  <div class="satir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
   <div class="satir"><span>Başlangıca göre dönüş</span><b id="donus">0°</b></div>
-  <button class="genis" id="sifirlaBtn" style="min-height:40px;font-size:14px;margin-top:4px">Dönüş sayacını sıfırla</button>
-  <div class="satir"><span>Son paket</span><b id="sonPaket">—</b></div>
-
+  <div class="satir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
+  <button class="genis kucuk" id="sifirlaBtn">Dönüş sayacını sıfırla</button>
   <details>
     <summary>Ayarlar</summary>
     <label>Gönderim aralığı (ms)<input type="number" id="araInput" value="120" min="40" max="500" step="10"></label>
-    <label>Düğmelerde hareket şiddeti<input type="number" id="gucInput" value="700" min="520" max="1023" step="10"></label>
-    <label>Dönüş hızı (° / saniye)<input type="number" id="hizInput" value="60" min="5" max="360" step="5"></label>
-    <label>Çevirme süresi (ms)<input type="number" id="sureInput" value="3000" min="200" max="15000" step="100"></label>
+    <label>Hareket şiddeti<input type="number" id="gucInput" value="700" min="520" max="1023" step="10"></label>
+    <label>Dönüş hızı (° / sn)<input type="number" id="hizInput" value="27" min="5" max="360" step="1"></label>
+    <label>Yarım tur süresi (ms)<input type="number" id="sureInput" value="6600" min="200" max="15000" step="100"></label>
     <label>Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
     <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
+    <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
   </details>
 </div>
 
 <div class="panel gizle" id="kayitPanel">
-  <div class="satir"><span>Kayıt</span><button id="temizleBtn" style="min-height:32px;padding:4px 10px;font-size:13px">Temizle</button></div>
+  <div class="satir"><span>Kayıt</span><button id="temizleBtn" class="kucuk">Temizle</button></div>
   <pre id="kayit"></pre>
 </div>
 
@@ -157,392 +153,346 @@
 (function(){
   "use strict";
 
-  var NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
-  var RX  = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
-  var TX  = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
-  var AE0 = "0000ae00-0000-1000-8000-00805f9b34fb";
-  var AE2 = "0000ae02-0000-1000-8000-00805f9b34fb";
-  var BILGI = "device_information";
-  var sunucuRef = null;
-  var ORTA = 510, EN_AZ = 0, EN_COK = 1023;
+  var NUS="6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+  var RX ="6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+  var ORTA=510, EN_AZ=0, EN_COK=1023, BEKLEME=600;
 
-  var cihaz = null, rxKarakter = null, yaziyor = false, bekleyen = null;
-  var gonderim = null, canliTut = null, diziSayac = null;
-  var aktif = false, sonX = ORTA, sonY = ORTA;
-  var paketSayisi = 0, netDonus = 0, mesgul = false;
+  var rol=null, kod="", istemci=null, izin=false;
+  var rxKarakter=null, yaziyor=false, bekleyen=null;
+  var gonderim=null, canliTut=null, diziSayac=null, durumTik=null;
+  var aktif=false, sonX=ORTA, sonY=ORTA, sonUzakKomut=0, uzakX=ORTA, uzakY=ORTA;
+  var paketSayisi=0, netDonus=0, mesgul=false, uyanik=null, standBagli=false;
 
-  var E = function(id){ return document.getElementById(id); };
-  var durumEl=E("durum"), padEl=E("pad"), topuzEl=E("topuz");
+  var E=function(id){return document.getElementById(id);};
+  var padEl=E("pad"), topuzEl=E("topuz");
 
-  function yaz(metin){
-    var k = E("kayit");
-    var t = new Date().toLocaleTimeString("tr-TR");
-    k.textContent = t + "  " + metin + "\n" + k.textContent;
-    if (k.textContent.length > 4000) k.textContent = k.textContent.slice(0, 4000);
+  function yaz(m){
+    var k=E("kayit");
+    k.textContent=new Date().toLocaleTimeString("tr-TR")+"  "+m+"\n"+k.textContent;
+    if(k.textContent.length>4000) k.textContent=k.textContent.slice(0,4000);
   }
-  function durumYaz(metin, sinif){
-    durumEl.innerHTML = sinif ? '<b class="'+sinif+'">'+metin+'</b>' : '<b>'+metin+'</b>';
-  }
+  function durumYaz(m,s){ E("durum").innerHTML='<b class="'+(s||"")+'">'+m+"</b>"; }
 
-  // --- paket üretimi -------------------------------------------------------
-  function crc16(bayt, uzunluk){
-    var crc = 0;
-    for (var i = 0; i < uzunluk; i++){
-      crc ^= bayt[i];
-      for (var k = 0; k < 8; k++){
-        crc = (crc & 1) ? ((crc >> 1) ^ 0xA001) : (crc >> 1);
-      }
-    }
-    return crc & 0xFFFF;
-  }
-  function paket(x, y, kameraTus, standTus){
-    var b = new Uint8Array(14);
-    b[0]=0x55; b[1]=0x0E; b[2]=0x69; b[3]=0x13; b[4]=0x50;
-    b[5]=kameraTus||0; b[6]=0;
-    b[7]=x & 0xFF; b[8]=(x >> 8) & 0xFF;
-    b[9]=y & 0xFF; b[10]=(y >> 8) & 0xFF;
+  // --- paket ---------------------------------------------------------------
+  function crc16(b,n){var c=0;for(var i=0;i<n;i++){c^=b[i];for(var k=0;k<8;k++){c=(c&1)?((c>>1)^0xA001):(c>>1);}}return c&0xFFFF;}
+  function paket(x,y,kameraTus,standTus){
+    var b=new Uint8Array(14);
+    b[0]=0x55;b[1]=0x0E;b[2]=0x69;b[3]=0x13;b[4]=0x50;
+    b[5]=kameraTus||0;b[6]=0;
+    b[7]=x&0xFF;b[8]=(x>>8)&0xFF;b[9]=y&0xFF;b[10]=(y>>8)&0xFF;
     b[11]=standTus||0;
-    var c = crc16(b, 12);
-    b[12]=(c >> 8) & 0xFF; b[13]=c & 0xFF;
+    var c=crc16(b,12);b[12]=(c>>8)&0xFF;b[13]=c&0xFF;
     return b;
   }
-  function onalti(b){
-    var s = "";
-    for (var i=0;i<b.length;i++) s += ("0"+b[i].toString(16)).slice(-2).toUpperCase();
-    return s;
-  }
-
-  // --- yazma kuyruğu (tek seferde tek işlem) -------------------------------
   function gonder(b){
-    if (!rxKarakter) return;
-    if (yaziyor){ bekleyen = b; return; }
-    yaziyor = true;
-    var islem = rxKarakter.writeValueWithoutResponse
-      ? rxKarakter.writeValueWithoutResponse(b)
-      : rxKarakter.writeValue(b);
+    if(!rxKarakter) return;
+    if(yaziyor){bekleyen=b;return;}
+    yaziyor=true;
+    var islem=rxKarakter.writeValueWithoutResponse?rxKarakter.writeValueWithoutResponse(b):rxKarakter.writeValue(b);
     islem.then(function(){
-      paketSayisi++;
-      E("sayac").textContent = paketSayisi;
-      E("sonPaket").textContent = onalti(b);
-      E("donus").textContent = Math.round(netDonus) + "°";
-      E("donus").className = Math.abs(netDonus) > 360 ? "uyari" : "";
-    }).catch(function(h){
-      yaz("Gönderilemedi: " + h.message);
-    }).then(function(){
-      yaziyor = false;
-      if (bekleyen){ var s = bekleyen; bekleyen = null; gonder(s); }
-    });
+      paketSayisi++;E("sayac").textContent=paketSayisi;
+    }).catch(function(h){ yaz("Gönderilemedi: "+h.message); })
+      .then(function(){ yaziyor=false; if(bekleyen){var s=bekleyen;bekleyen=null;gonder(s);} });
   }
-  function bosta(){ gonder(paket(ORTA, ORTA, 0, 0)); }
+  function bosta(){ gonder(paket(ORTA,ORTA,0,0)); }
 
-  // --- bağlantı ------------------------------------------------------------
+  // --- BLE -----------------------------------------------------------------
   function baglan(hepsi){
-    // --- ayarları telefonda sakla ---
-  var ayarlar = ["araInput","gucInput","hizInput","sureInput","tersX","tersY"];
-  ayarlar.forEach(function(id){
-    var el = E(id);
-    try {
-      var kayitli = localStorage.getItem("stand_" + id);
-      if (kayitli !== null){
-        if (el.type === "checkbox") el.checked = kayitli === "1";
-        else el.value = kayitli;
-      }
-    } catch(h){}
-    el.addEventListener("change", function(){
-      try {
-        localStorage.setItem("stand_" + id, el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value);
-      } catch(h){}
-    });
-  });
-
-  function veriGeldi(olay){
-    var v = olay.target.value, b = new Uint8Array(v.buffer);
-    yaz("STANDDAN: " + onalti(b));
-  }
-  function dinlemeyiDene(servisId, karakterId, etiket){
-    if (!sunucuRef) return Promise.resolve();
-    return sunucuRef.getPrimaryService(servisId)
-      .then(function(sv){ return sv.getCharacteristic(karakterId); })
-      .then(function(k){ return k.startNotifications(); })
-      .then(function(k){
-        k.addEventListener("characteristicvaluechanged", veriGeldi);
-        yaz(etiket + ": dinleme açıldı.");
-      })
-      .catch(function(h){ yaz(etiket + ": olmadı (" + h.message + ")"); });
-  }
-  E("dinleBtn").addEventListener("click", function(){
-    if (!sunucuRef){ yaz("Önce bağlanın."); return; }
-    yaz("Dinleme deneniyor…");
-    dinlemeyiDene(NUS, TX, "UART TX")
-      .then(function(){ return dinlemeyiDene(AE0, AE2, "AE02"); })
-      .then(function(){ return sunucuRef.getPrimaryService(BILGI); })
-      .then(function(sv){ return sv.getCharacteristics(); })
-      .then(function(liste){
-        return Promise.all(liste.map(function(k){
-          return k.readValue().then(function(v){
-            var m = "";
-            for (var i=0;i<v.byteLength;i++) m += String.fromCharCode(v.getUint8(i));
-            yaz("Cihaz bilgisi " + k.uuid.slice(4,8) + ": " + m);
-          }).catch(function(){});
-        }));
-      })
-      .catch(function(h){ yaz("Cihaz bilgisi okunamadı: " + h.message); });
-  });
-
-  E("azSagBtn").addEventListener("click", function(){ surekli(1, 400); });
-  E("azSolBtn").addEventListener("click", function(){ surekli(-1, 400); });
-
-  if (!navigator.bluetooth){
-      durumYaz("Bluetooth yok", "uyari");
-      yaz("Bu tarayıcı Web Bluetooth desteklemiyor. Android'de Chrome kullanın.");
-      return;
-    }
+    if(!navigator.bluetooth){ durumYaz("Bluetooth yok","kotu"); yaz("Android'de Chrome kullanın."); return; }
     durumYaz("Aranıyor…");
-    var secenek = hepsi
-      ? { acceptAllDevices: true, optionalServices: [NUS, AE0, BILGI] }
-      : { filters: [{ namePrefix: "COMITOK" }, { services: [NUS] }], optionalServices: [NUS, AE0, BILGI] };
-    navigator.bluetooth.requestDevice(secenek).then(function(d){
-      cihaz = d;
-      d.addEventListener("gattserverdisconnected", koptu);
-      yaz("Bulundu: " + (d.name || "adsız"));
+    var s=hepsi?{acceptAllDevices:true,optionalServices:[NUS]}
+               :{filters:[{namePrefix:"COMITOK"},{services:[NUS]}],optionalServices:[NUS]};
+    navigator.bluetooth.requestDevice(s).then(function(d){
+      d.addEventListener("gattserverdisconnected",koptu);
+      yaz("Bulundu: "+(d.name||"adsız"));
       return d.gatt.connect();
-    }).then(function(sunucu){
-      sunucuRef = sunucu;
-      return sunucu.getPrimaryService(NUS);
-    }).then(function(servis){
-      return servis.getCharacteristic(RX);
-    }).then(function(k){
-      rxKarakter = k;
-      durumYaz("Bağlı", null);
-      E("girisPanel").classList.add("gizle");
-      E("kontrolPanel").classList.remove("gizle");
-      E("bilgiPanel").classList.remove("gizle");
-      E("kayitPanel").classList.remove("gizle");
-      yaz("Bağlandı, boşta paketi gönderiliyor.");
-      bosta();
-      canliTut = setInterval(function(){ if (!aktif && !mesgul) bosta(); }, 3000);
-    }).catch(function(h){
-      durumYaz("Bağlanamadı", "uyari");
-      yaz("Hata: " + h.message);
-    });
+    }).then(function(sv){ return sv.getPrimaryService(NUS); })
+      .then(function(sr){ return sr.getCharacteristic(RX); })
+      .then(function(k){
+        rxKarakter=k; standBagli=true;
+        durumYaz("Stand bağlı","iyi");
+        E("baglanPanel").classList.add("gizle");
+        E("kontrolPanel").classList.remove("gizle");
+        E("bilgiPanel").classList.remove("gizle");
+        yaz("Bağlandı.");
+        bosta();
+        clearInterval(canliTut);
+        canliTut=setInterval(function(){ if(!aktif&&!mesgul&&!uzakAktif()) bosta(); },3000);
+        clearInterval(gonderim);
+        gonderim=setInterval(dongu,Number(E("araInput").value)||120);
+      }).catch(function(h){ durumYaz("Bağlanamadı","kotu"); yaz("Hata: "+h.message); });
   }
   function koptu(){
-    rxKarakter = null;
-    clearInterval(canliTut); clearInterval(gonderim);
-    aktif = false; mesgul = false;
-    durumYaz("Bağlantı koptu", "uyari");
-    E("girisPanel").classList.remove("gizle");
+    rxKarakter=null; standBagli=false;
+    clearInterval(canliTut); clearInterval(diziSayac); diziSayac=null;
+    aktif=false; mesgul=false;
+    durumYaz("Stand koptu","kotu");
+    E("baglanPanel").classList.remove("gizle");
     E("kontrolPanel").classList.add("gizle");
-    yaz("Bağlantı koptu. Standın açık olduğundan emin olup tekrar bağlanın.");
+    yaz("Bağlantı koptu. Stand açıksa tekrar bağlanın.");
   }
 
-  // --- joystick ------------------------------------------------------------
-  function eksene(oran){
-    var d = Math.round(ORTA + oran * 513);
-    return Math.max(EN_AZ, Math.min(EN_COK, d));
-  }
-  function padHareket(olay){
-    var kutu = padEl.getBoundingClientRect();
-    var yaricap = kutu.width / 2;
-    var dx = (olay.clientX - (kutu.left + yaricap)) / yaricap;
-    var dy = (olay.clientY - (kutu.top + yaricap)) / yaricap;
-    var uzaklik = Math.hypot(dx, dy);
-    if (uzaklik > 1){ dx /= uzaklik; dy /= uzaklik; uzaklik = 1; }
-    topuzEl.style.transform = "translate(" + (dx*yaricap*0.62) + "px," + (dy*yaricap*0.62) + "px)";
-    if (uzaklik < 0.12){ sonX = ORTA; sonY = ORTA; }
-    else {
-      sonX = eksene(E("tersX").checked ? -dx : dx);
-      sonY = eksene(E("tersY").checked ? dy : -dy);
-    }
-    E("xDeger").textContent = sonX;
-    E("yDeger").textContent = sonY;
-  }
-  function padBasla(olay){
-    if (!rxKarakter || mesgul) return;
-    padEl.setPointerCapture(olay.pointerId);
-    padEl.classList.add("tutuluyor");
-    aktif = true;
-    padHareket(olay);
-    clearInterval(gonderim);
-    var ara = Number(E("araInput").value) || 120;
-    gonderim = setInterval(function(){
-      if (sonX !== ORTA || sonY !== ORTA){
-        gonder(paket(sonX, sonY, 0, 0));
-        donusEkle((sonX - ORTA) / 513, ara);
-        E("donus").textContent = Math.round(netDonus) + "°";
-      }
-    }, ara);
-    gonder(paket(sonX, sonY, 0, 0));
-  }
-  function padBirak(olay){
-    if (!aktif) return;
-    aktif = false;
-    clearInterval(gonderim);
-    padEl.classList.remove("tutuluyor");
-    topuzEl.style.transform = "";
-    sonX = ORTA; sonY = ORTA;
-    E("xDeger").textContent = ORTA;
-    E("yDeger").textContent = ORTA;
-    bosta();
-    if (olay && olay.pointerId != null && padEl.hasPointerCapture(olay.pointerId)){
-      padEl.releasePointerCapture(olay.pointerId);
+  // --- hareket döngüsü (evdeki telefon) -------------------------------------
+  function uzakAktif(){ return Date.now()-sonUzakKomut < BEKLEME && (uzakX!==ORTA||uzakY!==ORTA); }
+  function dongu(){
+    if(!rxKarakter||mesgul) return;
+    if(aktif&&(sonX!==ORTA||sonY!==ORTA)){
+      gonder(paket(sonX,sonY,0,0));
+      donusEkle((sonX-ORTA)/513, Number(E("araInput").value)||120);
+    } else if(uzakAktif()){
+      gonder(paket(uzakX,uzakY,0,0));
+      donusEkle((uzakX-ORTA)/513, Number(E("araInput").value)||120);
     }
   }
-  padEl.addEventListener("pointerdown", padBasla);
-  padEl.addEventListener("pointermove", function(o){ if (aktif) padHareket(o); });
-  padEl.addEventListener("pointerup", padBirak);
-  padEl.addEventListener("pointercancel", padBirak);
-  padEl.addEventListener("pointerleave", function(o){ if (aktif) padBirak(o); });
-
-  // --- otomatik hareketler -------------------------------------------------
-  function donusEkle(yon, ms){
-    var hiz = Number(E("hizInput").value) || 60;
-    netDonus += yon * hiz * (ms / 1000);
+  function donusEkle(yon,ms){
+    netDonus += yon*(Number(E("hizInput").value)||27)*(ms/1000);
+    E("donus").textContent=Math.round(netDonus)+"°";
+    E("donus").className=Math.abs(netDonus)>360?"uyari":"";
   }
-  function surekli(yon, sure, bitince){
-    if (!rxKarakter || mesgul) return;
-    mesgul = true;
-    var ara = Number(E("araInput").value) || 120;
-    var guc = Number(E("gucInput").value) || 700;
-    var baslangic = Date.now(), tik = 0;
+  function surekli(yon,sure,bitince){
+    if(!rxKarakter||mesgul) return;
+    mesgul=true;
+    var ara=Number(E("araInput").value)||120, guc=Number(E("gucInput").value)||700;
+    var bas=Date.now(), tik=0;
     clearInterval(diziSayac);
-    diziSayac = setInterval(function(){
-      var gecen = Date.now() - baslangic;
-      if (gecen >= sure || !rxKarakter){
-        clearInterval(diziSayac); diziSayac = null;
-        mesgul = false;
-        bosta();
-        donusEkle(yon, Math.max(0, Math.min(gecen, sure) - 250));
-        E("donus").textContent = Math.round(netDonus) + "°";
-        if (bitince) bitince();
+    diziSayac=setInterval(function(){
+      var gecen=Date.now()-bas;
+      if(gecen>=sure||!rxKarakter){
+        clearInterval(diziSayac);diziSayac=null;mesgul=false;bosta();
+        donusEkle(yon,Math.max(0,Math.min(gecen,sure)-250));
+        if(bitince) bitince();
         return;
       }
-      var sapma = (guc - ORTA) + (tik % 3);
-      var x = Math.max(EN_AZ, Math.min(EN_COK, yon > 0 ? (ORTA + sapma) : (ORTA - sapma)));
-      gonder(paket(x, ORTA, 0, 0));
+      var sap=(guc-ORTA)+(tik%3);
+      gonder(paket(Math.max(EN_AZ,Math.min(EN_COK,yon>0?ORTA+sap:ORTA-sap)),ORTA,0,0));
       tik++;
-    }, ara);
+    },ara);
   }
-
-  E("sagBtn").addEventListener("click", function(){
-    var sure = Number(E("sureInput").value) || 3000;
-    yaz("Sağa " + sure + " ms.");
-    surekli(1, sure);
-  });
-  E("solBtn").addEventListener("click", function(){
-    var sure = Number(E("sureInput").value) || 3000;
-    yaz("Sola " + sure + " ms.");
-    surekli(-1, sure);
-  });
-  E("olcBtn").addEventListener("click", function(){
-    yaz("Ölçüm: 2 saniye sağa. Kaç derece döndüğünü sayın, ayarlardaki hıza yazın.");
-    surekli(1, 2000);
-  });
-  E("evBtn").addEventListener("click", function(){
-    if (mesgul) return;
-    var hiz = Number(E("hizInput").value) || 60;
-    var ms = Math.round(Math.abs(netDonus) / hiz * 1000);
-    if (ms < 150){ yaz("Zaten başlangıç konumunda."); return; }
-    if (ms > 10000){ ms = 10000; yaz("Sapma büyük, en fazla 10 saniye dönülecek. Gerekirse tekrar basın."); }
-    yaz("Başlangıca dönülüyor: " + Math.round(netDonus) + "° geri, " + ms + " ms.");
-    surekli(netDonus > 0 ? -1 : 1, ms);
-  });
-  E("trackBtn").addEventListener("click", function(){
-    if (mesgul) return;
-    var kez = 0;
-    var t = setInterval(function(){
-      if (kez >= 3 || !rxKarakter){ clearInterval(t); bosta(); return; }
-      gonder(paket(ORTA, ORTA, 0, 0x04));
-      kez++;
-    }, 70);
-    yaz("Auto track komutu gönderildi.");
-  });
   function herSeyiDurdur(){
-    clearInterval(gonderim); gonderim = null;
-    clearInterval(diziSayac); diziSayac = null;
-    mesgul = false; aktif = false;
-    bekleyen = null;
-    sonX = ORTA; sonY = ORTA;
-    topuzEl.style.transform = "";
-    E("xDeger").textContent = ORTA;
-    E("yDeger").textContent = ORTA;
-    bosta();
-    setTimeout(bosta, 150);
-    setTimeout(bosta, 400);
+    clearInterval(diziSayac);diziSayac=null;
+    mesgul=false;aktif=false;bekleyen=null;
+    sonX=ORTA;sonY=ORTA;uzakX=ORTA;uzakY=ORTA;sonUzakKomut=0;
+    topuzEl.style.transform="";
+    E("xDeger").textContent=ORTA;E("yDeger").textContent=ORTA;
+    bosta();setTimeout(bosta,150);setTimeout(bosta,400);
   }
-  E("durBtn").addEventListener("click", function(){
-    herSeyiDurdur();
-    yaz("Durduruldu.");
-  });
-  E("sifirlaBtn").addEventListener("click", function(){
-    netDonus = 0;
-    E("donus").textContent = "0°";
-    E("donus").className = "";
-    yaz("Dönüş sayacı sıfırlandı. Şu anki konum başlangıç kabul edildi.");
-  });
-  E("temizleBtn").addEventListener("click", function(){ E("kayit").textContent = ""; });
-  E("baglanBtn").addEventListener("click", function(){ baglan(false); });
-  E("hepsiBtn").addEventListener("click", function(){ baglan(true); });
 
-  // --- ayarları telefonda sakla ---
-  var ayarlar = ["araInput","gucInput","hizInput","sureInput","tersX","tersY"];
-  ayarlar.forEach(function(id){
-    var el = E(id);
-    try {
-      var kayitli = localStorage.getItem("stand_" + id);
-      if (kayitli !== null){
-        if (el.type === "checkbox") el.checked = kayitli === "1";
-        else el.value = kayitli;
+  // --- komutlar (her iki rolde ortak giriş noktası) --------------------------
+  function komutUygula(k){
+    if(rol!=="evde") return;
+    if(k.t!=="dur" && !izin && k.kaynak==="uzak"){ yaz("İzin kapalı, komut uygulanmadı."); return; }
+    var sure=Number(E("sureInput").value)||6600;
+    if(k.t==="joy"){ uzakX=k.x;uzakY=k.y;sonUzakKomut=Date.now(); }
+    else if(k.t==="sag") surekli(1,sure);
+    else if(k.t==="sol") surekli(-1,sure);
+    else if(k.t==="azsag") surekli(1,400);
+    else if(k.t==="azsol") surekli(-1,400);
+    else if(k.t==="ev") baslangicaDon();
+    else if(k.t==="dur") herSeyiDurdur();
+    else if(k.t==="konum") konumaGit(k.derece);
+  }
+  function komutGonder(k){
+    if(rol==="evde"){ k.kaynak="yerel"; komutUygula(k); }
+    else if(istemci&&istemci.connected){ k.kaynak="uzak"; istemci.publish("comitok/"+kod+"/komut",JSON.stringify(k)); }
+  }
+  function baslangicaDon(){
+    if(mesgul) return;
+    var hiz=Number(E("hizInput").value)||27;
+    var ms=Math.round(Math.abs(netDonus)/hiz*1000);
+    if(ms<150){ yaz("Zaten başlangıç konumunda."); return; }
+    if(ms>10000){ ms=10000; yaz("Sapma büyük, en fazla 10 sn dönülecek."); }
+    yaz("Başlangıca: "+Math.round(netDonus)+"° geri.");
+    surekli(netDonus>0?-1:1,ms);
+  }
+  function konumaGit(hedef){
+    if(mesgul) return;
+    var fark=hedef-netDonus, hiz=Number(E("hizInput").value)||27;
+    var ms=Math.round(Math.abs(fark)/hiz*1000);
+    if(ms<150){ yaz("Zaten o konumda."); return; }
+    if(ms>10000) ms=10000;
+    surekli(fark>0?1:-1,ms);
+  }
+
+  // --- bulut ----------------------------------------------------------------
+  function buluta(){
+    if(!kod) return;
+    E("bulutDurum").textContent="bağlanıyor…";
+    istemci=mqtt.connect("wss://broker.emqx.io:8084/mqtt",{
+      clientId:"comitok_"+rol+"_"+Math.random().toString(16).slice(2,10),
+      reconnectPeriod:2000, connectTimeout:8000
+    });
+    istemci.on("connect",function(){
+      E("bulutDurum").textContent="bağlı"; E("bulutDurum").className="iyi";
+      yaz("Buluta bağlanıldı.");
+      istemci.subscribe(rol==="evde"?"comitok/"+kod+"/komut":"comitok/"+kod+"/durum");
+      if(rol==="evde") durumYayinla();
+    });
+    istemci.on("reconnect",function(){ E("bulutDurum").textContent="yeniden bağlanıyor"; E("bulutDurum").className="uyari"; });
+    istemci.on("error",function(h){ yaz("Bulut hatası: "+h.message); });
+    istemci.on("message",function(konu,veri){
+      var k;
+      try{ k=JSON.parse(veri.toString()); }catch(h){ return; }
+      if(rol==="evde"){ k.kaynak="uzak"; komutUygula(k); }
+      else{
+        izin=!!k.izin;
+        E("izinBtn").textContent=izin?"Açık":"Kapalı";
+        E("izinBtn").className="kucuk "+(izin?"vurgu":"");
+        durumYaz(k.stand?(izin?"Stand bağlı, izin açık":"İzin kapalı"):"Evdeki telefon standa bağlı değil", k.stand&&izin?"iyi":"uyari");
+        E("donus").textContent=Math.round(k.donus||0)+"°";
       }
-    } catch(h){}
-    el.addEventListener("change", function(){
-      try {
-        localStorage.setItem("stand_" + id, el.type === "checkbox" ? (el.checked ? "1" : "0") : el.value);
-      } catch(h){}
+    });
+    if(rol==="evde"){
+      clearInterval(durumTik);
+      durumTik=setInterval(durumYayinla,1000);
+    }
+  }
+  function durumYayinla(){
+    if(!istemci||!istemci.connected) return;
+    istemci.publish("comitok/"+kod+"/durum",
+      JSON.stringify({stand:standBagli,izin:izin,donus:Math.round(netDonus),zaman:Date.now()}),
+      {retain:true});
+  }
+
+  // --- joystick -------------------------------------------------------------
+  function eksene(o){ return Math.max(EN_AZ,Math.min(EN_COK,Math.round(ORTA+o*513))); }
+  function padHareket(o){
+    var kutu=padEl.getBoundingClientRect(), r=kutu.width/2;
+    var dx=(o.clientX-(kutu.left+r))/r, dy=(o.clientY-(kutu.top+r))/r;
+    var u=Math.hypot(dx,dy); if(u>1){dx/=u;dy/=u;u=1;}
+    topuzEl.style.transform="translate("+(dx*r*.62)+"px,"+(dy*r*.62)+"px)";
+    if(u<0.12){ sonX=ORTA; sonY=ORTA; }
+    else{ sonX=eksene(E("tersX").checked?-dx:dx); sonY=eksene(E("tersY").checked?dy:-dy); }
+    E("xDeger").textContent=sonX; E("yDeger").textContent=sonY;
+  }
+  var uzakTik=null;
+  padEl.addEventListener("pointerdown",function(o){
+    if(rol==="evde"&&(!rxKarakter||mesgul)) return;
+    padEl.setPointerCapture(o.pointerId); padEl.classList.add("tutuluyor");
+    aktif=true; padHareket(o);
+    if(rol==="uzak"){
+      clearInterval(uzakTik);
+      uzakTik=setInterval(function(){ komutGonder({t:"joy",x:sonX,y:sonY}); },150);
+      komutGonder({t:"joy",x:sonX,y:sonY});
+    }
+  });
+  padEl.addEventListener("pointermove",function(o){ if(aktif) padHareket(o); });
+  function padBirak(o){
+    if(!aktif) return;
+    aktif=false; padEl.classList.remove("tutuluyor");
+    topuzEl.style.transform=""; sonX=ORTA; sonY=ORTA;
+    E("xDeger").textContent=ORTA; E("yDeger").textContent=ORTA;
+    if(rol==="uzak"){ clearInterval(uzakTik); komutGonder({t:"joy",x:ORTA,y:ORTA}); }
+    else bosta();
+    if(o&&o.pointerId!=null&&padEl.hasPointerCapture(o.pointerId)) padEl.releasePointerCapture(o.pointerId);
+  }
+  padEl.addEventListener("pointerup",padBirak);
+  padEl.addEventListener("pointercancel",padBirak);
+  padEl.addEventListener("pointerleave",function(o){ if(aktif) padBirak(o); });
+
+  // --- kayıtlı konumlar ------------------------------------------------------
+  function konumlariCiz(){
+    var kap=E("konumlar"); kap.innerHTML="";
+    var liste=[];
+    try{ liste=JSON.parse(localStorage.getItem("stand_konumlar")||"[]"); }catch(h){}
+    liste.forEach(function(kn,i){
+      var d=document.createElement("button");
+      d.textContent=kn.ad+" ("+Math.round(kn.derece)+"°)";
+      d.addEventListener("click",function(){ komutGonder({t:"konum",derece:kn.derece}); });
+      d.addEventListener("contextmenu",function(e){
+        e.preventDefault();
+        liste.splice(i,1);
+        try{ localStorage.setItem("stand_konumlar",JSON.stringify(liste)); }catch(h){}
+        konumlariCiz();
+      });
+      kap.appendChild(d);
+    });
+  }
+  E("konumEkleBtn").addEventListener("click",function(){
+    var ad=prompt("Konum adı (örn. kanepe)");
+    if(!ad) return;
+    var liste=[];
+    try{ liste=JSON.parse(localStorage.getItem("stand_konumlar")||"[]"); }catch(h){}
+    liste.push({ad:ad,derece:netDonus});
+    try{ localStorage.setItem("stand_konumlar",JSON.stringify(liste)); }catch(h){}
+    konumlariCiz();
+    yaz("Konum kaydedildi: "+ad);
+  });
+
+  // --- düğmeler --------------------------------------------------------------
+  E("sagBtn").addEventListener("click",function(){ komutGonder({t:"sag"}); });
+  E("solBtn").addEventListener("click",function(){ komutGonder({t:"sol"}); });
+  E("azSagBtn").addEventListener("click",function(){ komutGonder({t:"azsag"}); });
+  E("azSolBtn").addEventListener("click",function(){ komutGonder({t:"azsol"}); });
+  E("evBtn").addEventListener("click",function(){ komutGonder({t:"ev"}); });
+  E("durBtn").addEventListener("click",function(){ komutGonder({t:"dur"}); yaz("Dur gönderildi."); });
+  E("sifirlaBtn").addEventListener("click",function(){
+    netDonus=0; E("donus").textContent="0°"; E("donus").className="";
+    yaz("Sayaç sıfırlandı.");
+  });
+  E("temizleBtn").addEventListener("click",function(){ E("kayit").textContent=""; });
+  E("baglanBtn").addEventListener("click",function(){ baglan(false); });
+  E("hepsiBtn").addEventListener("click",function(){ baglan(true); });
+  E("izinBtn").addEventListener("click",function(){
+    if(rol!=="evde"){ yaz("İzni evdeki telefon açar."); return; }
+    izin=!izin;
+    E("izinBtn").textContent=izin?"Açık":"Kapalı";
+    E("izinBtn").className="kucuk "+(izin?"vurgu":"");
+    if(!izin) herSeyiDurdur();
+    durumYayinla();
+    yaz("Uzaktan kontrol "+(izin?"açıldı":"kapatıldı")+".");
+  });
+
+  // --- ekranı açık tut -------------------------------------------------------
+  function ekraniTut(){
+    if(!E("ekranAcik").checked||!navigator.wakeLock) return;
+    navigator.wakeLock.request("screen").then(function(k){ uyanik=k; }).catch(function(){});
+  }
+  document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="visible") ekraniTut();
+  });
+
+  // --- ayarlar ---------------------------------------------------------------
+  ["araInput","gucInput","hizInput","sureInput","tersX","tersY","ekranAcik"].forEach(function(id){
+    var el=E(id);
+    try{
+      var v=localStorage.getItem("stand_"+id);
+      if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; }
+    }catch(h){}
+    el.addEventListener("change",function(){
+      try{ localStorage.setItem("stand_"+id,el.type==="checkbox"?(el.checked?"1":"0"):el.value); }catch(h){}
+      if(id==="araInput"&&gonderim){ clearInterval(gonderim); gonderim=setInterval(dongu,Number(el.value)||120); }
     });
   });
+  try{ E("kodInput").value=localStorage.getItem("stand_kod")||""; }catch(h){}
 
-  function veriGeldi(olay){
-    var v = olay.target.value, b = new Uint8Array(v.buffer);
-    yaz("STANDDAN: " + onalti(b));
+  // --- rol seçimi ------------------------------------------------------------
+  function rolSec(secim){
+    kod=E("kodInput").value.trim();
+    try{ localStorage.setItem("stand_kod",kod); }catch(h){}
+    rol=secim;
+    E("rolPanel").classList.add("gizle");
+    E("kayitPanel").classList.remove("gizle");
+    E("izinPanel").classList.remove("gizle");
+    E("odaAd").textContent=kod||"yok";
+    konumlariCiz();
+    ekraniTut();
+    if(rol==="evde"){
+      E("baglanPanel").classList.remove("gizle");
+      durumYaz("Standa bağlanın");
+      if(kod) buluta();
+    }else{
+      E("kontrolPanel").classList.remove("gizle");
+      E("bilgiPanel").classList.remove("gizle");
+      E("izinBtn").disabled=true;
+      durumYaz(kod?"Buluta bağlanılıyor…":"Oda kodu gerekli","uyari");
+      if(kod) buluta();
+      else yaz("Oda kodu boş. Sayfayı yenileyip kod girin.");
+    }
+    yaz("Rol: "+(rol==="evde"?"evdeki telefon":"uzaktaki telefon"));
   }
-  function dinlemeyiDene(servisId, karakterId, etiket){
-    if (!sunucuRef) return Promise.resolve();
-    return sunucuRef.getPrimaryService(servisId)
-      .then(function(sv){ return sv.getCharacteristic(karakterId); })
-      .then(function(k){ return k.startNotifications(); })
-      .then(function(k){
-        k.addEventListener("characteristicvaluechanged", veriGeldi);
-        yaz(etiket + ": dinleme açıldı.");
-      })
-      .catch(function(h){ yaz(etiket + ": olmadı (" + h.message + ")"); });
-  }
-  E("dinleBtn").addEventListener("click", function(){
-    if (!sunucuRef){ yaz("Önce bağlanın."); return; }
-    yaz("Dinleme deneniyor…");
-    dinlemeyiDene(NUS, TX, "UART TX")
-      .then(function(){ return dinlemeyiDene(AE0, AE2, "AE02"); })
-      .then(function(){ return sunucuRef.getPrimaryService(BILGI); })
-      .then(function(sv){ return sv.getCharacteristics(); })
-      .then(function(liste){
-        return Promise.all(liste.map(function(k){
-          return k.readValue().then(function(v){
-            var m = "";
-            for (var i=0;i<v.byteLength;i++) m += String.fromCharCode(v.getUint8(i));
-            yaz("Cihaz bilgisi " + k.uuid.slice(4,8) + ": " + m);
-          }).catch(function(){});
-        }));
-      })
-      .catch(function(h){ yaz("Cihaz bilgisi okunamadı: " + h.message); });
-  });
+  E("evdeBtn").addEventListener("click",function(){ rolSec("evde"); });
+  E("uzakBtn").addEventListener("click",function(){ rolSec("uzak"); });
 
-  E("azSagBtn").addEventListener("click", function(){ surekli(1, 400); });
-  E("azSolBtn").addEventListener("click", function(){ surekli(-1, 400); });
-
-  if (!navigator.bluetooth){
-    E("destekNotu").textContent = "Bu tarayıcı Bluetooth'a erişemiyor. Sayfayı Android telefonda Chrome ile açın; iPhone'daki Safari bunu desteklemiyor.";
-    E("destekNotu").className = "durum uyari";
-  }
 })();
 </script>
 </body>
