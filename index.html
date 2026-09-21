@@ -108,6 +108,8 @@
     <button id="sagBtn">Sağa çevir</button>
     <button id="azSolBtn">Az sola</button>
     <button id="azSagBtn">Az sağa</button>
+    <button id="azYukBtn">Az yukarı</button>
+    <button id="azAsaBtn">Az aşağı</button>
     <button id="evBtn">Başlangıca dön</button>
     <button class="dur" id="durBtn">Dur</button>
   </div>
@@ -161,7 +163,7 @@
   var rxKarakter=null, yaziyor=false, bekleyen=null;
   var gonderim=null, canliTut=null, diziSayac=null, durumTik=null;
   var aktif=false, sonX=ORTA, sonY=ORTA, sonUzakKomut=0, uzakX=ORTA, uzakY=ORTA;
-  var paketSayisi=0, netDonus=0, mesgul=false, uyanik=null, standBagli=false;
+  var paketSayisi=0, netDonus=0, mesgul=false, uyanik=null, standBagli=false, uzakHareketVardi=false;
 
   var E=function(id){return document.getElementById(id);};
   var padEl=E("pad"), topuzEl=E("topuz");
@@ -195,6 +197,7 @@
       .then(function(){ yaziyor=false; if(bekleyen){var s=bekleyen;bekleyen=null;gonder(s);} });
   }
   function bosta(){ gonder(paket(ORTA,ORTA,0,0)); }
+  function durdurmaDarbesi(){ bosta(); setTimeout(bosta,90); setTimeout(bosta,220); setTimeout(bosta,450); }
 
   // --- BLE -----------------------------------------------------------------
   function baglan(hepsi){
@@ -242,6 +245,10 @@
     } else if(uzakAktif()){
       gonder(paket(uzakX,uzakY,0,0));
       donusEkle((uzakX-ORTA)/513, Number(E("araInput").value)||120);
+      uzakHareketVardi=true;
+    } else if(uzakHareketVardi){
+      uzakHareketVardi=false;
+      durdurmaDarbesi();
     }
   }
   function donusEkle(yon,ms){
@@ -249,7 +256,7 @@
     E("donus").textContent=Math.round(netDonus)+"°";
     E("donus").className=Math.abs(netDonus)>360?"uyari":"";
   }
-  function surekli(yon,sure,bitince){
+  function surekli(yon,sure,bitince,eksen){
     if(!rxKarakter||mesgul) return;
     mesgul=true;
     var ara=Number(E("araInput").value)||120, guc=Number(E("gucInput").value)||700;
@@ -258,13 +265,15 @@
     diziSayac=setInterval(function(){
       var gecen=Date.now()-bas;
       if(gecen>=sure||!rxKarakter){
-        clearInterval(diziSayac);diziSayac=null;mesgul=false;bosta();
-        donusEkle(yon,Math.max(0,Math.min(gecen,sure)-250));
+        clearInterval(diziSayac);diziSayac=null;mesgul=false;
+        durdurmaDarbesi();
+        if(eksen!=="y") donusEkle(yon,Math.max(0,Math.min(gecen,sure)-250));
         if(bitince) bitince();
         return;
       }
       var sap=(guc-ORTA)+(tik%3);
-      gonder(paket(Math.max(EN_AZ,Math.min(EN_COK,yon>0?ORTA+sap:ORTA-sap)),ORTA,0,0));
+      var d=Math.max(EN_AZ,Math.min(EN_COK,yon>0?ORTA+sap:ORTA-sap));
+      gonder(eksen==="y"?paket(ORTA,d,0,0):paket(d,ORTA,0,0));
       tik++;
     },ara);
   }
@@ -287,6 +296,8 @@
     else if(k.t==="sol") surekli(-1,sure);
     else if(k.t==="azsag") surekli(1,400);
     else if(k.t==="azsol") surekli(-1,400);
+    else if(k.t==="azyuk") surekli(1,350,null,"y");
+    else if(k.t==="azasa") surekli(-1,350,null,"y");
     else if(k.t==="ev") baslangicaDon();
     else if(k.t==="dur") herSeyiDurdur();
     else if(k.t==="konum") konumaGit(k.derece);
@@ -305,11 +316,13 @@
     surekli(netDonus>0?-1:1,ms);
   }
   function konumaGit(hedef){
-    if(mesgul) return;
+    if(mesgul){ yaz("Konum: stand şu an meşgul."); return; }
+    if(!rxKarakter){ yaz("Konum: stand bağlı değil."); return; }
     var fark=hedef-netDonus, hiz=Number(E("hizInput").value)||27;
     var ms=Math.round(Math.abs(fark)/hiz*1000);
+    yaz("Konum: hedef "+Math.round(hedef)+"°, şu an "+Math.round(netDonus)+"°, fark "+Math.round(fark)+"°, süre "+ms+" ms.");
     if(ms<150){ yaz("Zaten o konumda."); return; }
-    if(ms>10000) ms=10000;
+    if(ms>10000){ ms=10000; yaz("En fazla 10 sn dönülecek."); }
     surekli(fark>0?1:-1,ms);
   }
 
@@ -382,7 +395,7 @@
     topuzEl.style.transform=""; sonX=ORTA; sonY=ORTA;
     E("xDeger").textContent=ORTA; E("yDeger").textContent=ORTA;
     if(rol==="uzak"){ clearInterval(uzakTik); komutGonder({t:"joy",x:ORTA,y:ORTA}); }
-    else bosta();
+    else durdurmaDarbesi();
     if(o&&o.pointerId!=null&&padEl.hasPointerCapture(o.pointerId)) padEl.releasePointerCapture(o.pointerId);
   }
   padEl.addEventListener("pointerup",padBirak);
@@ -423,6 +436,8 @@
   E("solBtn").addEventListener("click",function(){ komutGonder({t:"sol"}); });
   E("azSagBtn").addEventListener("click",function(){ komutGonder({t:"azsag"}); });
   E("azSolBtn").addEventListener("click",function(){ komutGonder({t:"azsol"}); });
+  E("azYukBtn").addEventListener("click",function(){ komutGonder({t:"azyuk"}); });
+  E("azAsaBtn").addEventListener("click",function(){ komutGonder({t:"azasa"}); });
   E("evBtn").addEventListener("click",function(){ komutGonder({t:"ev"}); });
   E("durBtn").addEventListener("click",function(){ komutGonder({t:"dur"}); yaz("Dur gönderildi."); });
   E("sifirlaBtn").addEventListener("click",function(){
