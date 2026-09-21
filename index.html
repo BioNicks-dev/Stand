@@ -145,7 +145,7 @@
 </div>
 
 <div class="panel gizle" id="kayitPanel">
-  <div class="satir"><span>Kayıt</span><button id="temizleBtn" class="kucuk">Temizle</button></div>
+  <div class="satir"><span>Kayıt</span><span style="display:flex;gap:6px"><button id="kopyalaBtn" class="kucuk">Kopyala</button><button id="paylasBtn" class="kucuk">Paylaş</button><button id="temizleBtn" class="kucuk">Temizle</button></span></div>
   <pre id="kayit"></pre>
 </div>
 
@@ -403,32 +403,40 @@
   padEl.addEventListener("pointerleave",function(o){ if(aktif) padBirak(o); });
 
   // --- kayıtlı konumlar ------------------------------------------------------
+  function konumListesi(){
+    try{ return JSON.parse(localStorage.getItem("stand_konumlar")||"[]"); }catch(h){ return []; }
+  }
+  function konumKaydet(l){
+    try{ localStorage.setItem("stand_konumlar",JSON.stringify(l)); }catch(h){}
+  }
   function konumlariCiz(){
     var kap=E("konumlar"); kap.innerHTML="";
-    var liste=[];
-    try{ liste=JSON.parse(localStorage.getItem("stand_konumlar")||"[]"); }catch(h){}
+    var liste=konumListesi();
     liste.forEach(function(kn,i){
-      var d=document.createElement("button");
-      d.textContent=kn.ad+" ("+Math.round(kn.derece)+"°)";
-      d.addEventListener("click",function(){ komutGonder({t:"konum",derece:kn.derece}); });
-      d.addEventListener("contextmenu",function(e){
-        e.preventDefault();
-        liste.splice(i,1);
-        try{ localStorage.setItem("stand_konumlar",JSON.stringify(liste)); }catch(h){}
-        konumlariCiz();
+      var git=document.createElement("button");
+      git.textContent=kn.ad+" "+Math.round(kn.derece)+"°";
+      git.addEventListener("click",function(){ komutGonder({t:"konum",derece:kn.derece}); });
+      kap.appendChild(git);
+      var sil=document.createElement("button");
+      sil.textContent="×";
+      sil.setAttribute("aria-label",kn.ad+" konumunu sil");
+      sil.style.minWidth="38px";
+      sil.addEventListener("click",function(){
+        var l=konumListesi(); l.splice(i,1); konumKaydet(l); konumlariCiz();
+        yaz("Konum silindi: "+kn.ad);
       });
-      kap.appendChild(d);
+      kap.appendChild(sil);
     });
   }
+
   E("konumEkleBtn").addEventListener("click",function(){
     var ad=prompt("Konum adı (örn. kanepe)");
     if(!ad) return;
-    var liste=[];
-    try{ liste=JSON.parse(localStorage.getItem("stand_konumlar")||"[]"); }catch(h){}
+    var liste=konumListesi();
     liste.push({ad:ad,derece:netDonus});
-    try{ localStorage.setItem("stand_konumlar",JSON.stringify(liste)); }catch(h){}
+    konumKaydet(liste);
     konumlariCiz();
-    yaz("Konum kaydedildi: "+ad);
+    yaz("Konum kaydedildi: "+ad+" = "+Math.round(netDonus)+"°");
   });
 
   // --- düğmeler --------------------------------------------------------------
@@ -445,6 +453,26 @@
     yaz("Sayaç sıfırlandı.");
   });
   E("temizleBtn").addEventListener("click",function(){ E("kayit").textContent=""; });
+  function kayitMetni(){ return E("kayit").textContent; }
+  E("kopyalaBtn").addEventListener("click",function(){
+    var m=kayitMetni();
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(m).then(function(){ E("kopyalaBtn").textContent="Kopyalandı"; setTimeout(function(){ E("kopyalaBtn").textContent="Kopyala"; },1500); })
+        .catch(function(){ elleKopyala(m); });
+    } else elleKopyala(m);
+  });
+  function elleKopyala(m){
+    var a=document.createElement("textarea");
+    a.value=m; a.style.position="fixed"; a.style.opacity="0";
+    document.body.appendChild(a); a.select();
+    try{ document.execCommand("copy"); E("kopyalaBtn").textContent="Kopyalandı"; setTimeout(function(){ E("kopyalaBtn").textContent="Kopyala"; },1500); }catch(h){}
+    document.body.removeChild(a);
+  }
+  E("paylasBtn").addEventListener("click",function(){
+    var m=kayitMetni();
+    if(navigator.share) navigator.share({title:"Stand kaydı",text:m}).catch(function(){});
+    else elleKopyala(m);
+  });
   E("baglanBtn").addEventListener("click",function(){ baglan(false); });
   E("hepsiBtn").addEventListener("click",function(){ baglan(true); });
   E("izinBtn").addEventListener("click",function(){
