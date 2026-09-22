@@ -98,11 +98,13 @@
   <div class="panel">
     <label style="border-top:none">Oda kodu<input type="text" id="kodInput" placeholder="ornek-4719" autocomplete="off"></label>
     <p class="not">Evdeki ve uzaktaki telefonda aynı kod yazılı olmalı. Kodu kimseyle paylaşmayın.</p>
+    <label>Yönetici kodu<input type="text" id="ykInput" placeholder="sadece sizde" autocomplete="off"></label>
+    <p class="not">Sadece kendi telefonunuza yazın. Bu kod kimdeyse izni o açıp kapatır ve izin kapalıyken de kontrol edebilir. Eşinizin telefonunda boş bırakın.</p>
     <div class="izgara2" style="margin-top:12px">
       <button id="evdeBtn" class="vurgu">Evdeki telefon</button>
       <button id="uzakBtn">Uzaktaki telefon</button>
     </div>
-    <p class="not">Evdeki telefon standa bağlanır. Uzaktaki telefon internetten kontrol eder.</p>
+    <p class="not">ESP32 kartı kullanıyorsanız herkes "Uzaktaki telefon" seçer. "Evdeki telefon" sadece kart yokken Pixel ile köprü kurmak içindir.</p>
   </div>
 </div>
 
@@ -206,6 +208,7 @@
     <div class="panel">
       <div class="satir"><span>Rol</span><b id="rolAd">—</b></div>
       <div class="satir"><span>Oda kodu</span><b id="odaAd">—</b></div>
+      <div class="satir"><span>Yönetici</span><b id="ykAd">—</b></div>
       <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Rolü veya oda kodunu değiştir</button>
     </div>
   </div>
@@ -220,7 +223,7 @@
   var ORTA=510, EN_AZ=0, EN_COK=1023, SAPMA=190, ESIK=0.35;
   var BEKLEME=600, GECIKME=250, VARLIK_SURE=9000;
 
-  var rol=null, kod="", istemci=null, izin=false;
+  var rol=null, kod="", yk="", istemci=null, izin=false;
   var cihazRef=null, rxKarakter=null, standBagli=false, yenidenDene=null;
   var yaziyor=false, bekleyen=null;
   var dongu_=null, canliTut=null, diziSayac=null, durumTik=null, varlikTik=null;
@@ -434,7 +437,7 @@
   function komutGonder(k){
     k=yonuCevir(k);
     if(rol==="evde"){ k.kaynak="yerel"; komutUygula(k); }
-    else if(istemci&&istemci.connected){ k.kaynak="uzak"; istemci.publish("comitok/"+kod+"/komut",JSON.stringify(k)); }
+    else if(istemci&&istemci.connected){ k.kaynak="uzak"; if(yk) k.yk=yk; istemci.publish("comitok/"+kod+"/komut",JSON.stringify(k)); }
     else yaz("Sunucuya bağlı değil, komut gönderilemedi.");
   }
 
@@ -469,6 +472,7 @@
       } else if(konu.slice(-6)==="/komut" && rol==="evde"){
         m.kaynak="uzak"; komutUygula(m);
       } else if(konu.slice(-6)==="/durum" && rol==="uzak"){
+        if(m.cevrimdisi){ sonDurum=null; sonDurumZaman=0; guncelle(); return; }
         sonDurum=m; sonDurumZaman=Date.now();
         izin=!!m.izin; netDonus=m.donus||0; netTilt=m.tilt||0; sayaclariYaz();
         guncelle();
@@ -514,11 +518,12 @@
         goster("gStand","bilinmiyor","soluk");
         goster("gIzin","bilinmiyor","soluk");
       } else {
-        goster("gUzak",sonDurum.cihaz||"evdeki telefon","iyi");
+        var digerleri=(sonDurum.uzaklar||[]).filter(function(u){ return u.id!==benimKimlik; }).map(function(u){ return u.c; });
+        goster("gUzak",(sonDurum.cihaz||"köprü")+(digerleri.length?" · "+digerleri.join(", "):""),"iyi");
         goster("gStand",sonDurum.stand?"bağlı":"açık değil",sonDurum.stand?"iyi":"kotu");
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
-      padEl.classList.toggle("pasif",!(taze&&sonDurum.stand&&sonDurum.izin));
+      padEl.classList.toggle("pasif",!(taze&&sonDurum.stand&&(sonDurum.izin||yk)));
     }
   }
 
@@ -595,7 +600,13 @@
     komutGonder({t:"sifirla"});
   };
   function izinDegistir(){
-    if(rol!=="evde"){ yaz("İzni evdeki telefon açıp kapatır."); return; }
+    if(rol!=="evde"){
+      if(!yk){ yaz("İzni sadece yönetici kodu olan telefon değiştirir."); return; }
+      if(!istemci||!istemci.connected){ yaz("Sunucuya bağlı değil."); return; }
+      istemci.publish("comitok/"+kod+"/komut",JSON.stringify({t:"izin",deger:!izin,yk:yk,kaynak:"uzak"}));
+      yaz("İzin "+(!izin?"açma":"kapatma")+" isteği gönderildi.");
+      return;
+    }
     izin=!izin;
     if(!izin) herSeyiDurdur();
     durumYayinla(); guncelle();
@@ -674,12 +685,16 @@
         }).catch(function(){});
       }
     }
+    if(rol==="uzak"&&yk) E("izinKutu").classList.add("dokunulur");
+    E("ykAd").textContent=yk?"bu telefon yönetici":"yok";
     konumlariCiz(); sayaclariYaz(); ekraniTut(); guncelle();
     if(kod) sunucuyaBaglan();
     yaz("Rol: "+(rol==="evde"?"evdeki telefon":"uzaktaki telefon")+", cihaz: "+benimCihaz);
     setInterval(guncelle,2000);
   }
   function kurulumdanBasla(secim){
+    yk=E("ykInput").value.trim();
+    try{ localStorage.setItem("stand_yk",yk); }catch(h){}
     kod=E("kodInput").value.trim();
     if(!kod){ E("kodInput").focus(); return; }
     basla(secim);
@@ -688,8 +703,8 @@
   E("uzakBtn").onclick=function(){ kurulumdanBasla("uzak"); };
 
   var kayitliRol=null;
-  try{ kayitliRol=localStorage.getItem("stand_rol"); kod=localStorage.getItem("stand_kod")||""; }catch(h){}
-  E("kodInput").value=kod;
+  try{ kayitliRol=localStorage.getItem("stand_rol"); kod=localStorage.getItem("stand_kod")||""; yk=localStorage.getItem("stand_yk")||""; }catch(h){}
+  E("kodInput").value=kod; E("ykInput").value=yk;
   if(kayitliRol&&kod) basla(kayitliRol);
   else E("kurulum").classList.remove("gizle");
 })();
