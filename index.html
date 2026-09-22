@@ -190,6 +190,10 @@
       <label style="border-top:none">Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
       <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
       <label>Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
+      <div id="kumandaAyar" class="gizle">
+        <label>Kumandada yatay yön ters<input type="checkbox" id="kumTersX"></label>
+        <label>Kumandada dikey yön ters<input type="checkbox" id="kumTersY"></label>
+      </div>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
     </div>
 
@@ -474,6 +478,11 @@
       } else if(konu.slice(-6)==="/durum" && rol==="uzak"){
         if(m.cevrimdisi){ sonDurum=null; sonDurumZaman=0; guncelle(); return; }
         sonDurum=m; sonDurumZaman=Date.now();
+        if(yk&&m.kumTersX!==undefined){
+          E("kumandaAyar").classList.remove("gizle");
+          if(document.activeElement!==E("kumTersX")) E("kumTersX").checked=!!m.kumTersX;
+          if(document.activeElement!==E("kumTersY")) E("kumTersY").checked=!!m.kumTersY;
+        }
         izin=!!m.izin; netDonus=m.donus||0; netTilt=m.tilt||0; sayaclariYaz();
         guncelle();
       }
@@ -613,6 +622,13 @@
     yaz("Uzaktan kontrol "+(izin?"açıldı":"kapatıldı")+".");
   }
   E("izinKutu").onclick=izinDegistir;
+  function kumandaYonGonder(){
+    if(!istemci||!istemci.connected||!yk) return;
+    istemci.publish("comitok/"+kod+"/komut",JSON.stringify({t:"kumandaYon",x:E("kumTersX").checked,y:E("kumTersY").checked,yk:yk,kaynak:"uzak"}));
+    yaz("Kumanda yönü ayarı gönderildi.");
+  }
+  E("kumTersX").onchange=kumandaYonGonder;
+  E("kumTersY").onchange=kumandaYonGonder;
   E("izinKutu").onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); izinDegistir(); } };
   E("baglanBtn").onclick=function(){ baglan(false); };
   E("hepsiBtn").onclick=function(){ baglan(true); };
