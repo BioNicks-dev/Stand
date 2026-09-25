@@ -70,6 +70,10 @@
 
   .konumlar{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
   .konumlar button{min-height:40px;padding:6px 12px;font-size:14px}
+  .ipIzgara{display:grid;grid-template-columns:1fr 1fr 0.8fr;gap:8px}
+  .ipIzgara .genis2{grid-column:span 2}
+  .kameraIzin{min-height:32px;padding:4px 10px;font-size:13px;color:var(--ink-soft);border-color:var(--line-strong)}
+  .kameraIzin.acik{color:var(--live);border-color:var(--live)}
   .konumCip{display:inline-flex}
   .konumCip .git{border-top-right-radius:0;border-bottom-right-radius:0;border-right:none}
   .konumCip .sil{border-top-left-radius:0;border-bottom-left-radius:0;padding:6px 10px;color:var(--ink-soft)}
@@ -151,14 +155,16 @@
   <div class="konumlar" id="konumlar"></div>
 
   <div class="panel gizle" id="iphonePanel" style="padding:10px">
-    <div class="satir" style="padding:0 0 8px"><span>iPhone kamerası</span></div>
-    <div class="izgara3">
+    <div class="satir" style="padding:0 0 8px;align-items:center">
+      <span>iPhone kamerası</span>
+      <button class="kucuk kameraIzin" id="kameraIzinBtn">Kamera izni: kapalı</button>
+    </div>
+    <div class="ipIzgara">
       <button class="kucuk" id="ipKamera">Kamerayı çevir</button>
-      <button class="kucuk" id="ipGorunum">Görüntüler</button>
-      <button class="kucuk" id="ipKontrol">Kontroller</button>
-      <button class="kucuk" id="ipZoomEksi">Zoom −</button>
-      <button class="kucuk" id="ipZoomArti">Zoom +</button>
-      <button class="kucuk" id="ipFoto">Fotoğraf</button>
+      <button class="kucuk" id="ipGorunum">Ekranları değiştir</button>
+      <button class="kucuk" id="ipZoomArti" aria-label="Yakınlaştır">Zoom +</button>
+      <button class="kucuk genis2" id="ipKontrol">Menüyü göster/gizle</button>
+      <button class="kucuk" id="ipZoomEksi" aria-label="Uzaklaştır">Zoom −</button>
     </div>
   </div>
 
@@ -588,7 +594,12 @@
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
       padEl.classList.toggle("pasif",!(taze&&sonDurum.stand&&(sonDurum.izin||yk)));
-      E("iphonePanel").classList.toggle("gizle",!(taze&&sonDurum.iphone&&(sonDurum.izin||yk)));
+      var kIzin=!!(taze&&sonDurum.kameraIzin);
+      E("iphonePanel").classList.toggle("gizle",!(taze&&sonDurum.iphone&&(yk||kIzin)));   // eşte izin kapalıyken hiç görünmez
+      E("kameraIzinBtn").textContent="Kamera izni: "+(kIzin?"açık":"kapalı");
+      E("kameraIzinBtn").classList.toggle("acik",kIzin);
+      E("kameraIzinBtn").disabled=!yk;
+      ["ipKamera","ipGorunum","ipZoomArti","ipKontrol","ipZoomEksi"].forEach(function(id){ E(id).disabled=!(kIzin||yk); });
     }
   }
 
@@ -749,7 +760,12 @@
   E("ipKontrol").onclick=function(){ komutGonder({t:"kontroller"}); };
   E("ipZoomArti").onclick=function(){ komutGonder({t:"zoomArti"}); };
   E("ipZoomEksi").onclick=function(){ komutGonder({t:"zoomEksi"}); };
-  E("ipFoto").onclick=function(){ komutGonder({t:"foto"}); };
+  E("kameraIzinBtn").onclick=function(){
+    if(!yk) return;
+    var acik=E("kameraIzinBtn").classList.contains("acik");
+    yoneticiGonder({t:"kameraIzin",deger:!acik});
+    yaz("Kamera izni "+(!acik?"açma":"kapatma")+" isteği gönderildi.");
+  };
   E("izinKutu").onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); izinDegistir(); } };
   E("baglanBtn").onclick=function(){ baglan(false); };
   E("hepsiBtn").onclick=function(){ baglan(true); };
