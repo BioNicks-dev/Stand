@@ -70,10 +70,17 @@
 
   .konumlar{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
   .konumlar button{min-height:40px;padding:6px 12px;font-size:14px}
+  .konumCip{display:inline-flex}
+  .konumCip .git{border-top-right-radius:0;border-bottom-right-radius:0;border-right:none}
+  .konumCip .sil{border-top-left-radius:0;border-bottom-left-radius:0;padding:6px 10px;color:var(--ink-soft)}
   .izinSatir{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
   .altbilgi{margin-top:14px;font-size:12px;color:var(--ink-soft);text-align:center}
 
   label{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:8px 0;border-top:1px solid var(--line)}
+  select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:8px;max-width:170px}
+  .adimlar{display:flex;align-items:center;gap:8px}
+  .adimlar b{min-width:64px;text-align:center;font-variant-numeric:tabular-nums}
+  #kalPad button{min-height:52px;font-size:20px}
   input[type=number],input[type=text]{width:120px;font:inherit;color:var(--ink);background:var(--bg);
     border:1px solid var(--line-strong);border-radius:6px;padding:8px}
   input[type=number]{width:90px}
@@ -136,12 +143,24 @@
   </div>
 
   <div class="izgara3">
-    <button id="solBtn">Sola çevir</button>
+    <button id="solBtn">Sol 180°</button>
     <button id="evBtn">Başlangıç</button>
-    <button id="sagBtn">Sağa çevir</button>
+    <button id="sagBtn">Sağ 180°</button>
   </div>
 
   <div class="konumlar" id="konumlar"></div>
+
+  <div class="panel gizle" id="iphonePanel" style="padding:10px">
+    <div class="satir" style="padding:0 0 8px"><span>iPhone kamerası</span></div>
+    <div class="izgara3">
+      <button class="kucuk" id="ipKamera">Kamerayı çevir</button>
+      <button class="kucuk" id="ipGorunum">Görüntüler</button>
+      <button class="kucuk" id="ipKontrol">Kontroller</button>
+      <button class="kucuk" id="ipZoomEksi">Zoom −</button>
+      <button class="kucuk" id="ipZoomArti">Zoom +</button>
+      <button class="kucuk" id="ipFoto">Fotoğraf</button>
+    </div>
+  </div>
 
   <button class="genis dur" id="durBtn">Dur</button>
 
@@ -190,11 +209,51 @@
       <label style="border-top:none">Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
       <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
       <label>Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
-      <div id="kumandaAyar" class="gizle">
+      <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
+    </div>
+
+    <div id="kartAyarBolum" class="gizle">
+      <h2>Kart ayarları</h2>
+      <div class="panel">
+        <div class="satir" style="padding-top:0"><span>Çalışma modu</span><b id="kaMod">—</b></div>
+        <button class="genis kucuk" id="kaModBtn">Yerel moda geç</button>
+        <p class="not">Yerel modda kumanda iPhone'u da kontrol eder, ama uzaktan kontrol kapanır ve bu sayfa karta ulaşamaz. Normal moda dönmek için karttaki BOOT tuşuna 1 saniye basın.</p>
         <label>Kumandada yatay yön ters<input type="checkbox" id="kumTersX"></label>
         <label>Kumandada dikey yön ters<input type="checkbox" id="kumTersY"></label>
+        <label>Kumanda köprüsü (yerel modda)<input type="checkbox" id="kaKopru"></label>
+        <label>180° modu<select id="ka180">
+          <option value="2">Hibrit</option><option value="0">Standın kendi</option><option value="1">Akıllı (yavaş)</option>
+        </select></label>
+        <div class="satir" style="border-top:1px solid var(--line);padding:8px 0;align-items:center;color:var(--ink)"><span style="color:var(--ink)">Hibrit dönüş süresi</span><span class="adimlar"><button class="kucuk" id="kaGeriEksi" aria-label="Kısalt">−</button><b id="kaGeri">—</b><button class="kucuk" id="kaGeriArti" aria-label="Uzat">+</button></span></div>
+        <label>Standın 180° yönü<select id="kaY180"><option value="1">Sağa</option><option value="-1">Sola</option></select></label>
+        <label>WhatsApp uyandırma<select id="kaUyandir">
+          <option value="0">Kapalı</option><option value="3000">3 sn</option><option value="4000">4 sn</option>
+          <option value="5000">5 sn</option><option value="6000">6 sn</option><option value="8000">8 sn</option>
+        </select></label>
+        <label>Kartın gönderim aralığı<select id="kaAralik">
+          <option value="20">20 ms</option><option value="30">30 ms</option><option value="40">40 ms</option>
+          <option value="60">60 ms</option><option value="80">80 ms</option><option value="120">120 ms</option>
+        </select></label>
       </div>
-      <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
+
+      <h2>İmleç ayarı (iPhone)</h2>
+      <div class="panel">
+        <label style="border-top:none">Hedef<select id="kalHedef">
+          <option value="1">Kamera çevirme simgesi</option><option value="3">Küçük pencere</option><option value="2">Ekran ortası (zoom)</option>
+        </select></label>
+        <button class="genis kucuk" id="kalBasla">Ayarı başlat</button>
+        <div id="kalPad" class="gizle">
+          <div class="izgara3" style="margin-top:10px">
+            <span></span><button id="kalW" aria-label="Yukarı">↑</button><span></span>
+            <button id="kalA" aria-label="Sola">←</button><button class="kucuk" id="kalInce">İnce: kapalı</button><button id="kalD" aria-label="Sağa">→</button>
+            <span></span><button id="kalS" aria-label="Aşağı">↓</button><span></span>
+          </div>
+          <div class="izgara2" style="margin-top:10px">
+            <button class="vurgu" id="kalKaydet">Kaydet</button><button id="kalIptal">İptal</button>
+          </div>
+        </div>
+        <p class="not">WhatsApp görüşmesi açıkken başlatın. İmleci oklarla hedefin üstüne getirip Kaydet'e basın. Küçük pencere için simgeye değil, pencerenin köşeye yakın boş bir yerine getirin.</p>
+      </div>
     </div>
 
     <h2>Kayıt</h2>
@@ -478,11 +537,7 @@
       } else if(konu.slice(-6)==="/durum" && rol==="uzak"){
         if(m.cevrimdisi){ sonDurum=null; sonDurumZaman=0; guncelle(); return; }
         sonDurum=m; sonDurumZaman=Date.now();
-        if(yk&&m.kumTersX!==undefined){
-          E("kumandaAyar").classList.remove("gizle");
-          if(document.activeElement!==E("kumTersX")) E("kumTersX").checked=!!m.kumTersX;
-          if(document.activeElement!==E("kumTersY")) E("kumTersY").checked=!!m.kumTersY;
-        }
+        if(yk&&m.ayarlar) kartAyarlariniYansit(m);
         izin=!!m.izin; netDonus=m.donus||0; netTilt=m.tilt||0; sayaclariYaz();
         guncelle();
       }
@@ -533,6 +588,7 @@
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
       padEl.classList.toggle("pasif",!(taze&&sonDurum.stand&&(sonDurum.izin||yk)));
+      E("iphonePanel").classList.toggle("gizle",!(taze&&sonDurum.iphone&&(sonDurum.izin||yk)));
     }
   }
 
@@ -576,10 +632,18 @@
     var l=konumListesi(), kap=E("konumlar"), sil=E("konumSilListe");
     kap.innerHTML=""; sil.innerHTML="";
     l.forEach(function(kn,i){
-      var b=document.createElement("button");
+      var cip=document.createElement("span"); cip.className="konumCip";
+      var b=document.createElement("button"); b.className="git";
       b.textContent=kn.ad;
       b.addEventListener("click",function(){ komutGonder({t:"konum",derece:kn.derece,tilt:kn.tilt}); });
-      kap.appendChild(b);
+      var sx=document.createElement("button"); sx.className="sil";
+      sx.textContent="×"; sx.setAttribute("aria-label",kn.ad+" konumunu sil");
+      sx.addEventListener("click",function(){
+        if(!confirm("\""+kn.ad+"\" konumu silinsin mi?")) return;
+        var l2=konumListesi(); l2.splice(i,1); konumYaz(l2); konumlariCiz(); yaz("Konum silindi: "+kn.ad);
+      });
+      cip.appendChild(b); cip.appendChild(sx);
+      kap.appendChild(cip);
       var s=document.createElement("div"); s.className="konumSil";
       var ad=document.createElement("span");
       ad.textContent=kn.ad+" · "+Math.round(kn.derece)+"° / "+(kn.tilt==null?"eğme yok":Math.round(kn.tilt)+"°");
@@ -629,6 +693,63 @@
   }
   E("kumTersX").onchange=kumandaYonGonder;
   E("kumTersY").onchange=kumandaYonGonder;
+
+  // ---------- kart ayarları ----------
+  var kalInce=false;
+  function yoneticiGonder(k){
+    if(!istemci||!istemci.connected||!yk){ yaz("Kart ayarı için yönetici kodu ve sunucu bağlantısı gerekli."); return; }
+    k.yk=yk; k.kaynak="uzak";
+    istemci.publish("comitok/"+kod+"/komut",JSON.stringify(k));
+  }
+  function ayarGonder(ad,deger){ yoneticiGonder({t:"ayar",ad:ad,deger:deger}); yaz("Kart ayarı gönderildi: "+ad); }
+  function kalibGonder(islem,hedef){ var k={t:"kalib",islem:islem}; if(hedef) k.hedef=hedef; yoneticiGonder(k); }
+  function seciliDegil(id){ return document.activeElement!==E(id); }
+  function kartAyarlariniYansit(m){
+    var a=m.ayarlar;
+    E("kartAyarBolum").classList.remove("gizle");
+    E("kaMod").textContent=a.yerel?"Yerel":"Normal";
+    E("kaModBtn").disabled=!!a.yerel;
+    if(seciliDegil("kumTersX")) E("kumTersX").checked=!!m.kumTersX;
+    if(seciliDegil("kumTersY")) E("kumTersY").checked=!!m.kumTersY;
+    if(seciliDegil("kaKopru")) E("kaKopru").checked=!!a.kopru;
+    if(seciliDegil("ka180")) E("ka180").value=String(a.mod180);
+    E("kaGeri").textContent=(a.geri180/1000).toFixed(1)+" sn";
+    E("kaGeri").dataset.ms=a.geri180;
+    if(seciliDegil("kaY180")) E("kaY180").value=String(a.y180>0?1:-1);
+    if(seciliDegil("kaUyandir")) E("kaUyandir").value=String(a.uyandir);
+    if(seciliDegil("kaAralik")) E("kaAralik").value=String(a.aralik);
+    E("kalPad").classList.toggle("gizle",!a.kalib);
+    E("kalBasla").textContent=a.kalib?"Ayar sürüyor…":"Ayarı başlat";
+    E("kalBasla").disabled=!!a.kalib;
+  }
+  E("kaKopru").onchange=function(){ ayarGonder("kopru",E("kaKopru").checked); };
+  E("ka180").onchange=function(){ ayarGonder("mod180",Number(E("ka180").value)); };
+  E("kaY180").onchange=function(){ ayarGonder("y180",Number(E("kaY180").value)); };
+  E("kaUyandir").onchange=function(){ ayarGonder("uyandir",Number(E("kaUyandir").value)); };
+  E("kaAralik").onchange=function(){ ayarGonder("aralik",Number(E("kaAralik").value)); };
+  E("kaGeriEksi").onclick=function(){ ayarGonder("geri180",Math.max(600,Number(E("kaGeri").dataset.ms||6400)-200)); };
+  E("kaGeriArti").onclick=function(){ ayarGonder("geri180",Math.min(12000,Number(E("kaGeri").dataset.ms||6400)+200)); };
+  E("kaModBtn").onclick=function(){
+    if(!confirm("Yerel moda geçilsin mi? Uzaktan kontrol kapanacak ve bu sayfa karta ulaşamayacak. Geri dönmek için karttaki BOOT tuşuna 1 saniye basmanız gerekecek.")) return;
+    ayarGonder("yerel",true);
+  };
+  E("kalBasla").onclick=function(){ kalibGonder("basla",Number(E("kalHedef").value)); };
+  E("kalInce").onclick=function(){ kalInce=!kalInce; E("kalInce").textContent="İnce: "+(kalInce?"açık":"kapalı"); };
+  function kalYon(harf){ kalibGonder(kalInce?harf.toUpperCase():harf); }
+  E("kalW").onclick=function(){ kalYon("w"); };
+  E("kalA").onclick=function(){ kalYon("a"); };
+  E("kalS").onclick=function(){ kalYon("s"); };
+  E("kalD").onclick=function(){ kalYon("d"); };
+  E("kalKaydet").onclick=function(){ kalibGonder("v"); yaz("İmleç noktası kaydedildi."); };
+  E("kalIptal").onclick=function(){ kalibGonder("q"); };
+
+  // ---------- iPhone düğmeleri ----------
+  E("ipKamera").onclick=function(){ komutGonder({t:"kamera"}); };
+  E("ipGorunum").onclick=function(){ komutGonder({t:"gorunum"}); };
+  E("ipKontrol").onclick=function(){ komutGonder({t:"kontroller"}); };
+  E("ipZoomArti").onclick=function(){ komutGonder({t:"zoomArti"}); };
+  E("ipZoomEksi").onclick=function(){ komutGonder({t:"zoomEksi"}); };
+  E("ipFoto").onclick=function(){ komutGonder({t:"foto"}); };
   E("izinKutu").onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); izinDegistir(); } };
   E("baglanBtn").onclick=function(){ baglan(false); };
   E("hepsiBtn").onclick=function(){ baglan(true); };
