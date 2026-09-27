@@ -232,9 +232,9 @@
         </select></label>
         <div class="satir" style="border-top:1px solid var(--line);padding:8px 0;align-items:center;color:var(--ink)"><span style="color:var(--ink)">Hibrit dönüş süresi</span><span class="adimlar"><button class="kucuk" id="kaGeriEksi" aria-label="Kısalt">−</button><b id="kaGeri">—</b><button class="kucuk" id="kaGeriArti" aria-label="Uzat">+</button></span></div>
         <label>Standın 180° yönü<select id="kaY180"><option value="1">Sağa</option><option value="-1">Sola</option></select></label>
-        <label>WhatsApp uyandırma<select id="kaUyandir">
-          <option value="0">Kapalı</option><option value="3000">3 sn</option><option value="4000">4 sn</option>
-          <option value="5000">5 sn</option><option value="6000">6 sn</option><option value="8000">8 sn</option>
+        <label>WhatsApp menü açık kalma süresi<select id="kaUyandir">
+          <option value="0">Kapalı</option><option value="6000">6 sn</option><option value="8000">8 sn</option>
+          <option value="10000">10 sn</option><option value="12000">12 sn</option>
         </select></label>
         <label>Kartın gönderim aralığı<select id="kaAralik">
           <option value="20">20 ms</option><option value="30">30 ms</option><option value="40">40 ms</option>
@@ -245,7 +245,9 @@
       <h2>İmleç ayarı (iPhone)</h2>
       <div class="panel">
         <label style="border-top:none">Hedef<select id="kalHedef">
-          <option value="1">Kamera çevirme simgesi</option><option value="3">Küçük pencere</option><option value="2">Ekran ortası (zoom)</option>
+          <option value="1">Kamera çevirme simgesi</option><option value="3">Küçük pencere</option>
+          <option value="4">Mikrofon düğmesi</option><option value="6">Uyandırma noktası</option>
+          <option value="2">Ekran ortası (zoom)</option>
         </select></label>
         <button class="genis kucuk" id="kalBasla">Ayarı başlat</button>
         <div id="kalPad" class="gizle">
@@ -258,7 +260,7 @@
             <button class="vurgu" id="kalKaydet">Kaydet</button><button id="kalIptal">İptal</button>
           </div>
         </div>
-        <p class="not">WhatsApp görüşmesi açıkken başlatın. İmleci oklarla hedefin üstüne getirip Kaydet'e basın. Küçük pencere için simgeye değil, pencerenin köşeye yakın boş bir yerine getirin.</p>
+        <p class="not">WhatsApp görüşmesi açık ve menü görünürken başlatın. İmleç bir kez köşeden gelir, sonra oklarla olduğu yerden kayar. Hedefin üstüne gelince Kaydet'e basın. Uyandırma noktası: sağ altta, ana görüntü üzerinde, hiçbir düğmeye ve küçük pencereye denk gelmeyen boş bir yer.</p>
       </div>
     </div>
 
