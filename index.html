@@ -53,6 +53,10 @@
   .gosterge span{display:block;font-size:12px;color:var(--ink-soft)}
   .gosterge b{display:block;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #izinKutu{cursor:pointer}
+  /* Bluetooth kutusu: tam genişlik, iki yarısı üstteki sütunlarla hizalı */
+  .btKutu{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;column-gap:8px;padding:0;cursor:pointer}
+  .btKutu>div{padding:7px 10px;min-width:0;position:relative}
+  .btKutu>div+div::before{content:"";position:absolute;left:-4px;top:7px;bottom:7px;border-left:1px solid var(--line)}
   #izinKutu.dokunulur{border-color:var(--line-strong)}
   #izinKutu.dokunulur span::after{content:" · dokun";}
   .iyi{color:var(--live)} .uyari{color:var(--warn)} .kotu{color:var(--stop)} .soluk{color:var(--ink-soft)}
@@ -143,6 +147,10 @@
     <div class="gosterge" id="izinKutu" role="button" tabindex="0" aria-label="Uzaktan kontrol iznini aç veya kapat"><span>İzin</span><b id="gIzin" class="soluk">kapalı</b></div>
     <div class="gosterge"><span>Uzak bağlantı</span><b id="gUzak" class="soluk">bağlı değil</b></div>
     <div class="gosterge"><span>Sunucu</span><b id="gSunucu" class="soluk">çevrimdışı</b></div>
+    <div class="gosterge btKutu gizle" id="btKutu" role="button" tabindex="0" aria-label="Bluetooth durumu. Dokununca Bluetooth kartını yeniden başlatmayı sorar.">
+      <div><span>Bluetooth · iPhone</span><b id="gIphone" class="soluk">bilinmiyor</b></div>
+      <div><span>Kumanda</span><b id="gKumanda" class="soluk">bilinmiyor</b></div>
+    </div>
   </div>
 
   <div class="panel gizle" id="baglanPanel">
@@ -269,6 +277,8 @@
           <option value="60">60 ms</option><option value="80">80 ms</option><option value="120">120 ms</option>
         </select></label>
       </div>
+      <button class="genis" id="btYenidenBtn" style="margin-top:8px">Bluetooth kartını yeniden başlat</button>
+      <p class="not">iPhone veya kumanda bağlanamıyorsa kullanın. Bağlantılar kısa süre kopar, 15–20 saniyede kendiliğinden geri gelir.</p>
 
       <h2>İmleç ayarı (iPhone)</h2>
       <div class="panel">
@@ -602,7 +612,7 @@
     goster("gSunucu",kod?(sunucuVar?"çevrimiçi":"çevrimdışı"):"oda kodu yok",sunucuVar?"iyi":"kotu");
 
     if(rol==="evde"){
-      goster("gStand",standBagli?"bağlı":"açık değil",standBagli?"iyi":"kotu");
+      goster("gStand",standBagli?"bağlı":"kapalı",standBagli?"iyi":"kotu");
       goster("gIzin",izin?"açık":"kapalı",izin?"iyi":"soluk");
       var simdi=Date.now(), aktifler=[];
       Object.keys(uzaklar).forEach(function(id){
@@ -611,6 +621,7 @@
       });
       goster("gUzak",aktifler.length?aktifler.join(", "):"bağlı değil",aktifler.length?"iyi":"soluk");
       padEl.classList.toggle("pasif",!standBagli);
+      E("btKutu").classList.add("gizle");
     } else {
       var taze=sonDurum&&Date.now()-sonDurumZaman<5000;
       if(!taze){
@@ -620,10 +631,19 @@
       } else {
         var digerleri=(sonDurum.uzaklar||[]).filter(function(u){ return u.id!==benimKimlik; }).map(function(u){ return u.c; });
         goster("gUzak",(sonDurum.cihaz||"köprü")+(digerleri.length?" · "+digerleri.join(", "):""),"iyi");
-        goster("gStand",sonDurum.stand?"bağlı":"açık değil",sonDurum.stand?"iyi":"kotu");
+        goster("gStand",sonDurum.stand?"bağlı":"kapalı",sonDurum.stand?"iyi":"kotu");
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
       padEl.classList.toggle("pasif",!(taze&&sonDurum.stand&&(sonDurum.izin||yk)));
+      // Bluetooth kutusu (sadece yönetici): kartın iPhone ve kumanda bağlantısı
+      E("btKutu").classList.toggle("gizle",!yk);
+      if(!taze){
+        goster("gIphone","bilinmiyor","soluk");
+        goster("gKumanda","bilinmiyor","soluk");
+      } else {
+        goster("gIphone",sonDurum.iphone?"bağlı":"bağlı değil",sonDurum.iphone?"iyi":"kotu");
+        goster("gKumanda",sonDurum.kumanda?"bağlı":"kapalı",sonDurum.kumanda?"iyi":"kotu");
+      }
       var kIzin=!!(taze&&sonDurum.kameraIzin);
       E("iphonePanel").classList.toggle("gizle",!(taze&&sonDurum.iphone&&(yk||kIzin)));   // eşte izin kapalıyken hiç görünmez
       E("kameraIzinBtn").textContent="Kamera izni: "+(kIzin?"açık":"kapalı");
@@ -757,6 +777,16 @@
   }
   function ayarGonder(ad,deger){ yoneticiGonder({t:"ayar",ad:ad,deger:deger}); yaz("Kart ayarı gönderildi: "+ad); }
   function kalibGonder(islem,hedef){ var k={t:"kalib",islem:islem}; if(hedef) k.hedef=hedef; yoneticiGonder(k); }
+  function btYenidenBaslat(){
+    if(!yk){ yaz("Bluetooth kartını sadece yönetici kodu olan telefon yeniden başlatır."); return; }
+    if(!istemci||!istemci.connected){ yaz("Sunucuya bağlı değil, komut gönderilemedi."); return; }
+    if(!confirm("Bluetooth kartını yeniden başlatmak istiyor musunuz?\n\nStand, kumanda ve iPhone bağlantısı kısa süre kopar, 15–20 saniyede kendiliğinden geri gelir.")) return;
+    yoneticiGonder({t:"yenidenBaslat"});
+    yaz("Bluetooth kartı yeniden başlatılıyor, 15–20 saniye bekleyin.");
+  }
+  E("btKutu").onclick=btYenidenBaslat;
+  E("btKutu").onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); btYenidenBaslat(); } };
+  E("btYenidenBtn").onclick=btYenidenBaslat;
   function seciliDegil(id){ return document.activeElement!==E(id); }
   function kartAyarlariniYansit(m){
     var a=m.ayarlar;
