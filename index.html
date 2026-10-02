@@ -74,9 +74,8 @@
 
   .konumlar{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
   .konumlar button{min-height:40px;padding:6px 12px;font-size:14px}
-  .ipSira{display:flex;justify-content:center;gap:28px;margin:2px 0 12px}
-  .ipSira3{display:grid;grid-template-columns:repeat(3,1fr);justify-items:center;gap:8px;margin-bottom:12px}
-  .ipSira2{display:grid;grid-template-columns:1fr 1fr;justify-items:center;gap:8px}
+  .ipSira{display:flex;justify-content:center;align-items:center;gap:18px;margin:0 0 14px}
+  .ipSira:last-child{margin-bottom:2px}
   .ipDugme{width:56px;height:56px;min-height:0;padding:0;border-radius:50%;display:grid;place-items:center;
     border:1.5px solid var(--ink);color:var(--ink);-webkit-touch-callout:none}
   .ipDugme.buyuk{width:68px;height:68px}
@@ -103,6 +102,8 @@
   #kalPad button{min-height:52px;font-size:20px}
   input[type=number],input[type=text]{width:120px;font:inherit;color:var(--ink);background:var(--bg);
     border:1px solid var(--line-strong);border-radius:6px;padding:8px}
+  .kurulumPanel input[type=text]{width:auto;flex:1;min-width:0;max-width:210px}
+  #altDugmeler.tekli{grid-template-columns:1fr}
   input[type=number]{width:90px}
   input[type=checkbox]{width:22px;height:22px;accent-color:var(--live)}
   .satir{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:var(--ink-soft);padding:5px 0}
@@ -122,16 +123,15 @@
 <!-- ============ KURULUM ============ -->
 <div class="wrap gizle" id="kurulum">
   <header><h1>Stand kumandası</h1></header>
-  <div class="panel">
-    <label style="border-top:none">Oda kodu<input type="text" id="kodInput" placeholder="ornek-4719" autocomplete="off"></label>
-    <p class="not">Evdeki ve uzaktaki telefonda aynı kod yazılı olmalı. Kodu kimseyle paylaşmayın.</p>
-    <label>Yönetici kodu<input type="text" id="ykInput" placeholder="sadece sizde" autocomplete="off"></label>
-    <p class="not">Sadece kendi telefonunuza yazın. Bu kod kimdeyse izni o açıp kapatır ve izin kapalıyken de kontrol edebilir. Eşinizin telefonunda boş bırakın.</p>
-    <div class="izgara2" style="margin-top:12px">
-      <button id="evdeBtn" class="vurgu">Evdeki telefon</button>
-      <button id="uzakBtn">Uzaktaki telefon</button>
-    </div>
-    <p class="not">ESP32 kartı kullanıyorsanız herkes "Uzaktaki telefon" seçer. "Evdeki telefon" sadece kart yokken Pixel ile köprü kurmak içindir.</p>
+  <div class="panel kurulumPanel">
+    <label style="border-top:none">Oda kodu<input type="text" id="kodInput" placeholder="ornek-4719" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <p class="not">Kartta yazılı olan oda kodu. Kimseyle paylaşmayın.</p>
+    <label>Sunucu şifresi<input type="text" id="ssInput" placeholder="şifre" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <p class="not">Bir kez yazılır, sadece bu telefonda saklanır.</p>
+    <label>Yönetici kodu<input type="text" id="ykInput" placeholder="isteğe bağlı" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+    <p class="not">Sadece yöneticinin telefonuna yazılır. Diğer telefonlarda boş bırakın.</p>
+    <p class="not kotu gizle" id="kurulumUyari"></p>
+    <button id="baglanKurBtn" class="genis vurgu" style="margin-top:12px">Bağlan</button>
   </div>
 </div>
 
@@ -177,7 +177,7 @@
   <div class="panel gizle" id="iphonePanel" style="padding:10px">
     <div class="satir" style="padding:0 0 8px;align-items:center">
       <span>iPhone kamerası</span>
-      <button class="kucuk kameraIzin" id="kameraIzinBtn">Kamera izni: kapalı</button>
+      <button class="kucuk kameraIzin sadeceYonetici" id="kameraIzinBtn">Kamera izni: kapalı</button>
     </div>
     <div class="ipSira">
       <button class="ipDugme buyuk" id="ipMikrofon" aria-label="Mikrofon aç veya kapat (uzun basış: sadece simgeyi düzelt)" title="Mikrofon">
@@ -187,10 +187,7 @@
         <svg viewBox="0 0 24 24"><rect x="2" y="6.5" width="13.5" height="11" rx="2.2"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/><path class="cizgiArka" d="M3 3.5l17 17"/><path class="cizgi" d="M3 3.5l17 17"/></svg>
       </button>
     </div>
-    <div class="ipSira3">
-      <button class="ipDugme" id="ipKamera" aria-label="Kamerayı çevir (ön / arka)" title="Kamerayı çevir">
-        <svg viewBox="0 0 24 24"><path d="M7.5 4.5h1.8l1.2-1.7h3l1.2 1.7h1.8A1.5 1.5 0 0 1 18 6v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 12V6a1.5 1.5 0 0 1 1.5-1.5z"/><circle cx="12" cy="9" r="2.3"/><path d="M4.5 14.8C2.9 15.5 2 16.3 2 17.2c0 1.8 3.8 3.3 8.8 3.6"/><path d="M8.8 18.8l2 2-2 2"/><path d="M19.5 14.8c1.6.7 2.5 1.5 2.5 2.4 0 1-1.2 1.8-3.1 2.5"/></svg>
-      </button>
+    <div class="ipSira sadeceYonetici">
       <button class="ipDugme" id="ipGorunum" aria-label="Ekranları değiştir" title="Ekranları değiştir">
         <svg viewBox="0 0 24 24"><rect x="2.5" y="3" width="11" height="8" rx="1.5"/><rect x="10.5" y="13" width="11" height="8" rx="1.5"/><path d="M16.5 4h1.5a2 2 0 0 1 2 2v3.5"/><path d="M18 7.8l2 2 2-2"/><path d="M7.5 20H6a2 2 0 0 1-2-2v-3.5"/><path d="M2 16.2l2-2 2 2"/></svg>
       </button>
@@ -198,9 +195,12 @@
         <svg viewBox="0 0 24 24"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
       </button>
     </div>
-    <div class="ipSira2">
+    <div class="ipSira">
       <button class="ipDugme" id="ipZoomEksi" aria-label="Uzaklaştır" title="Zoom −">
         <svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6.5"/><path d="M14.8 14.8L21 21" stroke-width="2.8"/><path d="M7 10h6"/></svg>
+      </button>
+      <button class="ipDugme" id="ipKamera" aria-label="Kamerayı çevir (ön / arka)" title="Kamerayı çevir">
+        <svg viewBox="0 0 24 24"><path d="M7.5 4.5h1.8l1.2-1.7h3l1.2 1.7h1.8A1.5 1.5 0 0 1 18 6v6a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 12V6a1.5 1.5 0 0 1 1.5-1.5z"/><circle cx="12" cy="9" r="2.3"/><path d="M4.5 14.8C2.9 15.5 2 16.3 2 17.2c0 1.8 3.8 3.3 8.8 3.6"/><path d="M8.8 18.8l2 2-2 2"/><path d="M19.5 14.8c1.6.7 2.5 1.5 2.5 2.4 0 1-1.2 1.8-3.1 2.5"/></svg>
       </button>
       <button class="ipDugme" id="ipZoomArti" aria-label="Yakınlaştır" title="Zoom +">
         <svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="6.5"/><path d="M14.8 14.8L21 21" stroke-width="2.8"/><path d="M7 10h6M10 7v6"/></svg>
@@ -210,8 +210,8 @@
 
   <button class="genis dur" id="durBtn">Dur</button>
 
-  <div class="izgara2" style="margin-top:10px">
-    <button class="kucuk" id="sifirlaBtn">Başlangıç yap</button>
+  <div class="izgara2" id="altDugmeler" style="margin-top:10px">
+    <button class="kucuk sadeceYonetici" id="sifirlaBtn">Başlangıç yap</button>
     <button class="kucuk" id="konumEkleBtn">Konumu kaydet</button>
   </div>
 
@@ -226,6 +226,7 @@
       <button class="ikon" id="ayarKapatBtn" aria-label="Kapat">✕</button>
     </header>
 
+    <div class="sadeceYonetici">
     <h2>İnce ayar</h2>
     <div class="izgara2">
       <button id="azSolBtn">Az sola</button>
@@ -240,7 +241,9 @@
       <div class="satir"><span>Eğme</span><b id="tiltDeger">0°</b></div>
       <div id="konumSilListe"></div>
     </div>
+    </div>
 
+    <div class="sadeceKopru">
     <h2>Kalibrasyon</h2>
     <div class="panel">
       <label style="border-top:none">Dönüş hızı (° / sn)<input type="number" id="hizInput" value="27" min="5" max="360" step="1"></label>
@@ -249,12 +252,13 @@
       <label>Gönderim aralığı (ms)<input type="number" id="araInput" value="120" min="40" max="500" step="10"></label>
       <button class="genis kucuk" id="olcBtn" style="margin-top:6px">2 sn sağa (ölçüm)</button>
     </div>
+    </div>
 
     <h2>Kullanım</h2>
     <div class="panel">
       <label style="border-top:none">Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
       <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
-      <label>Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
+      <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
     </div>
 
@@ -302,6 +306,7 @@
       </div>
     </div>
 
+    <div class="sadeceYonetici">
     <h2>Kayıt</h2>
     <div class="panel">
       <div class="izgara3">
@@ -312,13 +317,22 @@
       <div class="satir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
       <pre id="kayit"></pre>
     </div>
+    </div>
 
-    <h2>Rol ve oda</h2>
+    <h2>Bağlantı</h2>
     <div class="panel">
-      <div class="satir"><span>Rol</span><b id="rolAd">—</b></div>
       <div class="satir"><span>Oda kodu</span><b id="odaAd">—</b></div>
-      <div class="satir"><span>Yönetici</span><b id="ykAd">—</b></div>
-      <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Rolü veya oda kodunu değiştir</button>
+      <div class="satir"><span>Yetki</span><b id="ykAd">—</b></div>
+      <div class="satir"><span>Mod</span><b id="rolAd">—</b></div>
+      <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Bağlantı bilgilerini değiştir</button>
+    </div>
+
+    <div class="sadeceYonetici">
+      <h2>Bluetooth köprüsü (yedek)</h2>
+      <div class="panel">
+        <p class="not" style="margin-top:0" id="kopruNot">Sadece kart çalışmazsa: Android telefon (Chrome) standa kendisi bağlanır ve diğer telefonlar onun üzerinden kontrol eder. Kart açıkken kullanmayın.</p>
+        <button class="genis kucuk" id="kopruBtn" style="margin-top:8px">Bu telefonu köprü yap</button>
+      </div>
     </div>
   </div>
 </div>
@@ -331,8 +345,12 @@
   var RX ="6e400002-b5a3-f393-e0a9-e50e24dcca9e";
   var ORTA=510, EN_AZ=0, EN_COK=1023, SAPMA=190, ESIK=0.35;
   var BEKLEME=600, GECIKME=250, VARLIK_SURE=9000;
+  // Kişiye özel sunucu (EMQX Cloud). Adres gizli değil; şifre her telefonda ayrıca girilir.
+  var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
+  // Kart durumu sadece değişince + dakikada bir gönderir; bu süre boyunca ses gelmezse "bağlı değil" sayılır.
+  var TAZE_SURE=90000;
 
-  var rol=null, kod="", yk="", istemci=null, izin=false;
+  var rol=null, kod="", yk="", ss="", istemci=null, izin=false, sunucuHatasi="";
   var cihazRef=null, rxKarakter=null, standBagli=false, yenidenDene=null;
   var yaziyor=false, bekleyen=null;
   var dongu_=null, canliTut=null, diziSayac=null, durumTik=null, varlikTik=null;
@@ -457,7 +475,7 @@
     yenidenDene=setTimeout(function(){ if(!rxKarakter&&cihazRef){ yaz("Yeniden bağlanma deneniyor…"); sonCihazaBagla(); } },4000);
   }
 
-  // ---------- hareket döngüsü (evdeki telefon) ----------
+  // ---------- hareket döngüsü (köprü modu) ----------
   function uzakAktif(){ return Date.now()-sonUzakKomut<BEKLEME && (uzakX!==ORTA||uzakY!==ORTA); }
   function dongu(){
     if(!rxKarakter||mesgul) return;
@@ -553,14 +571,19 @@
   // ---------- sunucu ----------
   function sunucuyaBaglan(){
     if(!kod||typeof mqtt==="undefined") return;
-    istemci=mqtt.connect("wss://broker.emqx.io:8084/mqtt",{
-      clientId:"comitok_"+rol+"_"+benimKimlik, reconnectPeriod:2000, connectTimeout:8000
+    if(!ss){ sunucuHatasi="şifre yok"; guncelle(); return; }
+    sunucuHatasi="";
+    istemci=mqtt.connect(SUNUCU_ADRES,{
+      clientId:"comitok_"+rol+"_"+benimKimlik, username:SUNUCU_KULLANICI, password:ss,
+      reconnectPeriod:5000, connectTimeout:10000
     });
     istemci.on("connect",function(){
+      sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
+        sonYayinMetni="";
         durumYayinla();
       } else {
         istemci.subscribe("comitok/"+kod+"/durum");
@@ -570,7 +593,18 @@
     });
     istemci.on("reconnect",guncelle);
     istemci.on("close",guncelle);
-    istemci.on("error",function(h){ yaz("Sunucu hatası: "+h.message); });
+    istemci.on("error",function(h){
+      var m=(h&&h.message)||"";
+      if((h&&(h.code===4||h.code===5))||/not authori[sz]ed|bad user ?name or password/i.test(m)){
+        // Şifre yanlışsa tekrar tekrar denenmez (sunucu sık denemeyi engelleyebilir)
+        sunucuHatasi="şifre hatalı";
+        yaz("Sunucu şifreyi kabul etmedi. Ayarlar > Bağlantı bilgilerini değiştir'den sunucu şifresini düzeltin.");
+        try{ istemci.end(true); }catch(e){}
+        guncelle();
+        return;
+      }
+      yaz("Sunucu hatası: "+m);
+    });
     istemci.on("message",function(konu,veri){
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-4)==="/var" && rol==="evde"){
@@ -594,12 +628,16 @@
       guncelle();
     },rol==="evde"?1000:3000);
   }
+  // Köprü modunda durum sadece değişince ve 20 sn'de bir gider (veri kotasını korumak için)
+  var sonYayinMetni="", sonYayinZamani=0;
   function durumYayinla(){
     if(rol!=="evde"||!istemci||!istemci.connected) return;
-    istemci.publish("comitok/"+kod+"/durum",JSON.stringify({
-      stand:standBagli, izin:izin, donus:Math.round(netDonus), tilt:Math.round(netTilt),
-      cihaz:benimCihaz, zaman:Date.now()
-    }),{retain:true});
+    var metin=JSON.stringify({
+      stand:standBagli, izin:izin, donus:Math.round(netDonus), tilt:Math.round(netTilt), cihaz:benimCihaz
+    });
+    if(metin===sonYayinMetni&&Date.now()-sonYayinZamani<20000) return;
+    sonYayinMetni=metin; sonYayinZamani=Date.now();
+    istemci.publish("comitok/"+kod+"/durum",metin,{retain:true});
   }
   function varligimiBildir(){
     if(!istemci||!istemci.connected) return;
@@ -609,7 +647,7 @@
   // ---------- göstergeler ----------
   function guncelle(){
     var sunucuVar=istemci&&istemci.connected;
-    goster("gSunucu",kod?(sunucuVar?"çevrimiçi":"çevrimdışı"):"oda kodu yok",sunucuVar?"iyi":"kotu");
+    goster("gSunucu",!kod?"oda kodu yok":(sunucuVar?"çevrimiçi":(sunucuHatasi||"çevrimdışı")),sunucuVar?"iyi":"kotu");
 
     if(rol==="evde"){
       goster("gStand",standBagli?"bağlı":"kapalı",standBagli?"iyi":"kotu");
@@ -623,7 +661,7 @@
       padEl.classList.toggle("pasif",!standBagli);
       E("btKutu").classList.add("gizle");
     } else {
-      var taze=sonDurum&&Date.now()-sonDurumZaman<5000;
+      var taze=sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE;
       if(!taze){
         goster("gUzak","bağlı değil","kotu");
         goster("gStand","bilinmiyor","soluk");
@@ -645,7 +683,7 @@
         goster("gKumanda",sonDurum.kumanda?"bağlı":"kapalı",sonDurum.kumanda?"iyi":"kotu");
       }
       var kIzin=!!(taze&&sonDurum.kameraIzin);
-      E("iphonePanel").classList.toggle("gizle",!(taze&&sonDurum.iphone&&(yk||kIzin)));   // eşte izin kapalıyken hiç görünmez
+      E("iphonePanel").classList.toggle("gizle",!(taze&&sonDurum.iphone&&(yk||kIzin)));   // yönetici olmayan telefonda izin kapalıyken hiç görünmez
       E("kameraIzinBtn").textContent="Kamera izni: "+(kIzin?"açık":"kapalı");
       E("kameraIzinBtn").classList.toggle("acik",kIzin);
       E("kameraIzinBtn").disabled=!yk;
@@ -654,7 +692,7 @@
       if(!kk) kameraAciliyor=0;
       var aciliyor=kk&&kameraAciliyor&&Date.now()-kameraAciliyor<5000;
       var km=E("ipKameram");
-      km.classList.toggle("gizle",!yk);                                  // eşin telefonunda yok
+      km.classList.toggle("gizle",!yk);                                  // yönetici olmayan telefonda yok
       km.classList.toggle("kapali",kk&&!aciliyor);
       km.classList.toggle("bekliyor",!!aciliyor);
       km.disabled=!yk||!!aciliyor;
@@ -741,7 +779,7 @@
   E("azSolBtn").onclick=function(){ komutGonder({t:"azsol"}); };
   E("azYukBtn").onclick=function(){ komutGonder({t:"azyuk"}); };
   E("azAsaBtn").onclick=function(){ komutGonder({t:"azasa"}); };
-  E("olcBtn").onclick=function(){ if(rol==="evde"){ yaz("Ölçüm: 2 sn sağa."); surekli(1,2000); } else yaz("Ölçüm evdeki telefondan yapılır."); };
+  E("olcBtn").onclick=function(){ if(rol==="evde"){ yaz("Ölçüm: 2 sn sağa."); surekli(1,2000); } else yaz("Ölçüm sadece köprü modunda yapılır."); };
   E("sifirlaBtn").onclick=function(){
     if(!confirm("Standın şu anki konumu başlangıç olarak ayarlansın mı?")) return;
     komutGonder({t:"sifirla"});
@@ -878,7 +916,13 @@
     else elleKopyala(m);
   };
   E("rolDegistirBtn").onclick=function(){
-    try{ localStorage.removeItem("stand_rol"); }catch(h){}
+    try{ localStorage.setItem("stand_duzenle","1"); }catch(h){}
+    location.reload();
+  };
+  E("kopruBtn").onclick=function(){
+    var yeni=rol==="evde"?"uzak":"evde";
+    if(yeni==="evde"&&!confirm("Bu telefon standa Bluetooth ile bağlanan köprü olacak.\n\nSadece kart çalışmıyorsa kullanın. Devam edilsin mi?")) return;
+    try{ localStorage.setItem("stand_rol",yeni); }catch(h){}
     location.reload();
   };
 
@@ -909,14 +953,26 @@
   });
 
   // ---------- başlangıç ----------
+  // Yönetici: yönetici kodu girilmiş telefon ya da köprü modundaki telefon
+  function yonetici(){ return rol==="evde"||!!yk; }
+  function gorunurlukAyarla(){
+    var yon=yonetici();
+    Array.prototype.forEach.call(document.querySelectorAll(".sadeceYonetici"),function(el){ el.classList.toggle("gizle",!yon); });
+    Array.prototype.forEach.call(document.querySelectorAll(".sadeceKopru"),function(el){ el.classList.toggle("gizle",rol!=="evde"); });
+    E("altDugmeler").classList.toggle("tekli",!yon);
+    E("kopruBtn").textContent=rol==="evde"?"Köprüyü kapat, kumandaya dön":"Bu telefonu köprü yap";
+  }
   function basla(secim){
     rol=secim;
     try{ localStorage.setItem("stand_rol",rol); localStorage.setItem("stand_kod",kod); }catch(h){}
     E("kurulum").classList.add("gizle");
     E("ana").classList.remove("gizle");
-    E("rolAd").textContent=rol==="evde"?"Evdeki telefon":"Uzaktaki telefon";
+    gorunurlukAyarla();
+    var modAd=rol==="evde"?"Bluetooth köprüsü":"Kumanda";
+    E("rolAd").textContent=modAd;
     E("odaAd").textContent=kod||"yok";
-    E("altbilgi").textContent=(rol==="evde"?"Evdeki telefon":"Uzaktaki telefon")+" · Oda: "+(kod||"yok");
+    E("ykAd").textContent=yonetici()?"Yönetici":"Standart";
+    E("altbilgi").textContent="Oda: "+(kod||"yok")+(rol==="evde"?" · Köprü modu":"");
     if(rol==="evde"){
       E("baglanPanel").classList.remove("gizle");
       E("izinKutu").classList.add("dokunulur");
@@ -928,26 +984,36 @@
       }
     }
     if(rol==="uzak"&&yk) E("izinKutu").classList.add("dokunulur");
-    E("ykAd").textContent=yk?"bu telefon yönetici":"yok";
     konumlariCiz(); sayaclariYaz(); ekraniTut(); guncelle();
     if(kod) sunucuyaBaglan();
-    yaz("Rol: "+(rol==="evde"?"evdeki telefon":"uzaktaki telefon")+", cihaz: "+benimCihaz);
+    yaz("Mod: "+modAd.toLowerCase()+", yetki: "+(yonetici()?"yönetici":"standart")+", cihaz: "+benimCihaz);
     setInterval(guncelle,2000);
   }
-  function kurulumdanBasla(secim){
-    yk=E("ykInput").value.trim();
-    try{ localStorage.setItem("stand_yk",yk); }catch(h){}
+  function kurulumdanBasla(){
     kod=E("kodInput").value.trim();
-    if(!kod){ E("kodInput").focus(); return; }
-    basla(secim);
+    ss=E("ssInput").value.trim();
+    yk=E("ykInput").value.trim();
+    var uyari=E("kurulumUyari");
+    if(!kod){ uyari.textContent="Oda kodunu yazın."; uyari.classList.remove("gizle"); E("kodInput").focus(); return; }
+    if(!ss){ uyari.textContent="Sunucu şifresini yazın."; uyari.classList.remove("gizle"); E("ssInput").focus(); return; }
+    try{
+      localStorage.setItem("stand_yk",yk); localStorage.setItem("stand_ss",ss);
+      localStorage.removeItem("stand_duzenle");
+    }catch(h){}
+    var r="uzak"; try{ r=localStorage.getItem("stand_rol")||"uzak"; }catch(h){}
+    if(r==="evde"&&!yk) r="uzak";   // köprü modu sadece yönetici için
+    basla(r);
   }
-  E("evdeBtn").onclick=function(){ kurulumdanBasla("evde"); };
-  E("uzakBtn").onclick=function(){ kurulumdanBasla("uzak"); };
+  E("baglanKurBtn").onclick=kurulumdanBasla;
 
-  var kayitliRol=null;
-  try{ kayitliRol=localStorage.getItem("stand_rol"); kod=localStorage.getItem("stand_kod")||""; yk=localStorage.getItem("stand_yk")||""; }catch(h){}
-  E("kodInput").value=kod; E("ykInput").value=yk;
-  if(kayitliRol&&kod) basla(kayitliRol);
+  var kayitliRol=null, duzenle=false;
+  try{
+    kayitliRol=localStorage.getItem("stand_rol"); kod=localStorage.getItem("stand_kod")||"";
+    yk=localStorage.getItem("stand_yk")||""; ss=localStorage.getItem("stand_ss")||"";
+    duzenle=localStorage.getItem("stand_duzenle")==="1";
+  }catch(h){}
+  E("kodInput").value=kod; E("ssInput").value=ss; E("ykInput").value=yk;
+  if(kayitliRol&&kod&&ss&&!duzenle) basla(kayitliRol);
   else E("kurulum").classList.remove("gizle");
 })();
 </script>
