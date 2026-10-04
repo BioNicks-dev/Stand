@@ -115,6 +115,12 @@
   #kayit{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ink-soft);
     max-height:180px;overflow:auto;margin:6px 0 0;white-space:pre-wrap;word-break:break-all;-webkit-user-select:text;user-select:text}
   .konumSil{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+  .baslikSatir{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .yardimBtn{min-width:34px;min-height:34px;padding:0;font-size:15px;border-radius:50%}
+  .komutlar{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13px;margin:8px 0 0}
+  .komutlar kbd{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap;justify-self:start}
+  .komutlar h3{grid-column:1 / -1;font-size:13px;font-weight:600;margin:8px 0 0}
+  .secilir{-webkit-user-select:text;user-select:text}
   .gizle{display:none !important}
 </style>
 </head>
@@ -171,6 +177,7 @@
     <button id="evBtn">Başlangıç</button>
     <button id="sagBtn">Sağ 180°</button>
   </div>
+  <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
 
   <div class="konumlar" id="konumlar"></div>
 
@@ -271,6 +278,10 @@
           <option value="2">Hibrit</option><option value="0">Standın kendi</option><option value="1">Akıllı (yavaş)</option>
         </select></label>
         <div class="satir" style="border-top:1px solid var(--line);padding:8px 0;align-items:center;color:var(--ink)"><span style="color:var(--ink)">Hibrit dönüş süresi</span><span class="adimlar"><button class="kucuk" id="kaGeriEksi" aria-label="Kısalt">−</button><b id="kaGeri">—</b><button class="kucuk" id="kaGeriArti" aria-label="Uzat">+</button></span></div>
+        <label>Dönüş sınırı (başlangıca göre)<select id="kaSinir">
+          <option value="360">± 360° (1 tur)</option><option value="450">± 450°</option>
+          <option value="540">± 540° (1,5 tur)</option><option value="720">± 720° (2 tur)</option>
+        </select></label>
         <label>Standın 180° yönü<select id="kaY180"><option value="1">Sağa</option><option value="-1">Sola</option></select></label>
         <label>WhatsApp menü açık kalma süresi<select id="kaUyandir">
           <option value="0">Kapalı</option><option value="6000">6 sn</option><option value="8000">8 sn</option>
@@ -307,7 +318,39 @@
     </div>
 
     <div class="sadeceYonetici">
-    <h2>Kayıt</h2>
+    <h2 class="baslikSatir">Kayıt <button class="kucuk yardimBtn" id="kayitYardimBtn" aria-label="Serial Monitor komutları" aria-expanded="false">?</button></h2>
+    <div class="panel gizle" id="kayitYardim">
+      <p class="not" style="margin-top:0">Kart bilgisayara USB ile bağlıyken Arduino IDE'de Serial Monitor'a (115200) yazılır. Çoğunun karşılığı bu sayfada zaten var. USB internet kartındayken Bluetooth kartının yazıları da orada [BT] ile görünür, ama harfler sadece USB takılı karta gider.</p>
+      <div class="komutlar">
+        <h3>Bluetooth kartı</h3>
+        <kbd>?</kbd><span>Durum ve tüm ayarlar</span>
+        <kbd>i</kbd><span>Uzaktan izni aç / kapat</span>
+        <kbd>s</kbd><span>Her şeyi durdur</span>
+        <kbd>f</kbd><span>Fotoğraf (ses açma tuşu)</span>
+        <kbd>3</kbd><span>Zoom +</span>
+        <kbd>4</kbd><span>Zoom −</span>
+        <kbd>5</kbd><span>Kamerayı çevir (ön / arka)</span>
+        <kbd>6</kbd><span>Ekranları değiştir</span>
+        <kbd>7</kbd><span>WhatsApp menüsü</span>
+        <kbd>8</kbd><span>Mikrofon</span>
+        <kbd>9</kbd><span>Kameram kapat / aç</span>
+        <kbd>j</kbd><span>Mikrofon simgesini düzelt (telefona dokunmaz)</span>
+        <kbd>e</kbd><span>Sadece Button 2 (iPhone'a tanıtmak için)</span>
+        <kbd>c g m b z</kbd><span>İmleç ayarı: kamera simgesi, küçük pencere, mikrofon, uyandırma noktası, ekran ortası</span>
+        <kbd>w a s d</kbd><span>Ayar sırasında imleci kaydır (büyük harf: ince adım), v kaydet, q iptal</span>
+        <kbd>u</kbd><span>WhatsApp menü açık kalma süresi</span>
+        <kbd>k</kbd><span>Kumanda köprüsü aç / kapat</span>
+        <kbd>x</kbd><span>Kumandada yatay yön</span>
+        <kbd>y</kbd><span>Kumandada dikey yön</span>
+        <kbd>r</kbd><span>Kumanda 180° modu</span>
+        <kbd>[ ]</kbd><span>Hibrit dönüş süresi − / +</span>
+        <kbd>o</kbd><span>Standın 180° yönü</span>
+        <kbd>h</kbd><span>Sayfa komutlarının paket aralığı</span>
+        <kbd>t</kbd><span>Bilinmeyen komut taraması (test)</span>
+        <h3>İnternet kartı</h3>
+        <kbd>?</kbd><span>Durum, IP ve kablosuz güncelleme adresi</span>
+      </div>
+    </div>
     <div class="panel">
       <div class="izgara3">
         <button class="kucuk" id="kopyalaBtn">Kopyala</button>
@@ -324,6 +367,11 @@
       <div class="satir"><span>Oda kodu</span><b id="odaAd">—</b></div>
       <div class="satir"><span>Yetki</span><b id="ykAd">—</b></div>
       <div class="satir"><span>Mod</span><b id="rolAd">—</b></div>
+      <div class="sadeceYonetici">
+        <div class="satir"><span>Kart sürümleri</span><b id="surumAd">—</b></div>
+        <div class="satir"><span>Kablosuz güncelleme</span><b id="guncAdres" class="secilir">—</b></div>
+        <p class="not" style="margin:0 0 6px">Adresi evdeki Wi-Fi'a bağlı bilgisayarın tarayıcısında açın.</p>
+      </div>
       <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Bağlantı bilgilerini değiştir</button>
     </div>
 
@@ -357,6 +405,7 @@
   var aktif=false, sonX=ORTA, sonY=ORTA, uzakX=ORTA, uzakY=ORTA, sonUzakKomut=0, uzakHareketVardi=false;
   var netDonus=0, netTilt=0, hareketTik=0, paketSayisi=0, mesgul=false, sonHareket=Date.now();
   var uzaklar={}, sonDurum=null, sonDurumZaman=0, kameraAciliyor=0;
+  var kayitTik=null, kayitOturum="", kayitSon=0;
 
   var E=function(id){return document.getElementById(id);};
   var padEl=E("pad"), topuzEl=E("topuz");
@@ -366,6 +415,12 @@
   function yaz(m){
     var k=E("kayit");
     k.textContent=new Date().toLocaleTimeString("tr-TR")+"  "+m+"\n"+k.textContent;
+    if(k.textContent.length>6000) k.textContent=k.textContent.slice(0,6000);
+  }
+  // Kartlardan gelen satır (saati kartta eklenmiş)
+  function kayitHam(m){
+    var k=E("kayit");
+    k.textContent=m+"\n"+k.textContent;
     if(k.textContent.length>6000) k.textContent=k.textContent.slice(0,6000);
   }
   function goster(id,metin,sinif){ var el=E(id); el.textContent=metin; el.className=sinif||""; }
@@ -420,7 +475,8 @@
   // ---------- sayaçlar ----------
   function sayaclariYaz(){
     E("donus").textContent=Math.round(netDonus)+"°";
-    E("donus").className=Math.abs(netDonus)>360?"uyari":"";
+    var sinir=(sonDurum&&sonDurum.ayarlar&&sonDurum.ayarlar.sinir)||360;
+    E("donus").className=Math.abs(netDonus)>sinir-90?"uyari":"";
     E("tiltDeger").textContent=Math.round(netTilt)+"°";
   }
   function donusEkle(yon,ms){ netDonus+=yon*ayar("hizInput",27)*(ms/1000); sayaclariYaz(); }
@@ -587,6 +643,7 @@
         durumYayinla();
       } else {
         istemci.subscribe("comitok/"+kod+"/durum");
+        if(yk) istemci.subscribe("comitok/"+kod+"/kayit");
         varligimiBildir();
       }
       guncelle();
@@ -606,6 +663,7 @@
       yaz("Sunucu hatası: "+m);
     });
     istemci.on("message",function(konu,veri){
+      if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-4)==="/var" && rol==="evde"){
         var yeni=!uzaklar[m.id];
@@ -644,6 +702,27 @@
     istemci.publish("comitok/"+kod+"/var",JSON.stringify({id:benimKimlik,cihaz:benimCihaz}));
   }
 
+  // ---------- kartların kaydı (yönetici, Ayarlar açıkken) ----------
+  // İnternet kartı iki kartın son satırlarını tutar; sayfa 3 sn'de bir "şu numaradan sonrasını" ister.
+  function kayitIste(){
+    if(!yk||rol!=="uzak"||!istemci||!istemci.connected||document.visibilityState!=="visible") return;
+    istemci.publish("comitok/"+kod+"/komut",JSON.stringify({t:"kayit",son:kayitSon,o:kayitOturum,yk:yk,kaynak:"uzak"}));
+  }
+  function kayitGeldi(metin){
+    var satirlar=metin.split("\n");
+    satirlar.forEach(function(s){
+      if(!s) return;
+      if(s.charAt(0)==="#"){ var o=s.slice(1); if(o!==kayitOturum){ kayitOturum=o; kayitSon=0; } return; }
+      var i=s.indexOf(" "), no=Number(s.slice(0,i));
+      if(!(no>kayitSon)) return;
+      kayitSon=no; kayitHam(s.slice(i+1));
+    });
+  }
+  function kayitAkisi(ac){
+    clearInterval(kayitTik); kayitTik=null;
+    if(ac&&yk&&rol==="uzak"){ kayitIste(); kayitTik=setInterval(kayitIste,3000); }
+  }
+
   // ---------- göstergeler ----------
   function guncelle(){
     var sunucuVar=istemci&&istemci.connected;
@@ -673,6 +752,10 @@
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
       padEl.classList.toggle("pasif",!(taze&&sonDurum.stand&&(sonDurum.izin||yk)));
+      E("sinirNot").classList.toggle("gizle",!(taze&&sonDurum.sinirde));
+      var net=(sonDurum&&sonDurum.net)||null;
+      E("surumAd").textContent=sonDurum?("BT "+(sonDurum.surum||"eski")+" · NET "+(net&&net.surum||"eski")):"—";
+      E("guncAdres").textContent=net&&net.ip&&net.ip!=="0.0.0.0"?"http://"+net.ip:"—";
       // Bluetooth kutusu (sadece yönetici): kartın iPhone ve kumanda bağlantısı
       E("btKutu").classList.toggle("gizle",!yk);
       if(!taze){
@@ -835,6 +918,11 @@
     E("kaGeri").textContent=(a.geri180/1000).toFixed(1)+" sn";
     E("kaGeri").dataset.ms=a.geri180;
     if(seciliDegil("kaY180")) E("kaY180").value=String(a.y180>0?1:-1);
+    if(a.sinir&&seciliDegil("kaSinir")){
+      var sv=String(a.sinir);
+      if(!E("kaSinir").querySelector('option[value="'+sv+'"]')){ var op=document.createElement("option"); op.value=sv; op.textContent="± "+sv+"°"; E("kaSinir").appendChild(op); }
+      E("kaSinir").value=sv;
+    }
     if(seciliDegil("kaUyandir")) E("kaUyandir").value=String(a.uyandir);
     if(seciliDegil("kaAralik")) E("kaAralik").value=String(a.aralik);
     E("kalPad").classList.toggle("gizle",!a.kalib);
@@ -843,6 +931,7 @@
   }
   E("ka180").onchange=function(){ ayarGonder("mod180",Number(E("ka180").value)); };
   E("kaY180").onchange=function(){ ayarGonder("y180",Number(E("kaY180").value)); };
+  E("kaSinir").onchange=function(){ ayarGonder("sinir",Number(E("kaSinir").value)); };
   E("kaUyandir").onchange=function(){ ayarGonder("uyandir",Number(E("kaUyandir").value)); };
   E("kaAralik").onchange=function(){ ayarGonder("aralik",Number(E("kaAralik").value)); };
   E("kaGeriEksi").onclick=function(){ ayarGonder("geri180",Math.max(600,Number(E("kaGeri").dataset.ms||6400)-200)); };
@@ -897,8 +986,12 @@
   E("baglanBtn").onclick=function(){ baglan(false); };
   E("hepsiBtn").onclick=function(){ baglan(true); };
   E("sonBtn").onclick=sonCihazaBagla;
-  E("ayarAcBtn").onclick=function(){ E("ayarlar").classList.remove("gizle"); };
-  E("ayarKapatBtn").onclick=function(){ E("ayarlar").classList.add("gizle"); };
+  E("ayarAcBtn").onclick=function(){ E("ayarlar").classList.remove("gizle"); kayitAkisi(true); };
+  E("ayarKapatBtn").onclick=function(){ E("ayarlar").classList.add("gizle"); kayitAkisi(false); };
+  E("kayitYardimBtn").onclick=function(){
+    var acik=E("kayitYardim").classList.toggle("gizle")===false;
+    E("kayitYardimBtn").setAttribute("aria-expanded",acik?"true":"false");
+  };
   E("temizleBtn").onclick=function(){ E("kayit").textContent=""; };
   function elleKopyala(m){
     var a=document.createElement("textarea"); a.value=m; a.style.position="fixed"; a.style.opacity="0";
