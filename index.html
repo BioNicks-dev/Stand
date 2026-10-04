@@ -269,6 +269,12 @@
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
     </div>
 
+    <h2>Bilgisayar</h2>
+    <div class="panel">
+      <button class="genis" id="klavyeSayfaBtn">Bilgisayar klavyesi ve fare</button>
+      <p class="not">Telefondan bilgisayara yazı yazma, kumanda tuşları, fare ve tam klavye.</p>
+    </div>
+
     <div id="kartAyarBolum" class="gizle">
       <h2>Kart ayarları</h2>
       <div class="panel">
@@ -986,6 +992,7 @@
   E("baglanBtn").onclick=function(){ baglan(false); };
   E("hepsiBtn").onclick=function(){ baglan(true); };
   E("sonBtn").onclick=sonCihazaBagla;
+  E("klavyeSayfaBtn").onclick=function(){ location.href="klavye.html"; };
   E("ayarAcBtn").onclick=function(){ E("ayarlar").classList.remove("gizle"); kayitAkisi(true); };
   E("ayarKapatBtn").onclick=function(){ E("ayarlar").classList.add("gizle"); kayitAkisi(false); };
   E("kayitYardimBtn").onclick=function(){
