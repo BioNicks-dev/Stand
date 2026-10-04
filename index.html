@@ -121,6 +121,7 @@
   .komutlar kbd{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap;justify-self:start}
   .komutlar h3{grid-column:1 / -1;font-size:13px;font-weight:600;margin:8px 0 0}
   .secilir{-webkit-user-select:text;user-select:text}
+  .ustLink{color:var(--ink-soft);text-decoration:none;font-size:14px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:7px 10px;white-space:nowrap}
   .gizle{display:none !important}
 </style>
 </head>
@@ -229,6 +230,7 @@
 <div id="ayarlar" class="gizle">
   <div class="wrap">
     <header>
+      <a class="ustLink" href="klavye.html">← Klavye / Fare</a>
       <h1>Ayarlar</h1>
       <button class="ikon" id="ayarKapatBtn" aria-label="Kapat">✕</button>
     </header>
@@ -263,23 +265,17 @@
 
     <h2>Kullanım</h2>
     <div class="panel">
-      <label style="border-top:none">Yatay yönü ters çevir<input type="checkbox" id="tersX"></label>
-      <label>Dikey yönü ters çevir<input type="checkbox" id="tersY"></label>
+      <label style="border-top:none">Sayfadaki yön tuşları: yatay ters<input type="checkbox" id="tersX"></label>
+      <label>Sayfadaki yön tuşları: dikey ters<input type="checkbox" id="tersY"></label>
       <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
-    </div>
-
-    <h2>Bilgisayar</h2>
-    <div class="panel">
-      <button class="genis" id="klavyeSayfaBtn">Bilgisayar klavyesi ve fare</button>
-      <p class="not">Telefondan bilgisayara yazı yazma, kumanda tuşları, fare ve tam klavye.</p>
     </div>
 
     <div id="kartAyarBolum" class="gizle">
       <h2>Kart ayarları</h2>
       <div class="panel">
-        <label style="border-top:none">Kumandada yatay yön ters<input type="checkbox" id="kumTersX"></label>
-        <label>Kumandada dikey yön ters<input type="checkbox" id="kumTersY"></label>
+        <label style="border-top:none">Fiziksel kumanda (MOTA): yatay ters<input type="checkbox" id="kumTersX"></label>
+        <label>Fiziksel kumanda (MOTA): dikey ters<input type="checkbox" id="kumTersY"></label>
         <label>180° modu<select id="ka180">
           <option value="2">Hibrit</option><option value="0">Standın kendi</option><option value="1">Akıllı (yavaş)</option>
         </select></label>
@@ -375,8 +371,6 @@
       <div class="satir"><span>Mod</span><b id="rolAd">—</b></div>
       <div class="sadeceYonetici">
         <div class="satir"><span>Kart sürümleri</span><b id="surumAd">—</b></div>
-        <div class="satir"><span>Kablosuz güncelleme</span><b id="guncAdres" class="secilir">—</b></div>
-        <p class="not" style="margin:0 0 6px">Adresi evdeki Wi-Fi'a bağlı bilgisayarın tarayıcısında açın.</p>
       </div>
       <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Bağlantı bilgilerini değiştir</button>
     </div>
@@ -761,7 +755,7 @@
       E("sinirNot").classList.toggle("gizle",!(taze&&sonDurum.sinirde));
       var net=(sonDurum&&sonDurum.net)||null;
       E("surumAd").textContent=sonDurum?("BT "+(sonDurum.surum||"eski")+" · NET "+(net&&net.surum||"eski")):"—";
-      E("guncAdres").textContent=net&&net.ip&&net.ip!=="0.0.0.0"?"http://"+net.ip:"—";
+
       // Bluetooth kutusu (sadece yönetici): kartın iPhone ve kumanda bağlantısı
       E("btKutu").classList.toggle("gizle",!yk);
       if(!taze){
@@ -992,7 +986,6 @@
   E("baglanBtn").onclick=function(){ baglan(false); };
   E("hepsiBtn").onclick=function(){ baglan(true); };
   E("sonBtn").onclick=sonCihazaBagla;
-  E("klavyeSayfaBtn").onclick=function(){ location.href="klavye.html"; };
   E("ayarAcBtn").onclick=function(){ E("ayarlar").classList.remove("gizle"); kayitAkisi(true); };
   E("ayarKapatBtn").onclick=function(){ E("ayarlar").classList.add("gizle"); kayitAkisi(false); };
   E("kayitYardimBtn").onclick=function(){
