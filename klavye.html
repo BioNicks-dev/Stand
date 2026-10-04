@@ -2,10 +2,10 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
-<title>Bilgisayar klavyesi</title>
+<title>Bilgisayar kumandası</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
@@ -27,234 +27,297 @@
     }
   }
   *,*::before,*::after{box-sizing:inherit}
-  html,body{margin:0}
+  html,body{margin:0;height:100%}
   body{background:var(--bg);color:var(--ink);font-family:Archivo,"Segoe UI",system-ui,sans-serif;
-    font-size:16px;line-height:1.45;-webkit-tap-highlight-color:transparent}
-  .wrap{max-width:480px;margin:0 auto;padding:12px 14px 20px}
-  header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-  h1{font-size:19px;font-weight:600;margin:0;letter-spacing:-.01em}
-  h2{font-size:15px;font-weight:600;margin:14px 0 6px}
-  a.geri{color:var(--ink-soft);text-decoration:none;font-size:14px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:8px 12px}
+    font-size:16px;line-height:1.4;-webkit-tap-highlight-color:transparent;overflow:hidden;
+    -webkit-user-select:none;user-select:none}
   button{font:inherit;font-weight:500;color:var(--ink);background:var(--panel);touch-action:manipulation;
-    border:1px solid var(--line-strong);border-radius:var(--radius);padding:10px 8px;min-height:46px;cursor:pointer;
-    -webkit-user-select:none;user-select:none}
-  button:active{background:var(--bg)}
-  button:disabled{opacity:.4;cursor:default}
+    border:1px solid var(--line-strong);border-radius:var(--radius);padding:0;cursor:pointer;-webkit-touch-callout:none}
+  button:active,button.basili{background:var(--bg);border-color:var(--live)}
   button:focus-visible{outline:2px solid var(--live);outline-offset:2px}
-  .vurgu{border-color:var(--live);color:var(--live)}
-  .acik{border-color:var(--live);color:var(--live);background:var(--bg)}
-  .kucuk{min-height:38px;padding:6px 10px;font-size:14px}
-  .genis{width:100%}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
-  .izgara3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .izgara4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-  .gostergeler{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
-  .gosterge{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
-  .gosterge span{display:block;font-size:12px;color:var(--ink-soft)}
-  .gosterge b{display:block;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .iyi{color:var(--live)} .uyari{color:var(--warn)} .kotu{color:var(--stop)} .soluk{color:var(--ink-soft)}
-  textarea{width:100%;min-height:76px;font:inherit;color:var(--ink);background:var(--bg);resize:vertical;
-    border:1px solid var(--line-strong);border-radius:8px;padding:10px}
-  .satir{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
-  label.secim{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink-soft)}
-  input[type=checkbox]{width:22px;height:22px;accent-color:var(--live)}
-  select{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:6px}
-  .tus{font-size:15px}
-  .ok{font-size:20px}
-
-  .fareAlan{display:grid;grid-template-columns:1fr 46px;gap:8px}
-  #pad{height:220px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--bg);
-    touch-action:none;position:relative;display:grid;place-items:center;color:var(--ink-soft);font-size:13px;text-align:center;padding:10px;
-    -webkit-user-select:none;user-select:none}
-  #pad.tutuluyor{border-color:var(--live)}
-  #teker{height:220px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--bg);touch-action:none;
-    display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 0;color:var(--ink-soft);font-size:16px;
-    -webkit-user-select:none;user-select:none}
-  #teker.tutuluyor{border-color:var(--live)}
-  .not{font-size:13px;color:var(--ink-soft);margin:8px 0 0}
-  #durumYazi{min-height:20px;font-size:13px;color:var(--ink-soft);text-align:center;margin:8px 0 0}
-  ol.adimlar{font-size:13px;color:var(--ink-soft);padding-left:20px;margin:8px 0 0}
-  ol.adimlar li{margin-bottom:3px}
   .gizle{display:none !important}
+
+  /* ---- ana iskelet: tek ekran ---- */
+  #uygulama{height:100%;max-width:520px;margin:0 auto;padding:8px 12px 10px;display:flex;flex-direction:column;gap:8px}
+  .ustCubuk{display:flex;align-items:center;gap:8px;flex:none}
+  .ustCubuk a{color:var(--ink-soft);text-decoration:none;font-size:14px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:6px 10px}
+  #durum{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #durumNokta{width:8px;height:8px;border-radius:50%;background:var(--ink-soft);flex:none}
+  .ikon{width:40px;height:36px;font-size:18px;display:grid;place-items:center}
+  .ikon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  #modBtn.acik{border-color:var(--live);color:var(--live)}
+
+  /* ---- kumanda modu ---- */
+  #kumanda{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+  .yaziSatir{display:flex;gap:6px;flex:none}
+  #yazi{flex:1;min-width:0;height:46px;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:var(--radius);padding:0 12px;-webkit-user-select:text;user-select:text}
+  #yazi:focus{outline:none;border-color:var(--live)}
+  .yaziSatir button{width:46px;height:46px;font-size:18px}
+  #kisayollar{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;flex:none}
+  #kisayollar button{height:36px;font-size:13px;border-radius:18px}
+  .kumandaGovde{display:flex;align-items:center;justify-content:space-between;gap:10px;flex:none;padding:2px 0}
+  .ses{width:54px;height:150px;border-radius:27px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line-strong)}
+  .ses button{flex:1;border:none;border-radius:0;font-size:22px;background:var(--panel)}
+  .ses span{font-size:11px;color:var(--ink-soft);text-align:center;background:var(--panel);padding:2px 0}
+  .dpad{position:relative;width:min(190px,48vw);aspect-ratio:1;border-radius:50%;border:1px solid var(--line-strong);background:var(--panel);overflow:hidden}
+  .dpad .yon{position:absolute;border:none;border-radius:0;background:transparent;font-size:22px;color:var(--ink)}
+  .dpad .yon:active,.dpad .yon.basili{background:var(--bg)}
+  .dpad .y{left:28%;right:28%;top:0;height:30%}
+  .dpad .a{left:28%;right:28%;bottom:0;height:30%}
+  .dpad .s{top:28%;bottom:28%;left:0;width:30%}
+  .dpad .g{top:28%;bottom:28%;right:0;width:30%}
+  .dpad .ok{position:absolute;inset:30%;border-radius:50%;border:1px solid var(--live);color:var(--live);font-size:15px;background:var(--bg)}
+  .yanTuslar{display:flex;flex-direction:column;gap:10px}
+  .yanTuslar button{width:54px;height:43px;border-radius:22px;display:grid;place-items:center}
+  .yanTuslar svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+  /* ---- dokunmatik alan (iki modda ortak) ---- */
+  .fare{flex:1;min-height:150px;display:grid;grid-template-columns:1fr 40px;grid-template-rows:1fr 54px;gap:0 6px}
+  .pad{grid-column:1;grid-row:1;border:1px solid var(--line-strong);border-bottom:none;border-radius:var(--radius) var(--radius) 0 0;
+    background:var(--panel);touch-action:none;display:grid;place-items:center;color:var(--ink-soft);font-size:13px;text-align:center;padding:8px}
+  .pad.tutuluyor{border-color:var(--live)}
+  .teker{grid-column:2;grid-row:1 / span 2;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--panel);touch-action:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:10px 0;color:var(--ink-soft);font-size:14px}
+  .teker.tutuluyor{border-color:var(--live)}
+  .tiklar{grid-column:1;grid-row:2;display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line-strong);border-radius:0 0 var(--radius) var(--radius);overflow:hidden}
+  .tiklar button{border:none;border-radius:0;font-size:13px;color:var(--ink-soft);background:var(--panel)}
+  .tiklar button+button{border-left:1px solid var(--line-strong)}
+  .tiklar button.basili{background:var(--bg);color:var(--live)}
+
+  /* ---- tam klavye modu (yatay) ---- */
+  body.tam #uygulama{max-width:none;padding:6px 8px 6px}
+  #tamKlavye{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,3.3fr) minmax(0,1fr);gap:8px}
+  .klavye{display:flex;flex-direction:column;gap:4px;min-height:0}
+  .sira{flex:1;display:grid;grid-template-columns:repeat(60,minmax(0,1fr));gap:4px;min-height:0}
+  .sira.f{grid-template-columns:repeat(13,minmax(0,1fr));flex:.75}
+  .sira button{font-size:clamp(11px,1.7vw,15px);border-radius:6px;min-width:0;overflow:hidden;white-space:nowrap}
+  .sira button.degistirici.acik{border-color:var(--live);color:var(--live);background:var(--bg)}
+  .sira button.kucukYazi{font-size:clamp(10px,1.3vw,13px);color:var(--ink-soft)}
+  .oklarYukAsa{display:grid;grid-template-rows:1fr 1fr;gap:3px;min-width:0}
+  .oklarYukAsa button{font-size:12px;border-radius:5px}
+  .fare.yan{min-height:0;grid-template-columns:1fr;grid-template-rows:1fr 48px}
+  .fare.yan .teker{display:none}
+  #yatayIpucu{flex:none;font-size:13px;color:var(--warn);text-align:center}
+  @media (orientation:landscape){ #yatayIpucu{display:none} }
+
+  /* ---- ayarlar ---- */
+  #ayarlar{position:fixed;inset:0;z-index:10;background:var(--bg);overflow-y:auto;-webkit-user-select:text;user-select:text;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 14px calc(env(safe-area-inset-bottom,0px) + 20px)}
+  #ayarlar .ic{max-width:480px;margin:0 auto}
+  #ayarlar header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+  #ayarlar h1{font-size:19px;font-weight:600;margin:0}
+  #ayarlar h2{font-size:15px;font-weight:600;margin:16px 0 6px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px}
+  .satir{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:14px;padding:6px 0}
+  .satir+.satir{border-top:1px solid var(--line)}
+  select{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:7px}
+  .not{font-size:13px;color:var(--ink-soft);margin:8px 0 0}
+  .genis{width:100%;min-height:44px;padding:8px}
+  .vurgu{border-color:var(--live);color:var(--live)}
+  .degSecim{display:flex;flex-wrap:wrap;gap:12px;font-size:14px;padding:6px 0}
+  .degSecim label{display:flex;align-items:center;gap:6px}
+  input[type=checkbox]{width:20px;height:20px;accent-color:var(--live)}
+  .kisayolSatir{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-size:14px}
+  .kisayolSatir+.kisayolSatir{border-top:1px solid var(--line)}
+  .kisayolSatir button{min-height:34px;padding:4px 12px;font-size:13px}
+  ol{font-size:13px;color:var(--ink-soft);padding-left:20px;margin:8px 0 0}
+  li{margin-bottom:3px}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <h1>Bilgisayar</h1>
-    <a class="geri" href="./">← Stand</a>
-  </header>
-
-  <div class="panel gizle" id="kurulumYok">
-    <p style="margin:0">Bu telefonda bağlantı bilgileri yok. Önce <a href="./">stand sayfasını</a> açıp oda kodu ve sunucu şifresini girin; bu sayfa aynı bilgileri kullanır.</p>
+<div id="uygulama">
+  <div class="ustCubuk">
+    <a href="./" id="geriLink">← Stand</a>
+    <div id="durum"><span id="durumNokta"></span><span id="durumYazi">bağlanıyor</span></div>
+    <button class="ikon" id="modBtn" aria-label="Tam klavyeye geç" title="Tam klavye">
+      <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
+    </button>
+    <button class="ikon" id="ayarBtn" aria-label="Ayarlar" title="Ayarlar">⚙</button>
   </div>
 
-  <div id="ana">
-    <div class="gostergeler">
-      <div class="gosterge"><span>Sunucu</span><b id="gSunucu" class="soluk">bağlanıyor</b></div>
-      <div class="gosterge"><span>Bilgisayar</span><b id="gPc" class="soluk">bilinmiyor</b></div>
-    </div>
+  <div id="kurulumYok" class="panel gizle">Bu telefonda bağlantı bilgileri yok. Önce <a href="./">stand sayfasını</a> açıp oda kodu ve sunucu şifresini girin; bu sayfa aynı bilgileri kullanır.</div>
 
-    <h2>Yazı</h2>
-    <div class="panel">
-      <textarea id="yazi" placeholder="Bilgisayara yazılacak metin" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="400"></textarea>
-      <div class="satir">
-        <label class="secim"><input type="checkbox" id="enterEkle">Sonuna Enter</label>
-        <button class="vurgu" id="yazBtn" style="min-width:110px">Gönder</button>
-      </div>
-      <p class="not">Türkçe harfler İngilizce karşılığıyla yazılır (ş → s, ı → i).</p>
+  <!-- ===== KUMANDA MODU ===== -->
+  <div id="kumanda">
+    <div class="yaziSatir">
+      <input type="text" id="yazi" placeholder="Yazmak için dokun" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send" maxlength="200" aria-label="Bilgisayara canlı yazı">
+      <button id="silBtn" aria-label="Geri sil" title="Geri sil">⌫</button>
+      <button id="temizleBtn" aria-label="Kutuyu temizle (bilgisayara dokunmaz)" title="Kutuyu temizle">✕</button>
     </div>
+    <div id="kisayollar" class="gizle"></div>
+    <div class="kumandaGovde">
+      <div class="ses">
+        <button data-medya="sesArti" aria-label="Sesi artır">+</button>
+        <span>ses</span>
+        <button data-medya="sesEksi" aria-label="Sesi azalt">−</button>
+      </div>
+      <div class="dpad">
+        <button class="yon y" data-tus="yukari" aria-label="Yukarı">▲</button>
+        <button class="yon a" data-tus="asagi" aria-label="Aşağı">▼</button>
+        <button class="yon s" data-tus="sol" aria-label="Sol">◀</button>
+        <button class="yon g" data-tus="sag" aria-label="Sağ">▶</button>
+        <button class="ok" data-tus="enter">Enter</button>
+      </div>
+      <div class="yanTuslar">
+        <button data-medya="oynat" aria-label="Oynat veya duraklat" title="Oynat / duraklat">
+          <svg viewBox="0 0 24 24"><path d="M5 5l8 7-8 7z"/><path d="M16 5v14M20 5v14"/></svg></button>
+        <button data-medya="sessiz" aria-label="Sesi kapat veya aç" title="Sessiz">
+          <svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 9l5 6M21 9l-5 6"/></svg></button>
+        <button data-tus="f" aria-label="Tam ekran (F tuşu)" title="Tam ekran">
+          <svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+    </div>
+    <div class="fare" id="fare1">
+      <div class="pad">Kaydır: imleç · Dokun: tık</div>
+      <div class="teker" aria-label="Kaydırma şeridi"><span>▲</span><span style="font-size:11px">kaydır</span><span>▼</span></div>
+      <div class="tiklar"><button class="solTik">sol tık</button><button class="sagTik">sağ tık</button></div>
+    </div>
+  </div>
 
-    <h2>Tuşlar</h2>
-    <div class="panel">
-      <div class="izgara3">
-        <button class="tus" data-tus="esc">Esc</button>
-        <button class="ok" data-tus="yukari" aria-label="Yukarı">↑</button>
-        <button class="tus" data-tus="sil">⌫ Sil</button>
-        <button class="ok" data-tus="sol" aria-label="Sol">←</button>
-        <button class="tus vurgu" data-tus="enter">Enter</button>
-        <button class="ok" data-tus="sag" aria-label="Sağ">→</button>
-        <button class="tus" data-tus="tab">Tab</button>
-        <button class="ok" data-tus="asagi" aria-label="Aşağı">↓</button>
-        <button class="tus" data-tus="bosluk">Boşluk</button>
-      </div>
-      <div class="izgara3" style="margin-top:8px">
-        <button class="tus kucuk" data-tus="f">Tam ekran (F)</button>
-        <button class="tus kucuk" data-tus="alttab">Alt + Tab</button>
-        <button class="tus kucuk" data-tus="win">Başlat</button>
-      </div>
-      <div class="izgara4" style="margin-top:8px">
-        <button class="tus kucuk" data-medya="sesEksi" aria-label="Sesi azalt">Ses −</button>
-        <button class="tus kucuk" data-medya="sessiz">Sessiz</button>
-        <button class="tus kucuk" data-medya="sesArti" aria-label="Sesi artır">Ses +</button>
-        <button class="tus kucuk" data-medya="oynat" aria-label="Oynat veya duraklat">⏯</button>
-      </div>
+  <!-- ===== TAM KLAVYE MODU ===== -->
+  <div id="tamKlavye" class="gizle">
+    <div class="klavye" id="klavye"></div>
+    <div class="fare yan" id="fare2">
+      <div class="pad">Kaydır: imleç<br>Dokun: tık</div>
+      <div class="teker"></div>
+      <div class="tiklar"><button class="solTik">sol</button><button class="sagTik">sağ</button></div>
     </div>
+  </div>
+  <div id="yatayIpucu" class="gizle">Tam klavye için telefonu yan çevirin.</div>
+</div>
+
+<!-- ===== AYARLAR ===== -->
+<div id="ayarlar" class="gizle">
+  <div class="ic">
+    <header><h1>Ayarlar</h1><button class="ikon" id="ayarKapatBtn" aria-label="Kapat">✕</button></header>
 
     <h2>Fare</h2>
     <div class="panel">
-      <div class="fareAlan">
-        <div id="pad" aria-label="Dokunmatik fare alanı">Parmağınızı kaydırın · dokunmak = tık</div>
-        <div id="teker" aria-label="Kaydırma şeridi"><span>▲</span><span style="font-size:12px">kaydır</span><span>▼</span></div>
-      </div>
-      <div class="izgara4" style="margin-top:8px">
-        <button class="kucuk" id="solTik">Sol tık</button>
-        <button class="kucuk" id="ciftTik">Çift tık</button>
-        <button class="kucuk" id="sagTik">Sağ tık</button>
-        <button class="kucuk" id="surukleBtn" aria-pressed="false">Sürükle</button>
-      </div>
-      <div class="satir">
-        <span class="soluk" style="font-size:14px">Hız</span>
-        <select id="hiz">
-          <option value="1">Yavaş</option><option value="2" selected>Normal</option><option value="3.5">Hızlı</option>
-        </select>
-      </div>
-      <p class="not">Komutlar sunucu üzerinden gittiği için imleç yaklaşık yarım saniye geriden gelir.</p>
+      <div class="satir"><span>İmleç hızı</span>
+        <select id="hiz"><option value="1">Yavaş</option><option value="1.7" selected>Normal</option><option value="2.6">Hızlı</option></select></div>
+      <p class="not">Parmağı hızlı kaydırınca imleç orantısız uzağa gider, yavaş kaydırınca hassas kalır. Sürüklemek için: sol tık alanına basılı tutup diğer parmakla kaydırın.</p>
     </div>
 
-    <div class="gizle" id="yoneticiBolum">
+    <h2>Kısayollar (en fazla 4)</h2>
+    <div class="panel">
+      <div id="kisayolListe"></div>
+      <div id="kisayolEkle">
+        <div class="degSecim">
+          <label><input type="checkbox" value="1">Ctrl</label>
+          <label><input type="checkbox" value="2">Shift</label>
+          <label><input type="checkbox" value="4">Alt</label>
+          <label><input type="checkbox" value="8">Win</label>
+        </div>
+        <div class="satir" style="border-top:none"><span>Tuş</span><select id="kisayolTus"></select></div>
+        <button class="genis vurgu" id="kisayolEkleBtn">Kısayolu ekle</button>
+      </div>
+      <p class="not">Kısayollar kumanda modunda yazı satırının altında görünür ve sadece bu telefonda saklanır.</p>
+    </div>
+
+    <h2>Tam klavye</h2>
+    <div class="panel">
+      <p class="not" style="margin-top:0">Ctrl, Shift, Alt ve Win yapışkandır: önce ona, sonra diğer tuşa dokunun (Ctrl'e dokun, sonra V = Ctrl+V). Birden fazlası birlikte seçilebilir. Sadece Win için Win'e iki kez dokunun.</p>
+    </div>
+
+    <div id="yoneticiBolum" class="gizle">
       <h2>Bilgisayarı tanıt</h2>
       <div class="panel">
         <button class="genis vurgu" id="eslestirBtn">Bilgisayarı eşleştir (2 dakika)</button>
-        <ol class="adimlar">
+        <ol>
           <li>Bu düğmeye basın.</li>
-          <li>Bilgisayarda: Ayarlar › Bluetooth ve cihazlar › Cihaz ekle › Bluetooth.</li>
-          <li>Listede "Stand Kumanda"yı seçin. Bağlandı yazınca bitti; bir daha gerekmez.</li>
+          <li>Bilgisayarda: Settings › Bluetooth &amp; devices › Add device › Bluetooth.</li>
+          <li>Listede "Stand Kumanda"yı seçin. Bir kez yapılır.</li>
         </ol>
-        <button class="genis kucuk" id="unutBtn" style="margin-top:10px">Bilgisayarı unut</button>
+        <button class="genis" id="unutBtn" style="margin-top:10px">Bilgisayarı unut</button>
       </div>
     </div>
-
-    <div id="durumYazi"></div>
   </div>
 </div>
 
 <script>
 (function(){
   "use strict";
-  // Kişiye özel sunucu (EMQX Cloud). Bilgiler stand sayfasıyla aynı (bu telefonun hafızası).
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
-  var TAZE_SURE=90000, FARE_ARALIK=100, PARCA=120;
+  var TAZE_SURE=90000, FARE_ARALIK=50;
   var E=function(id){return document.getElementById(id);};
   var kod="", ss="", yk="";
   try{ kod=localStorage.getItem("stand_kod")||""; ss=localStorage.getItem("stand_ss")||""; yk=localStorage.getItem("stand_yk")||""; }catch(h){}
-
-  if(!kod||!ss){ E("kurulumYok").classList.remove("gizle"); E("ana").classList.add("gizle"); return; }
+  if(!kod||!ss){ E("kurulumYok").classList.remove("gizle"); E("kumanda").classList.add("gizle"); E("modBtn").classList.add("gizle"); E("ayarBtn").classList.add("gizle"); return; }
   if(yk) E("yoneticiBolum").classList.remove("gizle");
 
+  // ---------- sunucu ----------
   var istemci=null, sunucuHatasi="", sonDurum=null, sonDurumZaman=0;
-  var kimlik=Math.random().toString(16).slice(2,10);
-
-  function bildir(m,sinif){ var el=E("durumYazi"); el.textContent=m; el.className=sinif||""; }
   function gonder(k){
-    if(!istemci||!istemci.connected){ bildir("Sunucuya bağlı değil.","kotu"); return false; }
+    if(!istemci||!istemci.connected){ durumGoster("sunucuya bağlı değil","kotu"); return false; }
     k.kaynak="uzak"; if(yk) k.yk=yk;
     istemci.publish("comitok/"+kod+"/komut",JSON.stringify(k));
     return true;
   }
-
-  // ---------- göstergeler ----------
-  function goster(id,metin,sinif){ var el=E(id); el.textContent=metin; el.className=sinif||""; }
+  function durumGoster(m,s){ E("durumYazi").textContent=m; E("durumNokta").style.background=s==="iyi"?"var(--live)":(s==="uyari"?"var(--warn)":(s==="kotu"?"var(--stop)":"var(--ink-soft)")); }
   function guncelle(){
-    var bagli=istemci&&istemci.connected;
-    goster("gSunucu",bagli?"çevrimiçi":(sunucuHatasi||"çevrimdışı"),bagli?"iyi":"kotu");
+    if(!(istemci&&istemci.connected)){ durumGoster(sunucuHatasi||"sunucu çevrimdışı","kotu"); return; }
     var taze=sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE;
-    if(!taze) goster("gPc","bilinmiyor","soluk");
-    else if(sonDurum.pcEslesme) goster("gPc","eşleştirme açık · "+sonDurum.pcEslesme+" sn","uyari");
-    else if(sonDurum.pc) goster("gPc","bağlı","iyi");
-    else if(sonDurum.pcKayitli) goster("gPc","bağlı değil","kotu");
-    else if(sonDurum.pcKayitli===false) goster("gPc","tanıtılmadı","uyari");
-    else goster("gPc","kartı güncelleyin","uyari");
+    if(!taze) durumGoster("kart yanıt vermiyor","kotu");
+    else if(sonDurum.pcEslesme) durumGoster("eşleştirme açık · "+sonDurum.pcEslesme+" sn","uyari");
+    else if(sonDurum.pc) durumGoster("bilgisayar bağlı","iyi");
+    else if(sonDurum.pcKayitli) durumGoster("bilgisayar bağlı değil","kotu");
+    else if(sonDurum.pcKayitli===false) durumGoster("bilgisayar tanıtılmadı (⚙)","uyari");
+    else durumGoster("kartı güncelleyin","uyari");
   }
-
-  // ---------- sunucu ----------
-  istemci=mqtt.connect(SUNUCU_ADRES,{clientId:"comitok_klavye_"+kimlik,username:SUNUCU_KULLANICI,password:ss,reconnectPeriod:5000,connectTimeout:10000});
+  istemci=mqtt.connect(SUNUCU_ADRES,{clientId:"comitok_klavye_"+Math.random().toString(16).slice(2,10),username:SUNUCU_KULLANICI,password:ss,reconnectPeriod:5000,connectTimeout:10000});
   istemci.on("connect",function(){ sunucuHatasi=""; istemci.subscribe("comitok/"+kod+"/durum"); guncelle(); });
   istemci.on("reconnect",guncelle);
   istemci.on("close",guncelle);
   istemci.on("error",function(h){
     var m=(h&&h.message)||"";
-    if((h&&(h.code===4||h.code===5))||/not authori[sz]ed|bad user ?name or password/i.test(m)){
-      sunucuHatasi="şifre hatalı"; try{ istemci.end(true); }catch(e){}
-      bildir("Sunucu şifreyi kabul etmedi. Stand sayfasında Ayarlar › Bağlantı bilgilerini değiştir.","kotu");
-    }
+    if((h&&(h.code===4||h.code===5))||/not authori[sz]ed|bad user ?name or password/i.test(m)){ sunucuHatasi="sunucu şifresi hatalı"; try{ istemci.end(true); }catch(e){} }
     guncelle();
   });
   istemci.on("message",function(konu,veri){
     var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
-    if(m.cevrimdisi){ sonDurum=null; sonDurumZaman=0; }
-    else { sonDurum=m; sonDurumZaman=Date.now(); }
+    if(m.cevrimdisi){ sonDurum=null; sonDurumZaman=0; } else { sonDurum=m; sonDurumZaman=Date.now(); }
     guncelle();
   });
   setInterval(guncelle,2000);
 
-  // ---------- yazı ----------
+  // Basılı görünüm (dokunmatikte :active bazen görünmez)
+  document.addEventListener("pointerdown",function(o){ var b=o.target.closest("button"); if(b){ b.classList.add("basili"); setTimeout(function(){ b.classList.remove("basili"); },140); } });
+
+  // ---------- canlı yazı ----------
   var TR={"ç":"c","Ç":"C","ğ":"g","Ğ":"G","ı":"i","İ":"I","ö":"o","Ö":"O","ş":"s","Ş":"S","ü":"u","Ü":"U",
           "’":"'","‘":"'","“":"\"","”":"\"","–":"-","—":"-","…":"...","\u00a0":" "};
-  function asciiYap(m){
-    return m.replace(/[^\x00-\x7F]/g,function(c){ return TR[c]!==undefined?TR[c]:""; }).replace(/\r/g,"");
+  function asciiYap(m){ return m.replace(/[^\x20-\x7E]/g,function(c){ return TR[c]!==undefined?TR[c]:""; }); }
+  var yaziEl=E("yazi"), gonderilen="", yaziZaman=null;
+  // Kutudaki metinle bilgisayara gönderilmiş metni karşılaştırır: farkı kadar siler, yenisini yazar
+  function yaziGonder(){
+    clearTimeout(yaziZaman); yaziZaman=null;
+    var simdi=asciiYap(yaziEl.value), p=0;
+    while(p<simdi.length&&p<gonderilen.length&&simdi[p]===gonderilen[p]) p++;
+    var sil=gonderilen.length-p, ek=simdi.slice(p);
+    if(!sil&&!ek) return;
+    if(gonder({t:"pcYaz",m:ek,sil:sil})) gonderilen=simdi;
   }
-  E("yazBtn").onclick=function(){
-    var m=asciiYap(E("yazi").value), enter=E("enterEkle").checked;
-    if(!m&&!enter){ bildir("Yazı kutusu boş."); return; }
-    // Uzun metin parça parça gider (kart her parçayı sırayla yazar)
-    var parcalar=[]; for(var i=0;i<m.length;i+=PARCA) parcalar.push(m.slice(i,i+PARCA));
-    if(!parcalar.length) parcalar.push("");
-    var ok=true;
-    parcalar.forEach(function(p,i){ ok=gonder({t:"pcYaz",m:p,enter:enter&&i===parcalar.length-1})&&ok; });
-    if(ok){ bildir("Gönderildi ("+m.length+" karakter"+(enter?" + Enter":"")+")."); E("yazi").value=""; }
+  yaziEl.addEventListener("input",function(){ if(!yaziZaman) yaziZaman=setTimeout(yaziGonder,60); });
+  yaziEl.addEventListener("keydown",function(o){
+    if(o.key==="Enter"){ o.preventDefault(); yaziGonder(); gonder({t:"pcTus",k:"enter"}); yaziEl.value=""; gonderilen=""; }
+  });
+  E("silBtn").onclick=function(){
+    if(yaziEl.value){ yaziEl.value=yaziEl.value.slice(0,-1); yaziGonder(); }
+    else gonder({t:"pcTus",k:"sil"});
   };
+  E("temizleBtn").onclick=function(){ yaziGonder(); yaziEl.value=""; gonderilen=""; };
 
-  // ---------- tuşlar ----------
-  Array.prototype.forEach.call(document.querySelectorAll("[data-tus]"),function(b){
-    b.onclick=function(){ gonder({t:"pcTus",k:b.dataset.tus}); };
+  // ---------- kumanda tuşları ----------
+  Array.prototype.forEach.call(document.querySelectorAll("#kumanda [data-tus]"),function(b){
+    b.onclick=function(){ yaziGonder(); gonder({t:"pcTus",k:b.dataset.tus}); };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-medya]"),function(b){
     b.onclick=function(){ gonder({t:"pcMedya",k:b.dataset.medya}); };
   });
 
-  // ---------- fare ----------
-  var padEl=E("pad"), tekerEl=E("teker");
+  // ---------- dokunmatik alan (iki modda ortak) ----------
   var birikX=0, birikY=0, birikW=0, fareTik=null;
   function fareGonder(){
     var x=Math.round(birikX), y=Math.round(birikY), w=Math.round(birikW);
@@ -262,56 +325,177 @@
   }
   function tikBaslat(){ if(!fareTik) fareTik=setInterval(fareGonder,FARE_ARALIK); }
   function tikBitir(){ fareGonder(); clearInterval(fareTik); fareTik=null; }
+  function fareKur(kok){
+    var pad=kok.querySelector(".pad"), teker=kok.querySelector(".teker");
+    var d=null;
+    pad.addEventListener("pointerdown",function(o){
+      pad.setPointerCapture(o.pointerId); pad.classList.add("tutuluyor");
+      d={x:o.clientX,y:o.clientY,t:performance.now(),bas:Date.now(),yol:0}; tikBaslat();
+    });
+    pad.addEventListener("pointermove",function(o){
+      if(!d) return;
+      var dx=o.clientX-d.x, dy=o.clientY-d.y, an=performance.now(), dt=Math.max(an-d.t,8);
+      var hizPx=Math.hypot(dx,dy)/dt;                     // parmak hızı (px/ms)
+      var kazanc=(Number(E("hiz").value)||1.7)*(1+Math.min(hizPx,2.5)*1.2);   // hızlanma
+      d.x=o.clientX; d.y=o.clientY; d.t=an; d.yol+=Math.abs(dx)+Math.abs(dy);
+      birikX+=dx*kazanc; birikY+=dy*kazanc;
+    });
+    function birak(o){
+      if(!d) return;
+      var tik=Date.now()-d.bas<280&&d.yol<8;
+      d=null; pad.classList.remove("tutuluyor"); tikBitir();
+      if(tik) gonder({t:"pcTik",b:1});
+      if(o&&o.pointerId!=null&&pad.hasPointerCapture(o.pointerId)) pad.releasePointerCapture(o.pointerId);
+    }
+    pad.addEventListener("pointerup",birak); pad.addEventListener("pointercancel",birak);
 
-  var dokunus=null;
-  padEl.addEventListener("pointerdown",function(o){
-    padEl.setPointerCapture(o.pointerId); padEl.classList.add("tutuluyor");
-    dokunus={x:o.clientX,y:o.clientY,bas:Date.now(),yol:0};
-    tikBaslat();
-  });
-  padEl.addEventListener("pointermove",function(o){
-    if(!dokunus) return;
-    var dx=o.clientX-dokunus.x, dy=o.clientY-dokunus.y, k=Number(E("hiz").value)||2;
-    dokunus.x=o.clientX; dokunus.y=o.clientY; dokunus.yol+=Math.abs(dx)+Math.abs(dy);
-    birikX+=dx*k; birikY+=dy*k;
-  });
-  function padBirak(o){
-    if(!dokunus) return;
-    var kisa=Date.now()-dokunus.bas<280&&dokunus.yol<8;
-    dokunus=null; padEl.classList.remove("tutuluyor"); tikBitir();
-    if(kisa) gonder({t:"pcTik",b:1});
-    if(o&&o.pointerId!=null&&padEl.hasPointerCapture(o.pointerId)) padEl.releasePointerCapture(o.pointerId);
+    var ty=null;
+    teker.addEventListener("pointerdown",function(o){ teker.setPointerCapture(o.pointerId); teker.classList.add("tutuluyor"); ty=o.clientY; tikBaslat(); });
+    teker.addEventListener("pointermove",function(o){ if(ty===null) return; birikW+=-(o.clientY-ty)/16; ty=o.clientY; });
+    function tekerBirak(){ if(ty===null) return; ty=null; teker.classList.remove("tutuluyor"); tikBitir(); }
+    teker.addEventListener("pointerup",tekerBirak); teker.addEventListener("pointercancel",tekerBirak);
+
+    // Sol tık alanı: kısa dokunuş = tık, basılı tutunca sürükleme (bırakınca biter)
+    var sol=kok.querySelector(".solTik"), solZaman=null, surukluyor=false;
+    sol.addEventListener("pointerdown",function(o){
+      sol.setPointerCapture(o.pointerId); sol.classList.add("basili");
+      solZaman=setTimeout(function(){ solZaman=null; surukluyor=true; gonder({t:"pcBasili",deger:true}); if(navigator.vibrate) navigator.vibrate(25); },300);
+    });
+    function solBirak(){
+      sol.classList.remove("basili");
+      if(solZaman){ clearTimeout(solZaman); solZaman=null; gonder({t:"pcTik",b:1}); }
+      else if(surukluyor){ surukluyor=false; fareGonder(); gonder({t:"pcBasili",deger:false}); }
+    }
+    sol.addEventListener("pointerup",solBirak); sol.addEventListener("pointercancel",solBirak);
+    sol.addEventListener("contextmenu",function(o){ o.preventDefault(); });
+    kok.querySelector(".sagTik").onclick=function(){ gonder({t:"pcTik",b:2}); };
   }
-  padEl.addEventListener("pointerup",padBirak);
-  padEl.addEventListener("pointercancel",padBirak);
+  fareKur(E("fare1")); fareKur(E("fare2"));
 
-  var tekerY=null;
-  tekerEl.addEventListener("pointerdown",function(o){ tekerEl.setPointerCapture(o.pointerId); tekerEl.classList.add("tutuluyor"); tekerY=o.clientY; tikBaslat(); });
-  tekerEl.addEventListener("pointermove",function(o){ if(tekerY===null) return; birikW+=-(o.clientY-tekerY)/18; tekerY=o.clientY; });
-  function tekerBirak(o){ if(tekerY===null) return; tekerY=null; tekerEl.classList.remove("tutuluyor"); tikBitir(); }
-  tekerEl.addEventListener("pointerup",tekerBirak);
-  tekerEl.addEventListener("pointercancel",tekerBirak);
+  // ---------- tam klavye ----------
+  // [etiket, HID kodu, genişlik (60'lık ızgarada), Shift'li etiket, değiştirici biti]
+  var DUZEN=[
+    [["Esc",0x29],["F1",0x3A],["F2",0x3B],["F3",0x3C],["F4",0x3D],["F5",0x3E],["F6",0x3F],["F7",0x40],["F8",0x41],["F9",0x42],["F10",0x43],["F11",0x44],["F12",0x45]],
+    [["`",0x35,4,"~"],["1",0x1E,4,"!"],["2",0x1F,4,"@"],["3",0x20,4,"#"],["4",0x21,4,"$"],["5",0x22,4,"%"],["6",0x23,4,"^"],["7",0x24,4,"&"],["8",0x25,4,"*"],["9",0x26,4,"("],["0",0x27,4,")"],["-",0x2D,4,"_"],["=",0x2E,4,"+"],["⌫",0x2A,8]],
+    [["Tab",0x2B,6],["q",0x14,4],["w",0x1A,4],["e",0x08,4],["r",0x15,4],["t",0x17,4],["y",0x1C,4],["u",0x18,4],["i",0x0C,4],["o",0x12,4],["p",0x13,4],["[",0x2F,4,"{"],["]",0x30,4,"}"],["\\",0x31,6,"|"]],
+    [["Caps",0x39,7],["a",0x04,4],["s",0x16,4],["d",0x07,4],["f",0x09,4],["g",0x0A,4],["h",0x0B,4],["j",0x0D,4],["k",0x0E,4],["l",0x0F,4],[";",0x33,4,":"],["'",0x34,4,"\""],["Enter",0x28,9]],
+    [["Shift",0,9,null,2],["z",0x1D,4],["x",0x1B,4],["c",0x06,4],["v",0x19,4],["b",0x05,4],["n",0x11,4],["m",0x10,4],[",",0x36,4,"<"],[".",0x37,4,">"],["/",0x38,4,"?"],["Shift",0,11,null,2]],
+    [["Ctrl",0,6,null,1],["Win",0,5,null,8],["Alt",0,5,null,4],["boşluk",0x2C,24],["Alt",0,4,null,4],["Ctrl",0,4,null,1],["←",0x50,4],["OKLAR",0,4],["→",0x4F,4]]
+  ];
+  var degistirici=0, sonDegDokunus={bit:0,zaman:0};
+  var klavyeEl=E("klavye"), degDugmeler=[], harfDugmeler=[];
+  function degGoster(){
+    degDugmeler.forEach(function(b){ b.classList.toggle("acik",!!(degistirici&Number(b.dataset.bit))); });
+    var shift=!!(degistirici&2);
+    harfDugmeler.forEach(function(b){ b.textContent=shift?b.dataset.s:b.dataset.n; });
+  }
+  function tusBas(k){ gonder({t:"pcKombo",m:degistirici,k:k}); if(degistirici){ degistirici=0; degGoster(); } }
+  function degDokun(bit){
+    var an=Date.now();
+    // Aynı değiştiriciye hızlıca ikinci kez dokunmak: tek başına gönder (ör. Win = Başlat menüsü)
+    if((degistirici&bit)&&sonDegDokunus.bit===bit&&an-sonDegDokunus.zaman<500){ gonder({t:"pcKombo",m:degistirici,k:0}); degistirici=0; }
+    else degistirici^=bit;
+    sonDegDokunus={bit:bit,zaman:an}; degGoster();
+  }
+  DUZEN.forEach(function(sira,i){
+    var s=document.createElement("div"); s.className="sira"+(i===0?" f":"");
+    sira.forEach(function(t){
+      if(t[0]==="OKLAR"){
+        var kap=document.createElement("div"); kap.className="oklarYukAsa"; kap.style.gridColumn="span "+t[2];
+        [["↑",0x52,"Yukarı"],["↓",0x51,"Aşağı"]].forEach(function(o){ var b=document.createElement("button"); b.textContent=o[0]; b.setAttribute("aria-label",o[2]); b.onclick=function(){ tusBas(o[1]); }; kap.appendChild(b); });
+        s.appendChild(kap); return;
+      }
+      var b=document.createElement("button"); b.textContent=t[0];
+      if(i>0) b.style.gridColumn="span "+t[2];
+      if(t[0].length>2&&i>0) b.className="kucukYazi";
+      if(t[4]){ b.classList.add("degistirici"); b.dataset.bit=t[4]; b.onclick=function(){ degDokun(t[4]); }; degDugmeler.push(b); }
+      else{
+        b.onclick=function(){ tusBas(t[1]); };
+        if(t[3]||/^[a-z]$/.test(t[0])){ b.dataset.n=t[0]; b.dataset.s=t[3]||t[0].toUpperCase(); harfDugmeler.push(b); }
+      }
+      s.appendChild(b);
+    });
+    klavyeEl.appendChild(s);
+  });
 
-  E("solTik").onclick=function(){ gonder({t:"pcTik",b:1}); };
-  E("ciftTik").onclick=function(){ gonder({t:"pcTik",b:1,cift:true}); };
-  E("sagTik").onclick=function(){ gonder({t:"pcTik",b:2}); };
-  var surukle=false;
-  E("surukleBtn").onclick=function(){
-    surukle=!surukle;
-    if(gonder({t:"pcBasili",deger:surukle})){
-      E("surukleBtn").classList.toggle("acik",surukle);
-      E("surukleBtn").setAttribute("aria-pressed",surukle?"true":"false");
-      bildir(surukle?"Sol tuş basılı: alanda kaydırarak sürükleyin, bitince Sürükle'ye tekrar basın.":"Sürükleme bitti.");
-    } else surukle=!surukle;
+  // ---------- mod değiştirme ----------
+  var tamMod=false;
+  function modAyarla(tam){
+    tamMod=tam;
+    document.body.classList.toggle("tam",tam);
+    E("kumanda").classList.toggle("gizle",tam);
+    E("tamKlavye").classList.toggle("gizle",!tam);
+    E("yatayIpucu").classList.toggle("gizle",!tam);
+    E("modBtn").classList.toggle("acik",tam);
+    E("modBtn").setAttribute("aria-label",tam?"Kumanda moduna dön":"Tam klavyeye geç");
+    degistirici=0; degGoster();
+    try{ localStorage.setItem("stand_klavyeMod",tam?"tam":"kumanda"); }catch(h){}
+  }
+  E("modBtn").onclick=function(){
+    var tam=!tamMod;
+    yaziGonder(); if(document.activeElement) document.activeElement.blur();
+    modAyarla(tam);
+    // Android Chrome: tam ekran + yatay kilit (iPhone desteklemez, elle çevrilir)
+    if(tam){
+      var el=document.documentElement;
+      var p=el.requestFullscreen?el.requestFullscreen({navigationUI:"hide"}):null;
+      if(p&&p.then) p.then(function(){ if(screen.orientation&&screen.orientation.lock) return screen.orientation.lock("landscape"); }).catch(function(){});
+    } else {
+      try{ if(screen.orientation&&screen.orientation.unlock) screen.orientation.unlock(); }catch(h){}
+      if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){});
+    }
   };
+  document.addEventListener("fullscreenchange",function(){ if(!document.fullscreenElement&&tamMod){ try{ screen.orientation.unlock(); }catch(h){} } });
 
-  // ---------- yönetici ----------
-  E("eslestirBtn").onclick=function(){ if(gonder({t:"pcEslestir"})) bildir("Eşleştirme modu açıldı. Bilgisayarda Bluetooth › Cihaz ekle › Stand Kumanda.","iyi"); };
+  // ---------- kısayollar ----------
+  var TUS_SECENEK=[];
+  "abcdefghijklmnopqrstuvwxyz".split("").forEach(function(h,i){ TUS_SECENEK.push([h.toUpperCase(),[0x04,0x05,0x06,0x07,0x08,0x09,0x0A,0x0B,0x0C,0x0D,0x0E,0x0F,0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D][i]]); });
+  "1234567890".split("").forEach(function(r,i){ TUS_SECENEK.push([r,0x1E+i]); });
+  for(var f=1;f<=12;f++) TUS_SECENEK.push(["F"+f,0x39+f]);
+  [["Esc",0x29],["Tab",0x2B],["Enter",0x28],["Boşluk",0x2C],["Delete",0x4C],["Home",0x4A],["End",0x4D],["Page Up",0x4B],["Page Down",0x4E],["↑",0x52],["↓",0x51],["←",0x50],["→",0x4F],["PrtSc",0x46],["(sadece değiştirici)",0]].forEach(function(t){ TUS_SECENEK.push(t); });
+  TUS_SECENEK.forEach(function(t,i){ var o=document.createElement("option"); o.value=i; o.textContent=t[0]; E("kisayolTus").appendChild(o); });
+  function kisayolListesi(){ try{ return JSON.parse(localStorage.getItem("stand_kisayollar")||"[]"); }catch(h){ return []; } }
+  function kisayolYaz(l){ try{ localStorage.setItem("stand_kisayollar",JSON.stringify(l)); }catch(h){} }
+  function kisayolAdi(m,ad){ var p=[]; if(m&1)p.push("Ctrl"); if(m&2)p.push("Shift"); if(m&4)p.push("Alt"); if(m&8)p.push("Win"); if(ad) p.push(ad); return p.join("+"); }
+  function kisayollariCiz(){
+    var l=kisayolListesi(), sira=E("kisayollar"), liste=E("kisayolListe");
+    sira.innerHTML=""; liste.innerHTML="";
+    sira.classList.toggle("gizle",!l.length);
+    l.forEach(function(k,i){
+      var b=document.createElement("button"); b.textContent=k.ad;
+      b.onclick=function(){ yaziGonder(); gonder({t:"pcKombo",m:k.m,k:k.k}); };
+      sira.appendChild(b);
+      var s=document.createElement("div"); s.className="kisayolSatir";
+      var a=document.createElement("span"); a.textContent=k.ad;
+      var x=document.createElement("button"); x.textContent="Sil";
+      x.onclick=function(){ var l2=kisayolListesi(); l2.splice(i,1); kisayolYaz(l2); kisayollariCiz(); };
+      s.appendChild(a); s.appendChild(x); liste.appendChild(s);
+    });
+    E("kisayolEkle").classList.toggle("gizle",l.length>=4);
+  }
+  E("kisayolEkleBtn").onclick=function(){
+    var m=0; Array.prototype.forEach.call(document.querySelectorAll("#kisayolEkle input:checked"),function(c){ m|=Number(c.value); });
+    var t=TUS_SECENEK[Number(E("kisayolTus").value)];
+    if(!m&&!t[1]){ alert("En az bir değiştirici (Ctrl, Shift, Alt, Win) ya da bir tuş seçin."); return; }
+    var l=kisayolListesi(); if(l.length>=4) return;
+    l.push({m:m,k:t[1],ad:kisayolAdi(m,t[1]?t[0]:"")}); kisayolYaz(l); kisayollariCiz();
+    Array.prototype.forEach.call(document.querySelectorAll("#kisayolEkle input"),function(c){ c.checked=false; });
+  };
+  kisayollariCiz();
+
+  // ---------- ayarlar ----------
+  try{ var hz=localStorage.getItem("stand_fareHiz"); if(hz) E("hiz").value=hz; }catch(h){}
+  E("hiz").onchange=function(){ try{ localStorage.setItem("stand_fareHiz",E("hiz").value); }catch(h){} };
+  E("ayarBtn").onclick=function(){ E("ayarlar").classList.remove("gizle"); };
+  E("ayarKapatBtn").onclick=function(){ E("ayarlar").classList.add("gizle"); };
+  E("eslestirBtn").onclick=function(){ if(gonder({t:"pcEslestir"})){ alert("Eşleştirme modu 2 dakika açık.\n\nBilgisayarda: Settings › Bluetooth & devices › Add device › Bluetooth › Stand Kumanda"); E("ayarlar").classList.add("gizle"); } };
   E("unutBtn").onclick=function(){
     if(!confirm("Kart bilgisayarı unutsun mu?\n\nSonra Windows'ta da \"Stand Kumanda\"yı kaldırıp yeniden eşleştirmeniz gerekir.")) return;
-    if(gonder({t:"pcUnut"})) bildir("Bilgisayar unutuldu.");
+    gonder({t:"pcUnut"});
   };
 
+  var kayitliMod="kumanda"; try{ kayitliMod=localStorage.getItem("stand_klavyeMod")||"kumanda"; }catch(h){}
+  modAyarla(false);   // açılışta her zaman kumanda (tam ekran için dokunuş gerekir)
   guncelle();
 })();
 </script>
