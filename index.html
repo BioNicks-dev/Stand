@@ -110,6 +110,20 @@
   .satir b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
   .not{font-size:13px;color:var(--ink-soft);margin:6px 0 0}
 
+  /* gelen arama kutusu: her ekranin ustunde */
+  #aramaKutu{position:fixed;left:0;right:0;top:0;z-index:50;background:var(--panel);
+    border-bottom:2px solid var(--live);box-shadow:0 8px 24px rgba(0,0,0,.28);
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 14px}
+  #aramaKutu .ic{max-width:480px;margin:0 auto}
+  .aramaUst{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
+  .aramaUst .ikon{min-height:38px;min-width:38px;font-size:17px;padding:4px}
+  #aramaKim{font-size:21px;font-weight:600;margin:0 0 12px;overflow-wrap:anywhere;user-select:text;-webkit-user-select:text}
+  #aramaKutu .izgara2 button{font-weight:600}
+  #aramaKabulBtn{background:var(--live);border-color:var(--live);color:var(--bg)}
+  #aramaRedBtn{background:var(--stop);border-color:var(--stop);color:var(--bg)}
+  #aramaNokta{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--live);margin-right:6px;animation:aramaNabiz 1s ease-in-out infinite}
+  @keyframes aramaNabiz{50%{opacity:.25}}
+  @media (prefers-reduced-motion: reduce){ #aramaNokta{animation:none} }
   #ayarlar{position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:10;
     padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
   #kayit{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ink-soft);
@@ -126,6 +140,20 @@
 </style>
 </head>
 <body>
+<!-- ============ GELEN ARAMA (sadece yonetici) ============ -->
+<div id="aramaKutu" class="gizle" role="alertdialog" aria-labelledby="aramaUyg aramaKim">
+  <div class="ic">
+    <div class="aramaUst">
+      <span id="aramaUyg"><span id="aramaNokta"></span>Gelen arama</span>
+      <button class="ikon" id="aramaSusBtn" aria-label="Zili sustur (arama devam eder)">🔕</button>
+    </div>
+    <div id="aramaKim">—</div>
+    <div class="izgara2">
+      <button id="aramaRedBtn">Reddet</button>
+      <button id="aramaKabulBtn">Kabul et</button>
+    </div>
+  </div>
+</div>
 
 <!-- ============ KURULUM ============ -->
 <div class="wrap gizle" id="kurulum">
@@ -269,6 +297,8 @@
       <label>Sayfadaki yön tuşları: dikey ters<input type="checkbox" id="tersY"></label>
       <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
+      <label class="sadeceYonetici">Arama zili<input type="checkbox" id="aramaZil" checked></label>
+      <label class="sadeceYonetici">Arama titreşimi<input type="checkbox" id="aramaTitresim" checked></label>
     </div>
 
     <div id="kartAyarBolum" class="gizle">
@@ -371,6 +401,7 @@
       <div class="satir"><span>Mod</span><b id="rolAd">—</b></div>
       <div class="sadeceYonetici">
         <div class="satir"><span>Kart sürümleri</span><b id="surumAd">—</b></div>
+        <div class="satir"><span>Arama dinleme</span><b id="aramaDinlemeAd">—</b></div>
       </div>
       <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Bağlantı bilgilerini değiştir</button>
     </div>
@@ -755,6 +786,8 @@
       E("sinirNot").classList.toggle("gizle",!(taze&&sonDurum.sinirde));
       var net=(sonDurum&&sonDurum.net)||null;
       E("surumAd").textContent=sonDurum?("BT "+(sonDurum.surum||"eski")+" · NET "+(net&&net.surum||"eski")):"—";
+      E("aramaDinlemeAd").textContent=taze?(sonDurum.aramaDinleme?"açık":"kapalı"):"—";
+      aramaGuncelle(taze&&yk?sonDurum.arama:null);
 
       // Bluetooth kutusu (sadece yönetici): kartın iPhone ve kumanda bağlantısı
       E("btKutu").classList.toggle("gizle",!yk);
@@ -1035,8 +1068,125 @@
   }
   document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") ekraniTut(); });
 
+  // ---------- gelen arama ----------
+  // Kart iPhone'a gelen aramayi durum icinde "arama" olarak gonderir. Kutu sadece yoneticide ve
+  // sayfa acikken gorunur. Zil: GitHub'da index.html'nin yanindaki zil.mp3; yoksa yedek zil.
+  var aramaGorunur=false, aramaSusturuldu=false, zilCalisiyor=false, aramaSonKim="", aramaIslem="";
+  var zilSes=null, zilDosyaYok=false, zilCtx=null, zilTik=null, titresimTik=null;
+  function temizMetin(m){
+    return String(m||"").replace(/[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g,"").replace(/[\u2010\u2011]/g,"-").trim();
+  }
+  function aramaGuncelle(a){
+    var kutu=E("aramaKutu");
+    if(!a){
+      if(aramaGorunur){ aramaGorunur=false; kutu.classList.add("gizle"); zilDur(); yaz("Arama ekranı kapandı."); }
+      return;
+    }
+    var uyg=a.uyg&&a.uyg!=="?"?a.uyg:"";
+    var kim=temizMetin(a.kim);
+    if(!aramaGorunur){
+      aramaGorunur=true; aramaSusturuldu=false; aramaSonKim=""; aramaIslem="";
+      E("aramaKabulBtn").disabled=false; E("aramaRedBtn").disabled=false;
+      kutu.classList.remove("gizle");
+    }
+    E("aramaUyg").lastChild.textContent=uyg?uyg+" araması":"Gelen arama";
+    E("aramaKim").textContent=aramaIslem+(kim||"Kim olduğu alınıyor…");
+    if(kim&&aramaSonKim!==kim){ aramaSonKim=kim; yaz("Gelen arama: "+kim+(uyg?" ("+uyg+")":"")); }
+    if(!aramaSusturuldu) zilBasla();
+  }
+  function zilBasla(){
+    if(zilCalisiyor||document.visibilityState!=="visible") return;
+    zilCalisiyor=true;
+    if(E("aramaZil").checked) sesCal();
+    if(E("aramaTitresim").checked&&navigator.vibrate){
+      navigator.vibrate([500,250,500]);
+      titresimTik=setInterval(function(){ navigator.vibrate([500,250,500]); },2500);
+    }
+  }
+  function zilDur(){
+    zilCalisiyor=false;
+    clearInterval(titresimTik); titresimTik=null;
+    clearInterval(zilTik); zilTik=null;
+    if(navigator.vibrate) navigator.vibrate(0);
+    if(zilSes){ try{ zilSes.pause(); zilSes.currentTime=0; }catch(h){} }
+  }
+  function sesCal(){
+    if(zilDosyaYok){ yedekZil(); return; }
+    if(!zilSes){
+      zilSes=new Audio("zil.mp3"); zilSes.loop=true; zilSes.preload="auto";
+      zilSes.addEventListener("error",function(){ zilDosyaYok=true; if(zilCalisiyor&&E("aramaZil").checked) yedekZil(); });
+    }
+    var s=zilSes.play();
+    if(s&&s.catch) s.catch(function(h){
+      if(h&&h.name==="NotAllowedError"){ yaz("Zil çalınamadı: telefon izin vermedi. Sayfaya bir kez dokunun."); return; }
+      zilDosyaYok=true; if(zilCalisiyor) yedekZil();
+    });
+  }
+  // zil.mp3 yoksa: klasik telefon zili (iki kisa cinlama, 2,5 sn'de bir)
+  function yedekZil(){
+    if(zilTik) return;
+    var Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx) return;
+    if(!zilCtx) zilCtx=new Ctx();
+    if(zilCtx.state==="suspended") zilCtx.resume();
+    function cinla(){ var t=zilCtx.currentTime+0.05; ton(t,0.4); ton(t+0.6,0.4); }
+    cinla(); zilTik=setInterval(cinla,2500);
+  }
+  function ton(bas,sure){
+    var g=zilCtx.createGain(), m=zilCtx.createGain(), lfo=zilCtx.createOscillator();
+    g.gain.setValueAtTime(0,bas);
+    g.gain.linearRampToValueAtTime(0.22,bas+0.02);
+    g.gain.setValueAtTime(0.22,bas+sure-0.04);
+    g.gain.linearRampToValueAtTime(0,bas+sure);
+    lfo.frequency.value=20; m.gain.value=0.5; lfo.connect(m.gain);   // cin cin titresimi
+    m.connect(g); g.connect(zilCtx.destination);
+    [440,480].forEach(function(f){
+      var o=zilCtx.createOscillator(); o.frequency.value=f; o.connect(m); o.start(bas); o.stop(bas+sure);
+    });
+    lfo.start(bas); lfo.stop(bas+sure);
+  }
+  // Telefonlar sesi ancak bir dokunustan sonra izin verir: ilk dokunusta sesi sessizce hazirla
+  function sesiHazirla(){
+    document.removeEventListener("pointerdown",sesiHazirla,true);
+    try{
+      var Ctx=window.AudioContext||window.webkitAudioContext;
+      if(Ctx&&!zilCtx) zilCtx=new Ctx();
+      if(zilCtx&&zilCtx.state==="suspended") zilCtx.resume();
+    }catch(h){}
+    if(!zilSes){
+      zilSes=new Audio("zil.mp3"); zilSes.loop=true; zilSes.preload="auto";
+      zilSes.addEventListener("error",function(){ zilDosyaYok=true; if(zilCalisiyor&&E("aramaZil").checked) yedekZil(); });
+    }
+    if(!zilCalisiyor){
+      zilSes.muted=true;
+      var s=zilSes.play();
+      var bitir=function(){ if(!zilCalisiyor){ zilSes.pause(); zilSes.currentTime=0; } zilSes.muted=false; };
+      if(s&&s.then) s.then(bitir,function(){ zilSes.muted=false; }); else bitir();
+    }
+  }
+  document.addEventListener("pointerdown",sesiHazirla,true);
+  document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState!=="visible") zilDur();
+    else if(aramaGorunur&&!aramaSusturuldu) zilBasla();
+  });
+  function aramaCevapla(kabul){
+    yoneticiGonder({t:kabul?"aramaKabul":"aramaRed"});
+    aramaSusturuldu=true; zilDur();
+    E("aramaKabulBtn").disabled=true; E("aramaRedBtn").disabled=true;
+    aramaIslem=kabul?"Kabul ediliyor… ":"Reddediliyor… ";
+    E("aramaKim").textContent=aramaIslem+(aramaSonKim||"");
+    yaz(kabul?"Arama kabul isteği gönderildi.":"Arama reddetme isteği gönderildi.");
+    setTimeout(function(){ E("aramaKabulBtn").disabled=false; E("aramaRedBtn").disabled=false; },5000);
+  }
+  E("aramaKabulBtn").onclick=function(){ aramaCevapla(true); };
+  E("aramaRedBtn").onclick=function(){ aramaCevapla(false); };
+  E("aramaSusBtn").onclick=function(){ aramaSusturuldu=true; zilDur(); };
+  ["aramaZil","aramaTitresim"].forEach(function(id){
+    E(id).addEventListener("change",function(){ if(zilCalisiyor){ zilDur(); zilBasla(); } });
+  });
+
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","uyanikTut","ekranAcik"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
