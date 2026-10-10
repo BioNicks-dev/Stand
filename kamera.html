@@ -76,7 +76,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · tanıma 1</span></h1>
+  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 1</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -105,7 +105,8 @@
     </div>
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
     <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal</label>
-    <label class="anahtar"><input type="checkbox" id="taniAcik"> İnsan / kedi tanıma denemesi (stand oynamaz)</label>
+    <label class="anahtar"><input type="checkbox" id="taniAcik"> İnsan / kedi tanıma (kutuları göster)</label>
+    <label class="anahtar"><input type="checkbox" id="takipKutu"> Takip: standı kendisi çevirsin</label>
     <div class="satir">
       <button id="zilDene">Zili dene</button>
       <button id="baslat">Kamerayı elle aç</button>
@@ -250,6 +251,7 @@
     goster(E("dKamera"),"açılıyor","uyari");
     var ses;
     mikAcik=true; gorAcik=true; fenerAcik=false;
+    if(takipAcik){ takipAcik=false; E("takipKutu").checked=false; }
     return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})
       .then(function(s){ ses=s.getAudioTracks()[0]; return videoAl(); })
       .then(function(v){
@@ -285,13 +287,14 @@
     return {t:"yetenek", yon:yon,
       zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
       zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
-      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil};
+      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef};
   }
   function bildir(){
     if(!akis) return;
     var y=yetenekler();
     E("dOzellik").textContent="Zoom: "+(y.zoom?("var ("+y.zoom.min+"–"+y.zoom.max+", şu an "+(y.zoomDeger==null?"?":y.zoomDeger)+")"):"yok")+
       " · Fener: "+(y.fener?(fenerAcik?"açık":"kapalı"):"yok")+
+      " · Takip: "+(takipAcik?"açık":"kapalı")+
       " · Mikrofon: "+(mikAcik?"açık":"kapalı")+" · Görüntü: "+(gorAcik?"açık":"kapalı")+
       (pil?" · Pil: "+pil.y+"%"+(pil.s?" (şarjda)":" (şarjda değil)"):"");
     gonder(y);
@@ -352,6 +355,30 @@
   var ORTA_PAY=0.15;         // ortadan bu kadar kayınca "sağda/solda"
   var ADLAR={person:"insan",cat:"kedi",dog:"köpek"};
   var bulucu=null, bulucuYukleniyor=false, taniZaman=null, taniSure=0, sonTaniYazi="";
+  // takip: hedef ortadan kayınca karta kısa adım komutu (azsag/azsol, kart 0,4 sn döner, sınırı kart korur)
+  var takipAcik=false, takipAyar={hedef:"herkes",tx:false,atx:true,ters:false};
+  var takipBekleBitis=0, sonrakiAdim=0, disariSayi=0;
+  var HEDEFLER={herkes:["person","cat","dog"],insan:["person"],kedi:["cat"]};
+  function karta(t){ if(istemci&&istemci.connected) istemci.publish("comitok/"+kod+"/komut",JSON.stringify({t:t,kaynak:"uzak"})); }
+  function takipAyarla(acik,ayar){
+    if(ayar){ ["hedef","tx","atx","ters"].forEach(function(a){ if(ayar[a]!==undefined) takipAyar[a]=ayar[a]; }); }
+    if(acik!==takipAcik) yaz(acik?"Takip açıldı.":"Takip kapandı.");
+    takipAcik=!!acik; E("takipKutu").checked=takipAcik; disariSayi=0;
+    taniDurum(); bildir();
+  }
+  E("takipKutu").onchange=function(){ takipAyarla(E("takipKutu").checked); };
+  function takipAdim(x,simdi){
+    if(!takipAcik||simdi<takipBekleBitis||simdi<sonrakiAdim) return "";
+    if(Math.abs(x)<=ORTA_PAY){ disariSayi=0; return ""; }
+    if(++disariSayi<2) return "";            // bir kere dışarıda görünmesi yetmez, titremesin
+    var yonu_=x>0?1:-1;
+    var ters=takipAyar.tx!==(yon==="environment"&&takipAyar.atx);
+    if(ters!==!!takipAyar.ters) yonu_=-yonu_;
+    karta(yonu_>0?"azsag":"azsol");
+    sonrakiAdim=simdi+400+(Math.abs(x)>0.3?350:650);   // dön, görüntü yetişsin, sonra tekrar bak
+    disariSayi=0;
+    return x>0?"sağa":"sola";
+  }
   E("taniAcik").checked=oku("stand_kamTani")==="1";
   E("taniAcik").onchange=function(){ yazLS("stand_kamTani",E("taniAcik").checked?"1":"0"); taniDurum(); };
   function bulucuHazirla(){
@@ -369,7 +396,7 @@
       .catch(function(h){ bulucuYukleniyor=false; goster(E("dTani"),"yüklenemedi","kotu"); yaz("Tanıma yüklenemedi: "+(h&&h.message||h)); });
   }
   function taniDurum(){
-    var istek=E("taniAcik").checked;
+    var istek=E("taniAcik").checked||takipAcik;
     if(!istek){ clearInterval(taniZaman); taniZaman=null; taniTemizle(); goster(E("dTani"),"kapalı",""); return; }
     if(!bulucu){ bulucuHazirla(); return; }
     if(!akis){ clearInterval(taniZaman); taniZaman=null; taniTemizle(); goster(E("dTani"),"hazır (kamera kapalı)",""); return; }
@@ -385,7 +412,8 @@
     var t0=performance.now(), sonuc;
     try{ sonuc=bulucu.detectForVideo(v,t0); }catch(h){ return; }
     taniSure=Math.round(performance.now()-t0);
-    var liste=(sonuc&&sonuc.detections)||[];
+    var izinli=HEDEFLER[takipAyar.hedef]||HEDEFLER.herkes;
+    var liste=((sonuc&&sonuc.detections)||[]).filter(function(d){ return izinli.indexOf(d.categories[0].categoryName)>=0; });
     taniCiz(v,liste);
     // en büyük olanı "hedef" say
     var hedef=null, enBuyuk=0;
@@ -396,8 +424,11 @@
       var x=(b.originX+b.width/2)/v.videoWidth-0.5;
       var yer=x<-ORTA_PAY?"solda":(x>ORTA_PAY?"sağda":"ortada");
       metin=(ADLAR[k.categoryName]||k.categoryName)+" · "+yer;
-      E("taniYazi").textContent=metin+" · %"+Math.round(k.score*100);
-    } else E("taniYazi").textContent="kimse yok";
+      var simdi=Date.now(), adim=takipAdim(x,simdi);
+      if(adim) yaz("Takip: "+adim+" adım.");
+      var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":" · takip"):"";
+      E("taniYazi").textContent=metin+" · %"+Math.round(k.score*100)+ek;
+    } else { disariSayi=0; E("taniYazi").textContent="kimse yok"+(takipAcik?" · takip":""); }
     goster(E("dTani"),"açık ("+taniSure+" ms)","iyi");
     if(metin!==sonTaniYazi){ sonTaniYazi=metin; yaz("Tanıma: "+(metin||"kimse yok")); }
   }
@@ -485,6 +516,8 @@
     else if(m.t==="fener") fenerAyarla(m.deger);
     else if(m.t==="mik") mikAyarla(m.deger);
     else if(m.t==="gor") gorAyarla(m.deger);
+    else if(m.t==="takip") takipAyarla(!!m.deger,m);
+    else if(m.t==="takipBekle"){ takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; }
     else if(m.t==="bitir"){ if(m.id===izleyen){ yaz("İzleyen ayrıldı."); baglantiyiKapat(); } }
     else if(m.t==="sor"){ gonder({t:(akis||beklemede)?"hazir":"hazirDegil"}); }
   }
