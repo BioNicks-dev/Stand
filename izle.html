@@ -52,6 +52,7 @@
   .not{font-size:14px;color:var(--ink-soft)}
   a{color:var(--live)}
   .gizli{display:none}
+  .zd{flex:0 0 90px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ink-soft);text-align:center}
 </style>
 </head>
 <body>
@@ -81,6 +82,16 @@
       <button id="onBtn">Ön kamera</button>
       <button id="arkaBtn">Arka kamera</button>
     </div>
+    <div class="satir">
+      <button id="mikBtn" disabled>Pixel mikrofonu açık</button>
+      <button id="gorBtn" disabled>Görüntü açık</button>
+    </div>
+    <div class="satir">
+      <button id="zEksi" disabled>Zoom −</button>
+      <div class="zd" id="zDeger">Zoom —</div>
+      <button id="zArti" disabled>Zoom +</button>
+    </div>
+    <button id="fenerBtn" disabled>Fener kapalı</button>
     <p class="not">Görüntüye dokunmak: ekranı doldur / tamamını göster.</p>
     <div class="yer">Stand kontrolleri sonraki adımda buraya gelecek.<br><a href="index.html">← Stand sayfası</a></div>
     <p class="not"><a href="#" id="degistir">Bağlantı bilgilerini değiştir</a></p>
@@ -132,6 +143,38 @@
     E("arkaBtn").className=y==="arka"?"secili":"";
   }
 
+  var yet=null, zHedef=null;
+  function yetenekGeldi(m){
+    yet=m;
+    seciliKamera(m.yon==="environment"?"arka":"on");
+    E("mikBtn").disabled=false; E("gorBtn").disabled=false;
+    E("mikBtn").textContent=m.mik?"Pixel mikrofonu açık":"Pixel mikrofonu kapalı";
+    E("mikBtn").className=m.mik?"":"secili";
+    E("gorBtn").textContent=m.gor?"Görüntü açık":"Görüntü kapalı";
+    E("gorBtn").className=m.gor?"":"secili";
+    if(m.zoom){
+      E("zEksi").disabled=false; E("zArti").disabled=false;
+      zHedef=(m.zoomDeger==null)?m.zoom.min:m.zoomDeger;
+      E("zDeger").textContent="Zoom "+(Math.round(zHedef*10)/10)+"×";
+    } else { E("zEksi").disabled=true; E("zArti").disabled=true; E("zDeger").textContent="Zoom yok"; }
+    E("fenerBtn").disabled=!m.fener;
+    E("fenerBtn").textContent=!m.fener?"Fener yok (arka kamerada dene)":(m.fenerAcik?"Fener açık":"Fener kapalı");
+    E("fenerBtn").className=m.fenerAcik?"secili":"";
+    if(!m.gor&&pc) ortaYazi("Görüntü kapalı"); else if(pc&&pc.connectionState==="connected") ortaYazi("");
+  }
+  function zoomAdim(yonu){
+    if(!yet||!yet.zoom) return;
+    var z=yet.zoom, adim=(z.max-z.min)>2?0.5:Math.max(z.step,0.1);
+    zHedef=Math.max(z.min,Math.min(z.max,Math.round(((zHedef==null?z.min:zHedef)+yonu*adim)*10)/10));
+    E("zDeger").textContent="Zoom "+zHedef+"×";
+    gonder({t:"zoom",deger:zHedef});
+  }
+  E("zEksi").onclick=function(){ zoomAdim(-1); };
+  E("zArti").onclick=function(){ zoomAdim(1); };
+  E("mikBtn").onclick=function(){ if(yet) gonder({t:"mik",deger:!yet.mik}); };
+  E("gorBtn").onclick=function(){ if(yet) gonder({t:"gor",deger:!yet.gor}); };
+  E("fenerBtn").onclick=function(){ if(yet&&yet.fener) gonder({t:"fener",deger:!yet.fenerAcik}); };
+
   function toplamaBitsin(p){
     return new Promise(function(bitti){
       if(p.iceGatheringState==="complete") return bitti();
@@ -151,6 +194,7 @@
     E("bilgi").textContent="";
     goster(E("dGoruntu"),"yok","");
     E("baglanBtn").textContent="Bağlan";
+    yet=null; ["mikBtn","gorBtn","zEksi","zArti","fenerBtn"].forEach(function(i){ E(i).disabled=true; });
     ortaYazi("Görüntü yok. Aşağıdan \"Bağlan\"a dokunun.");
   }
 
@@ -242,7 +286,7 @@
       goster(E("dGoruntu"),"kamera kapalı","kotu");
       ortaYazi("Pixel'deki kamera sayfası açık ama kamera başlatılmamış. Pixel'de \"Kamerayı başlat\"a basın.");
     }
-    else if(m.t==="kameraDurum") seciliKamera(m.yon==="environment"?"arka":"on");
+    else if(m.t==="yetenek"&&bagliMi) yetenekGeldi(m);
   }
 
   // ---------- sunucu ----------

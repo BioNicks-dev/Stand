@@ -65,7 +65,8 @@
     <div class="durum">
       Sunucu: <b id="dSunucu" class="uyari">bağlanıyor</b><br>
       Kamera: <b id="dKamera" class="uyari">kapalı</b><br>
-      İzleyen: <b id="dIzleyen">yok</b>
+      İzleyen: <b id="dIzleyen">yok</b><br>
+      <span id="dOzellik" class="not"></span>
     </div>
     <button class="ana" id="baslat">Kamerayı başlat</button>
     <div class="satir">
@@ -90,6 +91,7 @@
   function goster(el,metin,sinif){ el.textContent=metin; el.className=sinif||""; }
 
   var kod=oku("stand_kod"), ss=oku("stand_ss");
+  var mikAcik=true, gorAcik=true, fenerAcik=false;
   var istemci=null, videoGonderen=null, akis=null, yon="user", pc=null, izleyen=null, ekranKilidi=null;
 
   function konu(son){ return "comitok/"+kod+"/goruntu/"+son; }
@@ -119,7 +121,7 @@
 
   // ---------- kamera ----------
   function videoAl(){
-    return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:yon},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24}}})
+    return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:yon},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24},zoom:true}})
       .then(function(s){ return s.getVideoTracks()[0]; });
   }
   function kameraBaslat(){
@@ -136,11 +138,50 @@
         ekranAcikTut();
         yaz("Kamera ve mikrofon açıldı.");
         gonder({t:"hazir"});
+        bildir();
       })
       .catch(function(h){
         goster(E("dKamera"),"açılamadı","kotu");
         yaz("Kamera açılamadı: "+(h&&h.name||"")+" "+(h&&h.message||"")+". Kamera/mikrofon izni verildi mi?");
       });
+  }
+  function vTrack(){ return akis&&akis.getVideoTracks()[0]; }
+  function yetenekler(){
+    var v=vTrack(), c={}, a={};
+    try{ if(v&&v.getCapabilities) c=v.getCapabilities(); if(v&&v.getSettings) a=v.getSettings(); }catch(h){}
+    return {t:"yetenek", yon:yon,
+      zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
+      zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
+      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik};
+  }
+  function bildir(){
+    if(!akis) return;
+    var y=yetenekler();
+    E("dOzellik").textContent="Zoom: "+(y.zoom?("var ("+y.zoom.min+"–"+y.zoom.max+", şu an "+(y.zoomDeger==null?"?":y.zoomDeger)+")"):"yok")+
+      " · Fener: "+(y.fener?(fenerAcik?"açık":"kapalı"):"yok")+
+      " · Mikrofon: "+(mikAcik?"açık":"kapalı")+" · Görüntü: "+(gorAcik?"açık":"kapalı");
+    gonder(y);
+  }
+  function zoomAyarla(d){
+    var v=vTrack(); if(!v) return;
+    var c=yetenekler().zoom; if(!c){ yaz("Bu kamerada zoom yok."); return; }
+    d=Math.max(c.min,Math.min(c.max,Number(d)||c.min));
+    v.applyConstraints({advanced:[{zoom:d}]}).then(bildir).catch(function(h){ yaz("Zoom olmadı: "+(h&&h.message||h)); });
+  }
+  function fenerAyarla(d){
+    var v=vTrack(); if(!v) return;
+    if(!yetenekler().fener){ yaz("Bu kamerada fener yok (ön kamerada olmaz)."); bildir(); return; }
+    v.applyConstraints({advanced:[{torch:!!d}]})
+      .then(function(){ fenerAcik=!!d; yaz(fenerAcik?"Fener açıldı.":"Fener kapandı."); bildir(); })
+      .catch(function(h){ yaz("Fener olmadı: "+(h&&h.message||h)); });
+  }
+  function mikAyarla(d){
+    var a=akis&&akis.getAudioTracks()[0]; if(!a) return;
+    mikAcik=!!d; a.enabled=mikAcik; yaz(mikAcik?"Mikrofon açıldı.":"Mikrofon kapandı."); bildir();
+  }
+  function gorAyarla(d){
+    var v=vTrack(); if(!v) return;
+    gorAcik=!!d; v.enabled=gorAcik; yaz(gorAcik?"Görüntü açıldı.":"Görüntü kapandı."); bildir();
   }
   function kameraYazisi(){ goster(E("dKamera"),yon==="user"?"açık (ön)":"açık (arka)","iyi"); }
 
@@ -152,12 +193,13 @@
     eski.stop();   // Android iki kamerayı aynı anda açamayabilir: önce eskiyi kapat
     yon=yeniYon;
     videoAl().then(function(v){
+      v.enabled=gorAcik; fenerAcik=false;
       akis.removeTrack(eski); akis.addTrack(v);
       E("onizleme").srcObject=new MediaStream([v]);
       if(pc&&videoGonderen) videoGonderen.replaceTrack(v);
       kameraYazisi();
       yaz(yon==="user"?"Ön kameraya geçildi.":"Arka kameraya geçildi.");
-      gonder({t:"kameraDurum",yon:yon});
+      bildir();
     }).catch(function(h){
       yaz("Kamera değiştirilemedi: "+(h&&h.message||h));
       goster(E("dKamera"),"değiştirilemedi","kotu");
@@ -191,7 +233,7 @@
     p.onconnectionstatechange=function(){
       if(p!==pc) return;
       var s=p.connectionState;
-      if(s==="connected"){ goster(E("dIzleyen"),"bağlı","iyi"); yaz("İzleyen bağlandı."); }
+      if(s==="connected"){ goster(E("dIzleyen"),"bağlı","iyi"); yaz("İzleyen bağlandı."); bildir(); }
       else if(s==="connecting"){ goster(E("dIzleyen"),"bağlanıyor","uyari"); }
       else if(s==="failed"){ goster(E("dIzleyen"),"bağlantı kurulamadı","kotu"); yaz("Bağlantı kurulamadı."); }
       else if(s==="disconnected"){ goster(E("dIzleyen"),"koptu","uyari"); }
@@ -212,6 +254,10 @@
     }
     else if(m.t==="kamera"){ kameraCevir(m.yon==="arka"?"environment":"user"); }
     else if(m.t==="bitir"){ if(m.id===izleyen){ yaz("İzleyen ayrıldı."); baglantiyiKapat(); } }
+    else if(m.t==="zoom") zoomAyarla(m.deger);
+    else if(m.t==="fener") fenerAyarla(m.deger);
+    else if(m.t==="mik") mikAyarla(m.deger);
+    else if(m.t==="gor") gorAyarla(m.deger);
     else if(m.t==="sor"){ gonder({t:akis?"hazir":"hazirDegil"}); }
   }
 
