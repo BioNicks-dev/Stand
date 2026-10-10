@@ -1470,7 +1470,7 @@
   // Z: toplam yakınlaşma, grC: görüntü merkezinin Pixel'in tam açısındaki yeri (-0.5..0.5).
   // Pixel'in zoom'u sadece ortaya yakınlaşır; Pixel'e, istenen yer görüntüde kalacak kadar zoom yaptırılır
   // (görüntü net kalsın), geri kalanı bu sayfada büyütülür.
-  var grZ=1, grC={x:0,y:0}, grZc=1, grZHedef=null, grZSon=0, grZBekleyen=null, grGostergeTik=null;
+  var grZ=1, grC={x:0,y:0}, grZc=1, grZHedef=null, grZBekleyen=null, grGostergeTik=null;
   var grDokunSon=0, grPinch=null, grTekParmak=null, grHareketVardi=false;
   function grKameraZoom(){ return grYet&&grYet.zoom; }
   function grToplamEnCok(){ var c=grKameraZoom(); return c?Math.max(c.max*1.5,4):4; }
@@ -1498,13 +1498,16 @@
     var sinir=Math.min(1/(2*Math.abs(grC.x)+1/grZ),1/(2*Math.abs(grC.y)+1/grZ));
     return Math.round(Math.max(c.min,Math.min(c.max,grZ,sinir))*10)/10;
   }
+  // Parmaklar ekrandayken Pixel'e komut gitmez (titreme olmasın); bırakınca yarım saniye sonra tek komut
   function grZoomGonder(){
     clearTimeout(grZBekleyen);
-    var h=grKameraHedefi(); if(h==null||h===grZHedef) return;
-    var simdi=Date.now(), fark=simdi-grZSon;
-    if(fark<150){ grZBekleyen=setTimeout(grZoomGonder,150-fark); return; }
-    grZSon=simdi; grZHedef=h; grGonder({t:"zoom",deger:h});
+    var c=grKameraZoom(), h=grKameraHedefi(); if(!c||h==null) return;
+    var simdiki=(grZHedef==null)?grZc:grZHedef;
+    var enAz=(h<=c.min+0.001)||(h>=c.max-0.001);
+    if(Math.abs(h-simdiki)<0.3&&!(enAz&&h!==simdiki)) return;   // küçük farklar için Pixel'i oynatma
+    grZHedef=h; grGonder({t:"zoom",deger:h});
   }
+  function grZoomSonra(){ clearTimeout(grZBekleyen); grZBekleyen=setTimeout(grZoomGonder,500); }
   function grGosterge(){
     var g=E("kZoomGosterge"); g.textContent=(Math.round(grZ*10)/10)+"×"; g.classList.add("gorunur");
     clearTimeout(grGostergeTik); grGostergeTik=setTimeout(function(){ g.classList.remove("gorunur"); },1200);
@@ -1536,19 +1539,20 @@
       // parmakların arasındaki nokta parmakların altında kalsın
       grC.x=grPinch.a.x-(o.x-k.left-r.ew/2)/(r.w*grZ);
       grC.y=grPinch.a.y-(o.y-k.top-r.eh/2)/(r.h*grZ);
-      grSinirla(); grZoomUygula(); grZoomGonder(); grGosterge();
+      grSinirla(); grZoomUygula(); grGosterge();
     } else if(grTekParmak&&e.touches.length===1){
       var t=e.touches[0], r2=grResim(), dx=t.clientX-grTekParmak.x, dy=t.clientY-grTekParmak.y;
       if(Math.abs(dx)+Math.abs(dy)>8) grHareketVardi=true;
       if(!grHareketVardi) return;
       e.preventDefault();
       grC.x=grTekParmak.c.x-dx/(r2.w*grZ); grC.y=grTekParmak.c.y-dy/(r2.h*grZ);
-      grSinirla(); grZoomUygula(); grZoomGonder();
+      grSinirla(); grZoomUygula();
     }
   },{passive:false});
   E("kEkran").addEventListener("touchend",function(e){
-    if(grPinch&&e.touches.length<2){ grPinch=null; grZoomGonder(); }
-    if(grTekParmak&&e.touches.length===0){ grTekParmak=null; grZoomGonder(); }
+    if(grPinch&&e.touches.length<2){ grPinch=null; }
+    if(grTekParmak&&e.touches.length===0){ grTekParmak=null; }
+    if(e.touches.length===0) grZoomSonra();
   });
   document.addEventListener("gesturestart",function(e){ if(grAcik) e.preventDefault(); });
   // tek dokunuş: bağlantı yoksa bağlan. Çift dokunuş: yakınsa 1×'e dön, değilse doldur / tamamını göster
