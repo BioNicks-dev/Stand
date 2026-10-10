@@ -149,6 +149,7 @@
   #kZoomGosterge.gorunur{opacity:1}
   #kAltYuva:empty{display:none}
   #kVideo.doldur{object-fit:cover}
+  #kKutular{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1;transform-origin:50% 50%}
   #kOrta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#cfd4d2;font-size:15px;pointer-events:none}
   #kOrta.dokun{text-decoration:underline;text-underline-offset:3px}
   #kBilgi{position:absolute;left:10px;bottom:7px;color:#fff;font-size:12px;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none}
@@ -237,6 +238,7 @@
 <div id="kameraAlan" class="gizle">
   <div id="kEkran">
     <video id="kVideo" autoplay playsinline muted></video>
+    <canvas id="kKutular"></canvas>
     <div id="kOrta"></div>
     <div id="kBilgi"></div>
     <button class="kYuvarlak kAyar" id="kAyarBtn" aria-label="Ayarlar">⚙</button>
@@ -391,6 +393,7 @@
       <label>Ev kamerası takip yönü ters (sağ-sol)<input type="checkbox" id="takipTers"></label>
       <label>Ev kamerası takip yönü ters (yukarı-aşağı)<input type="checkbox" id="takipTersY"></label>
       <label>Ev kamerası takipte otomatik zoom<input type="checkbox" id="takipZoom"></label>
+      <label>Ev kamerasında tanıma kutularını göster<input type="checkbox" id="kutuGoster" checked></label>
       <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
       <label class="sadeceYonetici">Arama zili<input type="checkbox" id="aramaZil" checked></label>
@@ -1297,7 +1300,7 @@
   });
 
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","arkaTersX","arkaTersY","takipHedef","takipTers","takipTersY","takipZoom","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","arkaTersX","arkaTersY","takipHedef","takipTers","takipTersY","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
@@ -1331,7 +1334,7 @@
     if(grPc){ try{ grPc.close(); }catch(h){} grPc=null; }
     if(haberVer&&grIstekte) grGonder({t:"bitir",id:grId});
     grIstekte=false; grYet=null; grZ=1; grC={x:0,y:0}; grZc=1; grZHedef=null; grVideo.style.transform="";
-    grVideo.srcObject=null; grTur=""; grCoz=""; E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar");
+    grVideo.srcObject=null; grKutuSon=null; grKutuCiz(); grTur=""; grCoz=""; E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar");
     grDugmeler(false);
   }
   function grBaglan(){
@@ -1350,6 +1353,7 @@
     if(grPc){ try{ grPc.close(); }catch(h){} }
     var p=new RTCPeerConnection({iceServers:GR_BUZ});
     grPc=p;
+    p.ondatachannel=function(e){ if(e.channel&&e.channel.label==="kutular") e.channel.onmessage=function(m){ if(p===grPc) grKutuGeldi(m.data); }; };
     p.ontrack=function(e){
       if(e.streams&&e.streams[0]){ if(grVideo.srcObject!==e.streams[0]) grVideo.srcObject=e.streams[0]; }
       else { var s=grVideo.srcObject||new MediaStream(); s.addTrack(e.track); grVideo.srcObject=s; }
@@ -1372,13 +1376,33 @@
   }
   function grArkada(){ return grAcik&&!!grYet&&grYet.yon==="environment"; }
   var grTur="", grCoz="";
+  // Pixel'in bulduğu insan/kedi kutuları (doğrudan bağlantıdan gelir)
+  var grKutuSon=null, grKutuSil=null;
+  function grKutuCiz(){
+    var c=E("kKutular"), w=c.clientWidth, h=c.clientHeight;
+    if(c.width!==w) c.width=w; if(c.height!==h) c.height=h;
+    var g=c.getContext("2d"); g.clearRect(0,0,w,h);
+    var m=grKutuSon; if(!m||!E("kutuGoster").checked||!grVideo.videoWidth) return;
+    var r=grResim(), ox=(r.ew-r.w)/2, oy=(r.eh-r.h)/2;
+    function ciz(a,renk,kal){ g.strokeStyle=renk; g.lineWidth=kal; g.strokeRect(ox+a[0]*r.w,oy+a[1]*r.h,a[2]*r.w,a[3]*r.h); }
+    (m.k||[]).forEach(function(a){ ciz(a,a[4]==="i"?"#57c48c":"#f0b44c",2); });
+    if(m.y) ciz(m.y,"#ffffff",2);
+  }
+  function grKutuGeldi(veri){
+    try{ grKutuSon=JSON.parse(veri); }catch(h){ return; }
+    grKutuCiz();
+    clearTimeout(grKutuSil); grKutuSil=setTimeout(function(){ grKutuSon=null; grKutuCiz(); },1500);   // gelmezse silinsin
+  }
+  E("kutuGoster").addEventListener("change",grKutuCiz);
   function grBilgiCiz(){
     var p=grYet&&grYet.pil, parca=[];
     if(p) parca.push("🔋 "+p.y+"%"+(p.s?" ⚡":" şarjda değil"));
     if(grTur) parca.push(grTur);
     if(grCoz) parca.push(grCoz);
+    var isi=grYet&&grYet.isi;
+    if(isi) parca.push("Pixel "+isi);
     E("kBilgi").textContent=parca.join(" · ");
-    E("kBilgi").classList.toggle("uyar",!!(p&&(!p.s||p.y<20)));
+    E("kBilgi").classList.toggle("uyar",!!(p&&(!p.s||p.y<20))||isi==="çok zorlanıyor");
   }
   function grYetenek(m){
     var yonDegisti=!grYet||grYet.yon!==m.yon;
@@ -1530,6 +1554,7 @@
     var r=grResim();
     grVideo.style.transform=(s<=1.001&&Math.abs(cx)<1e-4&&Math.abs(cy)<1e-4)?"":
       "scale("+s.toFixed(4)+") translate("+(-cx*r.w).toFixed(1)+"px,"+(-cy*r.h).toFixed(1)+"px)";
+    E("kKutular").style.transform=grVideo.style.transform; grKutuCiz();
   }
   function grKameraHedefi(){
     var c=grKameraZoom(); if(!c) return null;

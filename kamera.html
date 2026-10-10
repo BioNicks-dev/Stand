@@ -56,6 +56,8 @@
   #taniCizim{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   #taniYazi{position:absolute;left:8px;top:8px;padding:4px 10px;border-radius:14px;background:rgba(0,0,0,.6);color:#fff;font-size:15px;font-weight:600;pointer-events:none}
   #taniYazi:empty{display:none}
+  body.karanlik #goruntuKutu{position:fixed;left:0;top:0;width:160px;height:90px;overflow:hidden}
+  body.karanlik #goruntuKutu video{max-height:none;height:90px}
   /* yatay ekran: görüntü solda büyük, kontroller sağda */
   @media (orientation: landscape){
     .wrap{max-width:none;padding:8px calc(12px + env(safe-area-inset-right,0px)) 8px calc(12px + env(safe-area-inset-left,0px))}
@@ -76,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 2</span></h1>
+  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 3</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -101,6 +103,7 @@
       Kamera: <b id="dKamera" class="uyari">kapalı</b><br>
       İzleyen: <b id="dIzleyen">yok</b><br>
       Tanıma: <b id="dTani">kapalı</b><br>
+      Pixel: <b id="dIsi">rahat</b><br>
       <span id="dOzellik" class="not"></span>
     </div>
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
@@ -218,7 +221,7 @@
   function beklemeBaslat(){
     sesiHazirla();
     beklemede=true;
-    E("siyah").className="";
+    E("siyah").className=""; document.body.classList.add("karanlik"); taniTemizle();
     try{ var el=document.documentElement; if(el.requestFullscreen) el.requestFullscreen({navigationUI:"hide"}).catch(function(){}); }catch(h){}
     ekranAcikTut();
     // Beklerken kamera kapalı kalır (izleyen yoksa)
@@ -229,7 +232,7 @@
   }
   function beklemeBitir(){
     beklemede=false;
-    E("siyah").className="gizli";
+    E("siyah").className="gizli"; document.body.classList.remove("karanlik");
     clearInterval(yaziZamani);
     try{ if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); }catch(h){}
     yaz("Bekleme modundan çıkıldı.");
@@ -287,7 +290,7 @@
     return {t:"yetenek", yon:yon,
       zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
       zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
-      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto};
+      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto, isi:isiDurum};
   }
   function bildir(){
     if(!akis) return;
@@ -351,6 +354,9 @@
   // Google MediaPipe nesne bulucu, Pixel'in içinde (Chrome) çalışır; görüntü hiçbir yere gitmez.
   var MP_ADRES="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
   var MP_MODEL="https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite";
+  var MP_YUZ="https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite";
+  var yuzBulucu=null, kutuKanali=null;
+  var YUZ_YERI=-0.08, YUZ_PAY=0.12;    // yüz ortanın biraz üstünde dursun
   var TANI_ARALIK=330, TANI_MOLA=120;   // saniyede ~3 bakış, her bakıştan sonra en az 120 ms mola (ısınmasın)
   var ORTA_PAY=0.15, DIKEY_PAY=0.18;    // ortadan bu kadar kayınca dön / eğil
   var ESIK={person:0.45,cat:0.30,dog:0.35};
@@ -390,9 +396,9 @@
     var t=Math.tan(gorus*Math.PI/360)/Math.max(1,z);
     return Math.atan(2*f*t)*180/Math.PI;
   }
-  function takipKarar(v,fx,fy,boyY,simdi){
+  function takipKarar(v,fx,fy,dPay,simdi){
     if(!takipAcik||simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
-    var disX=Math.abs(fx)>ORTA_PAY, disY=Math.abs(fy)>DIKEY_PAY&&boyY<0.8;
+    var disX=Math.abs(fx)>ORTA_PAY, disY=Math.abs(fy)>dPay;
     if(!disX&&!disY){ disariSayi=0; return ""; }
     if(++disariSayi<2) return "";            // bir kere dışarıda görünmesi yetmez, titremesin
     disariSayi=0;
@@ -435,16 +441,25 @@
   function bulucuHazirla(){
     if(bulucu||bulucuYukleniyor) return;
     bulucuYukleniyor=true; goster(E("dTani"),"yükleniyor…","uyari"); yaz("Tanıma yükleniyor (ilk seferde biraz sürer).");
-    var vision;
+    var vision, fsAkilda;
     import(MP_ADRES+"/vision_bundle.mjs").then(function(m){ vision=m; return m.FilesetResolver.forVisionTasks(MP_ADRES+"/wasm"); })
       .then(function(fs){
+        fsAkilda=fs;
         function yap(isle){ return vision.ObjectDetector.createFromOptions(fs,{
           baseOptions:{modelAssetPath:MP_MODEL,delegate:isle}, runningMode:"VIDEO",
           scoreThreshold:0.3, maxResults:5, categoryAllowlist:["person","cat","dog"]}); }
         return yap("GPU").then(function(b){ yaz("Tanıma GPU ile çalışıyor."); return b; })
           .catch(function(){ yaz("Tanıma GPU'da açılmadı, CPU ile deneniyor."); return yap("CPU"); });
       })
-      .then(function(b){ bulucu=b; bulucuYukleniyor=false; yaz("Tanıma hazır."); taniDurum(); })
+      .then(function(b){
+        bulucu=b;
+        // yüz bulucu (çok hafif); olmazsa vücut kutusunun baş tarafı kullanılır
+        function yuzYap(isle){ return vision.FaceDetector.createFromOptions(fsAkilda,{
+          baseOptions:{modelAssetPath:MP_YUZ,delegate:isle}, runningMode:"VIDEO", minDetectionConfidence:0.5}); }
+        return yuzYap("GPU").catch(function(){ return yuzYap("CPU"); })
+          .then(function(y){ yuzBulucu=y; yaz("Yüz bulucu hazır."); }, function(){ yaz("Yüz bulucu açılamadı, vücut takip edilecek."); });
+      })
+      .then(function(){ bulucuYukleniyor=false; yaz("Tanıma hazır."); taniDurum(); })
       .catch(function(h){ bulucuYukleniyor=false; goster(E("dTani"),"yüklenemedi","kotu"); yaz("Tanıma yüklenemedi: "+(h&&h.message||h)); });
   }
   function taniDurum(){
@@ -474,21 +489,25 @@
     var izinli=HEDEFLER[takipAyar.hedef]||HEDEFLER.herkes;
     var liste=((sonuc&&sonuc.detections)||[]).filter(function(d){
       var k=d.categories[0]; return izinli.indexOf(k.categoryName)>=0&&k.score>=(ESIK[k.categoryName]||0.4); });
-    taniCiz(v,liste);
+    if(!beklemede) taniCiz(v,liste);
     // en büyük olanı "hedef" say
     var hedef=null, enBuyuk=0;
     liste.forEach(function(d){ var b=d.boundingBox, a=b.width*b.height; if(a>enBuyuk){ enBuyuk=a; hedef=d; } });
-    var metin="", simdi=Date.now();
+    var metin="", simdi=Date.now(), yuz=null;
     if(hedef){
       sonGorulme=simdi;
-      var b=hedef.boundingBox, k=hedef.categories[0];
-      var fx=(b.originX+b.width/2)/v.videoWidth-0.5;
-      // insanda göğüs-baş hizası, hayvanda ortası
-      var fy=(b.originY+b.height*(k.categoryName==="person"?0.3:0.5))/v.videoHeight-0.5;
-      var boyY=b.height/v.videoHeight;
+      var b=hedef.boundingBox, k=hedef.categories[0], vw=v.videoWidth, vh=v.videoHeight;
+      var fx=(b.originX+b.width/2)/vw-0.5, fy, dPay=DIKEY_PAY;
+      var boyY=b.height/vh;
+      if(k.categoryName==="person"){
+        yuz=yuzBul(v,b);
+        if(yuz){ fx=(yuz.originX+yuz.width/2)/vw-0.5; fy=(yuz.originY+yuz.height/2)/vh-0.5-YUZ_YERI; dPay=YUZ_PAY; }
+        else if(b.originY<vh*0.02) fy=-0.25;                       // baş görüntünün üstünden taşmış: yukarı bak
+        else fy=(b.originY+b.height*0.12)/vh-0.5-YUZ_YERI;          // yüz yok: vücudun baş tarafı
+      } else fy=(b.originY+b.height/2)/vh-0.5;                      // kedi/köpek: gövde ortası
       var yer=fx<-ORTA_PAY?"solda":(fx>ORTA_PAY?"sağda":"ortada");
       metin=(ADLAR[k.categoryName]||k.categoryName)+" · "+yer;
-      var adim=takipKarar(v,fx,fy,boyY,simdi);
+      var adim=takipKarar(v,fx,fy,dPay,simdi);
       if(adim) yaz("Takip: "+adim+".");
       otoZoom(hedef,boyY,fx,simdi);
       var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":(hareket?" · dönüyor":" · takip")):"";
@@ -497,8 +516,44 @@
       disariSayi=0; otoZoom(null,0,0,simdi);
       E("taniYazi").textContent="kimse yok"+(takipAcik?" · takip":"");
     }
+    kutulariGonder(v,liste,yuz);
+    isiOlc();
     goster(E("dTani"),"açık ("+taniSure+" ms)","iyi");
     if(metin!==sonTaniYazi){ sonTaniYazi=metin; yaz("Tanıma: "+(metin||"kimse yok")); }
+  }
+  function yuzBul(v,kutu){
+    if(!yuzBulucu) return null;
+    var s; try{ s=yuzBulucu.detectForVideo(v,performance.now()); }catch(h){ return null; }
+    var en=null, enA=0;
+    ((s&&s.detections)||[]).forEach(function(d){
+      var y=d.boundingBox, cx=y.originX+y.width/2, cy=y.originY+y.height/2;
+      if(cx<kutu.originX||cx>kutu.originX+kutu.width||cy<kutu.originY||cy>kutu.originY+kutu.height) return;   // bu kişinin yüzü değil
+      var a=y.width*y.height; if(a>enA){ enA=a; en=y; }
+    });
+    return en;
+  }
+  // kutular görüntünün geldiği doğrudan bağlantıdan iPhone'a gider (sunucudan geçmez)
+  function kutulariGonder(v,liste,yuz){
+    if(!kutuKanali||kutuKanali.readyState!=="open") return;
+    var vw=v.videoWidth, vh=v.videoHeight;
+    function n(b){ return [+(b.originX/vw).toFixed(3),+(b.originY/vh).toFixed(3),+(b.width/vw).toFixed(3),+(b.height/vh).toFixed(3)]; }
+    try{ kutuKanali.send(JSON.stringify({k:liste.map(function(d){ var a=n(d.boundingBox); a.push(d.categories[0].categoryName==="person"?"i":"h"); return a; }),y:yuz?n(yuz):null})); }catch(h){}
+  }
+  // ---------- ısınma / kasılma bilgisi (sadece bilgi, önlem yok) ----------
+  var isiDurum="rahat", baski=null, sinirli=false, sureler=[];
+  try{ if("PressureObserver" in window){ new PressureObserver(function(k){ baski=k[k.length-1].state; }).observe("cpu").catch(function(){}); } }catch(h){}
+  setInterval(function(){
+    if(!pc||!videoGonderen) { sinirli=false; return; }
+    pc.getStats().then(function(r){ var l=false; r.forEach(function(x){ if(x.type==="outbound-rtp"&&x.kind==="video"&&x.qualityLimitationReason==="cpu") l=true; }); sinirli=l; }).catch(function(){});
+  },5000);
+  function isiOlc(){
+    sureler.push(taniSure); if(sureler.length>15) sureler.shift();
+    var ort=sureler.reduce(function(a,b){ return a+b; },0)/sureler.length;
+    var d="rahat";
+    if(baski==="critical"||ort>450) d="çok zorlanıyor";
+    else if(baski==="serious"||sinirli||ort>260) d="zorlanıyor";
+    if(d!==isiDurum){ isiDurum=d; yaz("Pixel: "+d+" (tanıma ~"+Math.round(ort)+" ms"+(sinirli?", görüntü kalitesi düşürülüyor":"")+(baski?", Chrome: "+baski:"")+")."); bildir(); }
+    goster(E("dIsi"),d,d==="rahat"?"iyi":(d==="zorlanıyor"?"uyari":"kotu"));
   }
   function taniCiz(v,liste){
     var c=E("taniCizim"), w=c.clientWidth, h=c.clientHeight;
@@ -553,6 +608,7 @@
   function teklifHazirla(id){
     var p=new RTCPeerConnection({iceServers:BUZ});
     pc=p;
+    try{ kutuKanali=p.createDataChannel("kutular",{ordered:false,maxRetransmits:0}); }catch(h){ kutuKanali=null; }
     akis.getTracks().forEach(function(t){ var g=p.addTrack(t,akis); if(t.kind==="video") videoGonderen=g; });
     p.onconnectionstatechange=function(){
       if(p!==pc) return;
