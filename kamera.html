@@ -108,6 +108,12 @@
   var mikAcik=true, gorAcik=true, fenerAcik=false;
   var istemci=null, videoGonderen=null, akis=null, yon="user", pc=null, izleyen=null, ekranKilidi=null;
   var beklemede=false, hazirlaniyor=false, kopmaZamani=null;
+  // Pil durumu (Chrome Android okuyabiliyor); görüşme sırasında izleyene gider
+  var pil=null;
+  if(navigator.getBattery) navigator.getBattery().then(function(b){
+    function oku_(){ var yeni={y:Math.round(b.level*100),s:!!b.charging}; var degisti=!pil||pil.y!==yeni.y||pil.s!==yeni.s; pil=yeni; if(degisti) bildir(); }
+    oku_(); b.addEventListener("levelchange",oku_); b.addEventListener("chargingchange",oku_);
+  }).catch(function(){});
 
   function konu(son){ return "comitok/"+kod+"/goruntu/"+son; }
   function gonder(m){ if(istemci&&istemci.connected) istemci.publish(konu("i"),JSON.stringify(m)); }
@@ -246,14 +252,15 @@
     return {t:"yetenek", yon:yon,
       zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
       zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
-      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik};
+      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil};
   }
   function bildir(){
     if(!akis) return;
     var y=yetenekler();
     E("dOzellik").textContent="Zoom: "+(y.zoom?("var ("+y.zoom.min+"–"+y.zoom.max+", şu an "+(y.zoomDeger==null?"?":y.zoomDeger)+")"):"yok")+
       " · Fener: "+(y.fener?(fenerAcik?"açık":"kapalı"):"yok")+
-      " · Mikrofon: "+(mikAcik?"açık":"kapalı")+" · Görüntü: "+(gorAcik?"açık":"kapalı");
+      " · Mikrofon: "+(mikAcik?"açık":"kapalı")+" · Görüntü: "+(gorAcik?"açık":"kapalı")+
+      (pil?" · Pil: "+pil.y+"%"+(pil.s?" (şarjda)":" (şarjda değil)"):"");
     gonder(y);
   }
   function zoomAyarla(d){
