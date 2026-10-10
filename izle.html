@@ -52,7 +52,11 @@
   .not{font-size:14px;color:var(--ink-soft)}
   a{color:var(--live)}
   .gizli{display:none}
-  .zd{flex:0 0 90px;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ink-soft);text-align:center}
+  html,body,button,input,video{touch-action:manipulation}
+  .zoom{display:flex;align-items:center;gap:12px;margin:10px 0;padding:6px 12px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--panel);min-height:48px}
+  .zoom span{flex:0 0 78px;font-size:14px;color:var(--ink-soft)}
+  .zoom input{flex:1;margin:0;padding:0;border:0;background:transparent;height:40px;accent-color:var(--live)}
+  .zoom input:disabled{opacity:.4}
 </style>
 </head>
 <body>
@@ -86,10 +90,9 @@
       <button id="mikBtn" disabled>Pixel mikrofonu açık</button>
       <button id="gorBtn" disabled>Görüntü açık</button>
     </div>
-    <div class="satir">
-      <button id="zEksi" disabled>Zoom −</button>
-      <div class="zd" id="zDeger">Zoom —</div>
-      <button id="zArti" disabled>Zoom +</button>
+    <div class="zoom">
+      <span id="zDeger">Zoom —</span>
+      <input type="range" id="zKaydir" min="1" max="2" step="0.1" value="1" disabled>
     </div>
     <button id="fenerBtn" disabled>Fener kapalı</button>
     <p class="not">Görüntüye dokunmak: ekranı doldur / tamamını göster.</p>
@@ -152,25 +155,38 @@
     E("mikBtn").className=m.mik?"":"secili";
     E("gorBtn").textContent=m.gor?"Görüntü açık":"Görüntü kapalı";
     E("gorBtn").className=m.gor?"":"secili";
+    var kz=E("zKaydir");
     if(m.zoom){
-      E("zEksi").disabled=false; E("zArti").disabled=false;
-      zHedef=(m.zoomDeger==null)?m.zoom.min:m.zoomDeger;
-      E("zDeger").textContent="Zoom "+(Math.round(zHedef*10)/10)+"×";
-    } else { E("zEksi").disabled=true; E("zArti").disabled=true; E("zDeger").textContent="Zoom yok"; }
+      kz.disabled=false; kz.min=m.zoom.min; kz.max=m.zoom.max; kz.step=Math.max(m.zoom.step||0.1,0.1);
+      if(!surukleniyor){
+        zHedef=(m.zoomDeger==null)?m.zoom.min:m.zoomDeger;
+        kz.value=zHedef; E("zDeger").textContent="Zoom "+(Math.round(zHedef*10)/10)+"×";
+      }
+    } else { kz.disabled=true; E("zDeger").textContent="Zoom yok"; }
     E("fenerBtn").disabled=!m.fener;
     E("fenerBtn").textContent=!m.fener?"Fener yok (arka kamerada dene)":(m.fenerAcik?"Fener açık":"Fener kapalı");
     E("fenerBtn").className=m.fenerAcik?"secili":"";
     if(!m.gor&&pc) ortaYazi("Görüntü kapalı"); else if(pc&&pc.connectionState==="connected") ortaYazi("");
   }
-  function zoomAdim(yonu){
-    if(!yet||!yet.zoom) return;
-    var z=yet.zoom, adim=(z.max-z.min)>2?0.5:Math.max(z.step,0.1);
-    zHedef=Math.max(z.min,Math.min(z.max,Math.round(((zHedef==null?z.min:zHedef)+yonu*adim)*10)/10));
-    E("zDeger").textContent="Zoom "+zHedef+"×";
-    gonder({t:"zoom",deger:zHedef});
+  // Zoom kaydırma: sürüklerken en fazla 150 ms'de bir gönderir, bırakınca son değeri gönderir
+  var surukleniyor=false, zSonGonderim=0, zBekleyen=null;
+  function zoomGonder(){
+    clearTimeout(zBekleyen);
+    var simdi=Date.now(), fark=simdi-zSonGonderim;
+    if(fark<150){ zBekleyen=setTimeout(zoomGonder,150-fark); return; }
+    zSonGonderim=simdi; gonder({t:"zoom",deger:zHedef});
   }
-  E("zEksi").onclick=function(){ zoomAdim(-1); };
-  E("zArti").onclick=function(){ zoomAdim(1); };
+  E("zKaydir").addEventListener("input",function(){
+    surukleniyor=true;
+    zHedef=Math.round(Number(this.value)*10)/10;
+    E("zDeger").textContent="Zoom "+zHedef+"×";
+    zoomGonder();
+  });
+  E("zKaydir").addEventListener("change",function(){
+    zHedef=Math.round(Number(this.value)*10)/10;
+    zoomGonder();
+    setTimeout(function(){ surukleniyor=false; },400);
+  });
   E("mikBtn").onclick=function(){ if(yet) gonder({t:"mik",deger:!yet.mik}); };
   E("gorBtn").onclick=function(){ if(yet) gonder({t:"gor",deger:!yet.gor}); };
   E("fenerBtn").onclick=function(){ if(yet&&yet.fener) gonder({t:"fener",deger:!yet.fenerAcik}); };
@@ -194,7 +210,7 @@
     E("bilgi").textContent="";
     goster(E("dGoruntu"),"yok","");
     E("baglanBtn").textContent="Bağlan";
-    yet=null; ["mikBtn","gorBtn","zEksi","zArti","fenerBtn"].forEach(function(i){ E(i).disabled=true; });
+    yet=null; ["mikBtn","gorBtn","zKaydir","fenerBtn"].forEach(function(i){ E(i).disabled=true; });
     ortaYazi("Görüntü yok. Aşağıdan \"Bağlan\"a dokunun.");
   }
 
