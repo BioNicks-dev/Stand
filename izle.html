@@ -223,7 +223,7 @@
     video.play().catch(function(){});   // iPhone: dokunuşla oynatmayı hazırla
     clearTimeout(bekleme);
     bekleme=setTimeout(function(){
-      if(!pc){ goster(E("dGoruntu"),"cevap yok","kotu"); ortaYazi("Kamera cevap vermedi. Pixel'de kamera sayfası açık ve \"Kamerayı başlat\"a basılmış mı?"); }
+      if(!pc){ goster(E("dGoruntu"),"cevap yok","kotu"); ortaYazi("Kamera cevap vermedi. Pixel'de kamera sayfası açık ve bekleme modunda mı?"); }
     },12000);
   }
   E("baglanBtn").onclick=function(){ if(bagliMi) kapat(); else baglan(); };
@@ -300,7 +300,7 @@
     else if(m.t==="hazirDegil"&&(!m.id||m.id===benim)&&bagliMi&&!pc){
       clearTimeout(bekleme);
       goster(E("dGoruntu"),"kamera kapalı","kotu");
-      ortaYazi("Pixel'deki kamera sayfası açık ama kamera başlatılmamış. Pixel'de \"Kamerayı başlat\"a basın.");
+      ortaYazi("Pixel'deki kamera sayfası açık ama bekleme modunda değil. Pixel'de \"Bekleme modunu başlat\"a basın.");
     }
     else if(m.t==="yetenek"&&bagliMi) yetenekGeldi(m);
   }
