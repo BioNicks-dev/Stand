@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14191a">
+<title>Stand kamerası (deneme)</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
+<style>
+  :root{
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    --bg:#ecebe6; --panel:#f7f6f2; --ink:#1d2321; --ink-soft:#5d6764;
+    --line:#cfcdc4; --line-strong:#a9a79d;
+    --live:#1f6f4a; --warn:#9a5b18; --stop:#8e2f2f; --radius:10px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14191a; --panel:#1c2224; --ink:#e9eae6; --ink-soft:#9aa5a3;
+      --line:#2c3437; --line-strong:#43504f;
+      --live:#57c48c; --warn:#d99a4e; --stop:#e08585;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14191a; --panel:#1c2224; --ink:#e9eae6; --ink-soft:#9aa5a3;
+    --line:#2c3437; --line-strong:#43504f;
+    --live:#57c48c; --warn:#d99a4e; --stop:#e08585;
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:Archivo,"Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.45}
+  .wrap{max-width:480px;margin:0 auto;padding:12px 14px 20px}
+  h1{font-size:19px;font-weight:600;margin:0 0 10px}
+  button{font:inherit;font-weight:500;color:var(--ink);background:var(--panel);border:1px solid var(--line-strong);
+    border-radius:var(--radius);padding:12px 10px;min-height:48px;cursor:pointer;width:100%}
+  button.ana{background:var(--live);color:#fff;border-color:var(--live)}
+  input{font:inherit;width:100%;padding:10px;border:1px solid var(--line-strong);border-radius:var(--radius);background:var(--panel);color:var(--ink);margin:4px 0 10px}
+  label{font-size:14px;color:var(--ink-soft)}
+  video{width:100%;max-height:45vh;background:#000;border-radius:var(--radius);display:block;object-fit:contain}
+  .satir{display:flex;gap:10px;margin:10px 0}
+  .durum{padding:10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin:10px 0}
+  .durum b.iyi{color:var(--live)} .durum b.uyari{color:var(--warn)} .durum b.kotu{color:var(--stop)}
+  #kayit{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;max-height:30vh;overflow:auto}
+  .not{font-size:14px;color:var(--ink-soft)}
+  .gizli{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Stand kamerası (deneme)</h1>
+
+  <div id="kurulum" class="gizli">
+    <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
+    <label for="kOda">Oda kodu</label>
+    <input id="kOda" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false">
+    <label for="kSifre">Sunucu şifresi</label>
+    <input id="kSifre" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="ana" id="kKaydet">Kaydet</button>
+  </div>
+
+  <div id="ana" class="gizli">
+    <video id="onizleme" autoplay playsinline muted></video>
+    <div class="durum">
+      Sunucu: <b id="dSunucu" class="uyari">bağlanıyor</b><br>
+      Kamera: <b id="dKamera" class="uyari">kapalı</b><br>
+      İzleyen: <b id="dIzleyen">yok</b>
+    </div>
+    <button class="ana" id="baslat">Kamerayı başlat</button>
+    <div class="satir">
+      <button id="onBtn">Ön kamera</button>
+      <button id="arkaBtn">Arka kamera</button>
+    </div>
+    <p class="not">Deneme sırasında bu sayfa açık ve ekran açık kalmalı. Ekran kendiliğinden sönmesin diye sayfa ekranı açık tutar.</p>
+    <div id="kayit"></div>
+    <p class="not"><a href="#" id="degistir">Bağlantı bilgilerini değiştir</a></p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
+  var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
+  function E(id){ return document.getElementById(id); }
+  function oku(a){ try{ return localStorage.getItem(a)||""; }catch(h){ return ""; } }
+  function yazLS(a,v){ try{ localStorage.setItem(a,v); }catch(h){} }
+  function saat(){ var d=new Date(); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)+":"+("0"+d.getSeconds()).slice(-2); }
+  function yaz(m){ var k=E("kayit"); k.textContent=saat()+" "+m+"\n"+k.textContent.slice(0,3000); }
+  function goster(el,metin,sinif){ el.textContent=metin; el.className=sinif||""; }
+
+  var kod=oku("stand_kod"), ss=oku("stand_ss");
+  var istemci=null, videoGonderen=null, akis=null, yon="user", pc=null, izleyen=null, ekranKilidi=null;
+
+  function konu(son){ return "comitok/"+kod+"/goruntu/"+son; }
+  function gonder(m){ if(istemci&&istemci.connected) istemci.publish(konu("i"),JSON.stringify(m)); }
+
+  // ---------- kurulum ----------
+  function kurulumuGoster(){
+    E("kOda").value=kod; E("kSifre").value=ss;
+    E("kurulum").className=""; E("ana").className="gizli";
+  }
+  E("kKaydet").onclick=function(){
+    kod=E("kOda").value.trim(); ss=E("kSifre").value.trim();
+    if(!kod||!ss) return;
+    yazLS("stand_kod",kod); yazLS("stand_ss",ss);
+    location.reload();
+  };
+  E("degistir").onclick=function(e){ e.preventDefault(); if(istemci) istemci.end(true); kurulumuGoster(); };
+
+  // ---------- ekranı açık tutma ----------
+  function ekranAcikTut(){
+    if(!("wakeLock" in navigator)) return;
+    navigator.wakeLock.request("screen").then(function(k){ ekranKilidi=k; }).catch(function(){});
+  }
+  document.addEventListener("visibilitychange",function(){
+    if(document.visibilityState==="visible"&&akis) ekranAcikTut();
+  });
+
+  // ---------- kamera ----------
+  function videoAl(){
+    return navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:yon},width:{ideal:1280},height:{ideal:720},frameRate:{ideal:24}}})
+      .then(function(s){ return s.getVideoTracks()[0]; });
+  }
+  function kameraBaslat(){
+    goster(E("dKamera"),"açılıyor","uyari");
+    var ses;
+    return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})
+      .then(function(s){ ses=s.getAudioTracks()[0]; return videoAl(); })
+      .then(function(v){
+        akis=new MediaStream([v,ses]);
+        E("onizleme").srcObject=new MediaStream([v]);
+        kameraYazisi();
+        E("baslat").textContent="Kamera açık";
+        E("baslat").disabled=true;
+        ekranAcikTut();
+        yaz("Kamera ve mikrofon açıldı.");
+        gonder({t:"hazir"});
+      })
+      .catch(function(h){
+        goster(E("dKamera"),"açılamadı","kotu");
+        yaz("Kamera açılamadı: "+(h&&h.name||"")+" "+(h&&h.message||"")+". Kamera/mikrofon izni verildi mi?");
+      });
+  }
+  function kameraYazisi(){ goster(E("dKamera"),yon==="user"?"açık (ön)":"açık (arka)","iyi"); }
+
+  var donuyor=false;
+  function kameraCevir(yeniYon){
+    if(!akis||donuyor||yeniYon===yon) return;
+    donuyor=true;
+    var eski=akis.getVideoTracks()[0];
+    eski.stop();   // Android iki kamerayı aynı anda açamayabilir: önce eskiyi kapat
+    yon=yeniYon;
+    videoAl().then(function(v){
+      akis.removeTrack(eski); akis.addTrack(v);
+      E("onizleme").srcObject=new MediaStream([v]);
+      if(pc&&videoGonderen) videoGonderen.replaceTrack(v);
+      kameraYazisi();
+      yaz(yon==="user"?"Ön kameraya geçildi.":"Arka kameraya geçildi.");
+      gonder({t:"kameraDurum",yon:yon});
+    }).catch(function(h){
+      yaz("Kamera değiştirilemedi: "+(h&&h.message||h));
+      goster(E("dKamera"),"değiştirilemedi","kotu");
+    }).then(function(){ donuyor=false; });
+  }
+  E("baslat").onclick=kameraBaslat;
+  E("onBtn").onclick=function(){ kameraCevir("user"); };
+  E("arkaBtn").onclick=function(){ kameraCevir("environment"); };
+
+  // ---------- görüntü bağlantısı ----------
+  function toplamaBitsin(p){
+    return new Promise(function(bitti){
+      if(p.iceGatheringState==="complete") return bitti();
+      var zaman=setTimeout(bitti,4000);
+      p.addEventListener("icegatheringstatechange",function(){
+        if(p.iceGatheringState==="complete"){ clearTimeout(zaman); bitti(); }
+      });
+    });
+  }
+  function baglantiyiKapat(){
+    if(pc){ try{ pc.close(); }catch(h){} pc=null; }
+    izleyen=null; goster(E("dIzleyen"),"yok","");
+  }
+  function istekGeldi(id){
+    if(!akis){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ama kamera başlatılmamış."); return; }
+    baglantiyiKapat();
+    izleyen=id;
+    var p=new RTCPeerConnection({iceServers:BUZ});
+    pc=p;
+    akis.getTracks().forEach(function(t){ var g=p.addTrack(t,akis); if(t.kind==="video") videoGonderen=g; });
+    p.onconnectionstatechange=function(){
+      if(p!==pc) return;
+      var s=p.connectionState;
+      if(s==="connected"){ goster(E("dIzleyen"),"bağlı","iyi"); yaz("İzleyen bağlandı."); }
+      else if(s==="connecting"){ goster(E("dIzleyen"),"bağlanıyor","uyari"); }
+      else if(s==="failed"){ goster(E("dIzleyen"),"bağlantı kurulamadı","kotu"); yaz("Bağlantı kurulamadı."); }
+      else if(s==="disconnected"){ goster(E("dIzleyen"),"koptu","uyari"); }
+      else if(s==="closed"){ goster(E("dIzleyen"),"yok",""); }
+    };
+    yaz("İzleme isteği geldi, bağlantı hazırlanıyor.");
+    goster(E("dIzleyen"),"bağlanıyor","uyari");
+    p.createOffer().then(function(o){ return p.setLocalDescription(o); })
+      .then(function(){ return toplamaBitsin(p); })
+      .then(function(){ if(p===pc) gonder({t:"teklif",id:id,sdp:p.localDescription.sdp,yon:yon}); })
+      .catch(function(h){ yaz("Teklif hazırlanamadı: "+(h&&h.message||h)); });
+  }
+  function mesajGeldi(m){
+    if(m.t==="istek") istekGeldi(m.id);
+    else if(m.t==="cevap"){
+      if(!pc||m.id!==izleyen) return;
+      pc.setRemoteDescription({type:"answer",sdp:m.sdp}).catch(function(h){ yaz("Cevap işlenemedi: "+(h&&h.message||h)); });
+    }
+    else if(m.t==="kamera"){ kameraCevir(m.yon==="arka"?"environment":"user"); }
+    else if(m.t==="bitir"){ if(m.id===izleyen){ yaz("İzleyen ayrıldı."); baglantiyiKapat(); } }
+    else if(m.t==="sor"){ gonder({t:akis?"hazir":"hazirDegil"}); }
+  }
+
+  // ---------- sunucu ----------
+  function sunucuyaBaglan(){
+    if(typeof mqtt==="undefined"){ goster(E("dSunucu"),"kütüphane yüklenemedi","kotu"); return; }
+    istemci=mqtt.connect(SUNUCU_ADRES,{
+      clientId:"comitok_kamera_"+Math.random().toString(16).slice(2,10),
+      username:SUNUCU_KULLANICI, password:ss, reconnectPeriod:5000, connectTimeout:10000
+    });
+    istemci.on("connect",function(){
+      goster(E("dSunucu"),"bağlı","iyi");
+      istemci.subscribe(konu("k"));
+      if(akis) gonder({t:"hazir"});
+    });
+    istemci.on("reconnect",function(){ goster(E("dSunucu"),"yeniden bağlanıyor","uyari"); });
+    istemci.on("close",function(){ if(E("dSunucu").textContent==="bağlı") goster(E("dSunucu"),"koptu","uyari"); });
+    istemci.on("error",function(h){
+      var m=(h&&h.message)||"";
+      if((h&&(h.code===4||h.code===5))||/not authori[sz]ed|bad user ?name or password/i.test(m)){
+        goster(E("dSunucu"),"şifre hatalı","kotu");
+        yaz("Sunucu şifreyi kabul etmedi. \"Bağlantı bilgilerini değiştir\"den düzeltin.");
+        try{ istemci.end(true); }catch(e){}
+        return;
+      }
+      yaz("Sunucu hatası: "+m);
+    });
+    istemci.on("message",function(k,veri){
+      var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
+      mesajGeldi(m);
+    });
+  }
+
+  if(!kod||!ss){ kurulumuGoster(); return; }
+  E("ana").className="";
+  sunucuyaBaglan();
+})();
+</script>
+</body>
+</html>
