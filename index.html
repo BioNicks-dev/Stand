@@ -388,7 +388,9 @@
       <label>Ev kamerası arkadayken yatay ters<input type="checkbox" id="arkaTersX" checked></label>
       <label>Ev kamerası arkadayken dikey ters<input type="checkbox" id="arkaTersY" checked></label>
       <label>Ev kamerası takibi: kimi<select id="takipHedef"><option value="herkes">Herkes (en büyük olan)</option><option value="insan">Sadece insan</option><option value="kedi">Sadece kedi</option></select></label>
-      <label>Ev kamerası takip yönü ters<input type="checkbox" id="takipTers"></label>
+      <label>Ev kamerası takip yönü ters (sağ-sol)<input type="checkbox" id="takipTers"></label>
+      <label>Ev kamerası takip yönü ters (yukarı-aşağı)<input type="checkbox" id="takipTersY"></label>
+      <label>Ev kamerası takipte otomatik zoom<input type="checkbox" id="takipZoom"></label>
       <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
       <label class="sadeceYonetici">Arama zili<input type="checkbox" id="aramaZil" checked></label>
@@ -1295,7 +1297,7 @@
   });
 
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","arkaTersX","arkaTersY","takipHedef","takipTers","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","arkaTersX","arkaTersY","takipHedef","takipTers","takipTersY","takipZoom","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
@@ -1383,6 +1385,7 @@
     grYet=m;
     if(yonDegisti){ grZ=1; grC={x:0,y:0}; grZHedef=null; }   // kamera değişince zoom sıfırlanır
     grZc=(m.zoom&&typeof m.zoomDeger==="number")?m.zoomDeger:(m.zoom?m.zoom.min:1);
+    if(m.takip&&m.otoZoom&&!grPinch&&!grTekParmak&&Date.now()-grElleZoomSon>8000){ grZ=Math.max(1,grZc); grC={x:0,y:0}; }
     grZoomUygula();
     grBilgiCiz();
     grDugmeler(true);
@@ -1485,7 +1488,8 @@
   E("kGorBtn").onclick=function(){ if(grYet) grGonder({t:"gor",deger:!grYet.gor}); };
   // ---------- takip: Pixel insanı/kediyi bulup standı kendisi çevirir ----------
   function grTakipMesaji(deger){
-    return {t:"takip",deger:!!deger,hedef:E("takipHedef").value,tx:E("tersX").checked,atx:E("arkaTersX").checked,ters:E("takipTers").checked};
+    return {t:"takip",deger:!!deger,hedef:E("takipHedef").value,tx:E("tersX").checked,atx:E("arkaTersX").checked,
+      ty:E("tersY").checked,aty:E("arkaTersY").checked,ters:E("takipTers").checked,tersY:E("takipTersY").checked,oto:E("takipZoom").checked};
   }
   var grTakipBekleSon=0;
   function grTakipBekle(sn){ var n=Date.now(); if(n-grTakipBekleSon<1000) return; grTakipBekleSon=n; grGonder({t:"takipBekle",sn:sn}); }
@@ -1496,7 +1500,7 @@
     if(ac&&!izin&&!yk){ grKisaYazi("Takip için standda izin açık olmalı"); return; }
     grGonder(grTakipMesaji(ac)); grKisaYazi(ac?"Takip açık":"Takip kapalı");
   };
-  ["takipHedef","takipTers","tersX","arkaTersX"].forEach(function(id){
+  ["takipHedef","takipTers","takipTersY","takipZoom","tersX","arkaTersX","tersY","arkaTersY"].forEach(function(id){
     E(id).addEventListener("change",function(){ if(grYet&&grYet.takip) grGonder(grTakipMesaji(true)); });
   });
   E("kFenerBtn").onclick=function(){ if(grYet&&grYet.fener) grGonder({t:"fener",deger:!grYet.fenerAcik}); };
@@ -1505,7 +1509,7 @@
   // Pixel'in zoom'u sadece ortaya yakınlaşır; Pixel'e, istenen yer görüntüde kalacak kadar zoom yaptırılır
   // (görüntü net kalsın), geri kalanı bu sayfada büyütülür.
   var grZ=1, grC={x:0,y:0}, grZc=1, grZHedef=null, grZSon=0, grZBekleyen=null, grGostergeTik=null;
-  var grDokunSon=0, grPinch=null, grTekParmak=null, grHareketVardi=false;
+  var grDokunSon=0, grPinch=null, grTekParmak=null, grHareketVardi=false, grElleZoomSon=0;
   function grKameraZoom(){ return grYet&&grYet.zoom; }
   function grToplamEnCok(){ var c=grKameraZoom(); return c?Math.max(c.max*1.5,4):4; }
   function grResim(){   // görüntünün ekranda çizilen boyutu (zoom 1'de)
@@ -1543,7 +1547,7 @@
     var g=E("kZoomGosterge"); g.textContent=(Math.round(grZ*10)/10)+"×"; g.classList.add("gorunur");
     clearTimeout(grGostergeTik); grGostergeTik=setTimeout(function(){ g.classList.remove("gorunur"); },1200);
   }
-  function grZoomSifirla(){ grZ=1; grC={x:0,y:0}; grZoomUygula(); grZoomGonder(); grGosterge(); }
+  function grZoomSifirla(){ grElleZoomSon=Date.now(); grZ=1; grC={x:0,y:0}; grZoomUygula(); grZoomGonder(); grGosterge(); }
   function grKonumdanCerceve(px,py,z,c){   // ekrandaki noktanın Pixel'in tam açısındaki yeri
     var r=grResim(), k=E("kEkran").getBoundingClientRect();
     return {x:c.x+(px-k.left-r.ew/2)/(r.w*z), y:c.y+(py-k.top-r.eh/2)/(r.h*z)};
@@ -1569,7 +1573,7 @@
     if(grPinch&&p.length>=2){
       e.preventDefault();
       var o=grOrtaNokta(p), r=grResim(), k=E("kEkran").getBoundingClientRect();
-      grZ=grPinch.z*grMesafe(p)/grPinch.d; grSinirla();
+      grZ=grPinch.z*grMesafe(p)/grPinch.d; grSinirla(); grElleZoomSon=Date.now();
       // parmakların arasındaki nokta parmakların altında kalsın
       grC.x=grPinch.a.x-(o.x-k.left-r.ew/2)/(r.w*grZ);
       grC.y=grPinch.a.y-(o.y-k.top-r.eh/2)/(r.h*grZ);

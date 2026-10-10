@@ -76,7 +76,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 1</span></h1>
+  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 2</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -287,7 +287,7 @@
     return {t:"yetenek", yon:yon,
       zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
       zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
-      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef};
+      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto};
   }
   function bildir(){
     if(!akis) return;
@@ -347,38 +347,89 @@
   E("onBtn").onclick=function(){ kameraCevir("user"); };
   E("arkaBtn").onclick=function(){ kameraCevir("environment"); };
 
-  // ---------- insan / kedi tanıma (deneme: stand oynamaz) ----------
+  // ---------- insan / kedi tanıma ve takip ----------
   // Google MediaPipe nesne bulucu, Pixel'in içinde (Chrome) çalışır; görüntü hiçbir yere gitmez.
   var MP_ADRES="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
   var MP_MODEL="https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite";
-  var TANI_ARA=200;          // ms: saniyede 5 kez bak (ısınmasın)
-  var ORTA_PAY=0.15;         // ortadan bu kadar kayınca "sağda/solda"
+  var TANI_ARALIK=330, TANI_MOLA=120;   // saniyede ~3 bakış, her bakıştan sonra en az 120 ms mola (ısınmasın)
+  var ORTA_PAY=0.15, DIKEY_PAY=0.18;    // ortadan bu kadar kayınca dön / eğil
+  var ESIK={person:0.45,cat:0.30,dog:0.35};
   var ADLAR={person:"insan",cat:"kedi",dog:"köpek"};
-  var bulucu=null, bulucuYukleniyor=false, taniZaman=null, taniSure=0, sonTaniYazi="";
-  // takip: hedef ortadan kayınca karta kısa adım komutu (azsag/azsol, kart 0,4 sn döner, sınırı kart korur)
-  var takipAcik=false, takipAyar={hedef:"herkes",tx:false,atx:true,ters:false};
-  var takipBekleBitis=0, sonrakiAdim=0, disariSayi=0;
+  // Pixel 6a, yatay görüntüde zoom 1'deki yaklaşık yatay görüş açısı (derece)
+  var GORUS={environment:63,user:70};
+  var DONUS_HIZI=27, EGME_HIZI=27, BASLAMA=250, EN_FAZLA_DERECE=35;   // kartla aynı değerler
+  var bulucu=null, bulucuYukleniyor=false, taniZaman=null, taniCalisiyor=false, taniSure=0, sonTaniYazi="";
+  var takipAcik=false, takipAyar={hedef:"herkes",tx:false,atx:true,ty:false,aty:true,ters:false,tersY:false,oto:false};
+  var takipBekleBitis=0, sonrakiKarar=0, disariSayi=0, hareket=null;
+  var otoSonAdim=0, elleZoomSon=0, sonGorulme=0;
   var HEDEFLER={herkes:["person","cat","dog"],insan:["person"],kedi:["cat"]};
-  function karta(t){ if(istemci&&istemci.connected) istemci.publish("comitok/"+kod+"/komut",JSON.stringify({t:t,kaynak:"uzak"})); }
+  function karta(m){ m.kaynak="uzak"; if(istemci&&istemci.connected) istemci.publish("comitok/"+kod+"/komut",JSON.stringify(m)); }
   function takipAyarla(acik,ayar){
-    if(ayar){ ["hedef","tx","atx","ters"].forEach(function(a){ if(ayar[a]!==undefined) takipAyar[a]=ayar[a]; }); }
-    if(acik!==takipAcik) yaz(acik?"Takip açıldı.":"Takip kapandı.");
+    if(ayar){ ["hedef","tx","atx","ty","aty","ters","tersY","oto"].forEach(function(a){ if(ayar[a]!==undefined) takipAyar[a]=ayar[a]; }); }
+    if(!!acik!==takipAcik) yaz(acik?"Takip açıldı.":"Takip kapandı.");
     takipAcik=!!acik; E("takipKutu").checked=takipAcik; disariSayi=0;
+    if(!takipAcik) hareketiBirak();
     taniDurum(); bildir();
   }
   E("takipKutu").onchange=function(){ takipAyarla(E("takipKutu").checked); };
-  function takipAdim(x,simdi){
-    if(!takipAcik||simdi<takipBekleBitis||simdi<sonrakiAdim) return "";
-    if(Math.abs(x)<=ORTA_PAY){ disariSayi=0; return ""; }
-    if(++disariSayi<2) return "";            // bir kere dışarıda görünmesi yetmez, titremesin
-    var yonu_=x>0?1:-1;
-    var ters=takipAyar.tx!==(yon==="environment"&&takipAyar.atx);
-    if(ters!==!!takipAyar.ters) yonu_=-yonu_;
-    karta(yonu_>0?"azsag":"azsol");
-    sonrakiAdim=simdi+400+(Math.abs(x)>0.3?350:650);   // dön, görüntü yetişsin, sonra tekrar bak
-    disariSayi=0;
-    return x>0?"sağa":"sola";
+
+  // ---------- dönüş: hedefin açısı kadar, joystick komutuyla (kart sınırı korur, komut kesilirse 0,6 sn'de durur) ----------
+  function hareketiBirak(){ if(hareket){ clearInterval(hareket.tik); hareket=null; } }
+  function donusBaslat(dx,dy,msX,msY){
+    hareketiBirak();
+    var bas=Date.now(), h={};
+    function gonder(){
+      var g=Date.now()-bas, x=g<msX?dx:0, y=g<msY?dy:0;
+      karta({t:"joy",x:510+x*190,y:510+y*190});
+      if(!x&&!y){ hareketiBirak(); setTimeout(function(){ karta({t:"joy",x:510,y:510}); },120); }
+    }
+    h.tik=setInterval(gonder,150); hareket=h; gonder();
+    sonrakiKarar=bas+Math.max(msX,msY)+600;   // dönüş bitsin, görüntü yetişsin, sonra tekrar bak
   }
+  function aci(f,gorus,z){   // görüntüde merkezden f kadar (-0.5..0.5) uzaktaki noktanın açısı
+    var t=Math.tan(gorus*Math.PI/360)/Math.max(1,z);
+    return Math.atan(2*f*t)*180/Math.PI;
+  }
+  function takipKarar(v,fx,fy,boyY,simdi){
+    if(!takipAcik||simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
+    var disX=Math.abs(fx)>ORTA_PAY, disY=Math.abs(fy)>DIKEY_PAY&&boyY<0.8;
+    if(!disX&&!disY){ disariSayi=0; return ""; }
+    if(++disariSayi<2) return "";            // bir kere dışarıda görünmesi yetmez, titremesin
+    disariSayi=0;
+    var z=mevcutZoom(), gx=GORUS[yon]||65;
+    var gy=2*Math.atan(Math.tan(gx*Math.PI/360)*v.videoHeight/v.videoWidth)*180/Math.PI;
+    var ax=disX?aci(fx,gx,z):0, ay=disY?aci(fy,gy,z):0;
+    ax=Math.max(-EN_FAZLA_DERECE,Math.min(EN_FAZLA_DERECE,ax)); ay=Math.max(-20,Math.min(20,ay));
+    var arka=yon==="environment";
+    // yön: sayfadaki joystick ayarlarıyla aynı mantık, ilk denemeye göre çevrilmiş
+    var sx=ax>0?-1:1, sy=ay>0?-1:1;
+    if(takipAyar.tx!==(arka&&takipAyar.atx)) sx=-sx; if(takipAyar.ters) sx=-sx;
+    if(takipAyar.ty!==(arka&&takipAyar.aty)) sy=-sy; if(takipAyar.tersY) sy=-sy;
+    var msX=disX?BASLAMA+Math.abs(ax)/DONUS_HIZI*1000:0, msY=disY?BASLAMA+Math.abs(ay)/EGME_HIZI*1000:0;
+    donusBaslat(disX?sx:0,disY?sy:0,msX,msY);
+    return (disX?(fx>0?"sağa ":"sola ")+Math.round(Math.abs(ax))+"°":"")+(disX&&disY?", ":"")+(disY?(fy>0?"aşağı ":"yukarı ")+Math.round(Math.abs(ay))+"°":"");
+  }
+
+  // ---------- otomatik zoom: hedefi belli bir boyutta tut ----------
+  function mevcutZoom(){ var t=vTrack(), a={}; try{ a=t&&t.getSettings?t.getSettings():{}; }catch(h){} return typeof a.zoom==="number"?a.zoom:1; }
+  function otoZoom(hedef,boyY,fx,simdi){
+    if(!takipAcik||!takipAyar.oto||hareket) return;
+    if(simdi-elleZoomSon<8000||simdi-otoSonAdim<1200) return;
+    var c=yetenekler().zoom; if(!c) return;
+    var z=mevcutZoom(), enCok=Math.min(c.max,4), yeni=z;
+    if(!hedef){ if(simdi-sonGorulme>2500&&z>c.min+0.05) yeni=Math.max(c.min,z/1.3); }   // kaybolunca uzaklaş, ara
+    else {
+      var istenen=hedef.categories[0].categoryName==="person"?0.6:0.4;
+      if(Math.abs(fx)>0.35) yeni=Math.max(c.min,z/1.2);                  // kenara kaçıyorsa biraz uzaklaş
+      else if(boyY<istenen*0.7) yeni=Math.min(enCok,z*Math.min(1.3,istenen/boyY));
+      else if(boyY>istenen*1.4) yeni=Math.max(c.min,z/Math.min(1.3,boyY/istenen));
+    }
+    if(Math.abs(yeni-z)<0.08) return;
+    otoSonAdim=simdi;
+    var v=vTrack(); if(!v) return;
+    v.applyConstraints({advanced:[{zoom:Math.round(yeni*10)/10}]}).then(bildir).catch(function(){});
+  }
+
   E("taniAcik").checked=oku("stand_kamTani")==="1";
   E("taniAcik").onchange=function(){ yazLS("stand_kamTani",E("taniAcik").checked?"1":"0"); taniDurum(); };
   function bulucuHazirla(){
@@ -389,18 +440,26 @@
       .then(function(fs){
         function yap(isle){ return vision.ObjectDetector.createFromOptions(fs,{
           baseOptions:{modelAssetPath:MP_MODEL,delegate:isle}, runningMode:"VIDEO",
-          scoreThreshold:0.4, maxResults:5, categoryAllowlist:["person","cat","dog"]}); }
-        return yap("GPU").catch(function(){ yaz("Tanıma GPU'da açılmadı, CPU ile deneniyor."); return yap("CPU"); });
+          scoreThreshold:0.3, maxResults:5, categoryAllowlist:["person","cat","dog"]}); }
+        return yap("GPU").then(function(b){ yaz("Tanıma GPU ile çalışıyor."); return b; })
+          .catch(function(){ yaz("Tanıma GPU'da açılmadı, CPU ile deneniyor."); return yap("CPU"); });
       })
       .then(function(b){ bulucu=b; bulucuYukleniyor=false; yaz("Tanıma hazır."); taniDurum(); })
       .catch(function(h){ bulucuYukleniyor=false; goster(E("dTani"),"yüklenemedi","kotu"); yaz("Tanıma yüklenemedi: "+(h&&h.message||h)); });
   }
   function taniDurum(){
     var istek=E("taniAcik").checked||takipAcik;
-    if(!istek){ clearInterval(taniZaman); taniZaman=null; taniTemizle(); goster(E("dTani"),"kapalı",""); return; }
+    if(!istek){ taniCalisiyor=false; clearTimeout(taniZaman); taniTemizle(); goster(E("dTani"),"kapalı",""); return; }
     if(!bulucu){ bulucuHazirla(); return; }
-    if(!akis){ clearInterval(taniZaman); taniZaman=null; taniTemizle(); goster(E("dTani"),"hazır (kamera kapalı)",""); return; }
-    if(!taniZaman) taniZaman=setInterval(taniBak,TANI_ARA);
+    if(!akis){ taniCalisiyor=false; clearTimeout(taniZaman); taniTemizle(); goster(E("dTani"),"hazır (kamera kapalı)",""); return; }
+    if(!taniCalisiyor){ taniCalisiyor=true; taniZaman=setTimeout(taniDongu,TANI_ARALIK); }
+  }
+  function taniDongu(){
+    if(!taniCalisiyor) return;
+    var t0=performance.now();
+    try{ taniBak(); }catch(h){}
+    var gecen=performance.now()-t0;
+    taniZaman=setTimeout(taniDongu,Math.max(TANI_MOLA,TANI_ARALIK-gecen));
   }
   function taniTemizle(){
     var c=E("taniCizim"); c.getContext("2d").clearRect(0,0,c.width,c.height);
@@ -413,22 +472,31 @@
     try{ sonuc=bulucu.detectForVideo(v,t0); }catch(h){ return; }
     taniSure=Math.round(performance.now()-t0);
     var izinli=HEDEFLER[takipAyar.hedef]||HEDEFLER.herkes;
-    var liste=((sonuc&&sonuc.detections)||[]).filter(function(d){ return izinli.indexOf(d.categories[0].categoryName)>=0; });
+    var liste=((sonuc&&sonuc.detections)||[]).filter(function(d){
+      var k=d.categories[0]; return izinli.indexOf(k.categoryName)>=0&&k.score>=(ESIK[k.categoryName]||0.4); });
     taniCiz(v,liste);
     // en büyük olanı "hedef" say
     var hedef=null, enBuyuk=0;
     liste.forEach(function(d){ var b=d.boundingBox, a=b.width*b.height; if(a>enBuyuk){ enBuyuk=a; hedef=d; } });
-    var metin="";
+    var metin="", simdi=Date.now();
     if(hedef){
+      sonGorulme=simdi;
       var b=hedef.boundingBox, k=hedef.categories[0];
-      var x=(b.originX+b.width/2)/v.videoWidth-0.5;
-      var yer=x<-ORTA_PAY?"solda":(x>ORTA_PAY?"sağda":"ortada");
+      var fx=(b.originX+b.width/2)/v.videoWidth-0.5;
+      // insanda göğüs-baş hizası, hayvanda ortası
+      var fy=(b.originY+b.height*(k.categoryName==="person"?0.3:0.5))/v.videoHeight-0.5;
+      var boyY=b.height/v.videoHeight;
+      var yer=fx<-ORTA_PAY?"solda":(fx>ORTA_PAY?"sağda":"ortada");
       metin=(ADLAR[k.categoryName]||k.categoryName)+" · "+yer;
-      var simdi=Date.now(), adim=takipAdim(x,simdi);
-      if(adim) yaz("Takip: "+adim+" adım.");
-      var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":" · takip"):"";
+      var adim=takipKarar(v,fx,fy,boyY,simdi);
+      if(adim) yaz("Takip: "+adim+".");
+      otoZoom(hedef,boyY,fx,simdi);
+      var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":(hareket?" · dönüyor":" · takip")):"";
       E("taniYazi").textContent=metin+" · %"+Math.round(k.score*100)+ek;
-    } else { disariSayi=0; E("taniYazi").textContent="kimse yok"+(takipAcik?" · takip":""); }
+    } else {
+      disariSayi=0; otoZoom(null,0,0,simdi);
+      E("taniYazi").textContent="kimse yok"+(takipAcik?" · takip":"");
+    }
     goster(E("dTani"),"açık ("+taniSure+" ms)","iyi");
     if(metin!==sonTaniYazi){ sonTaniYazi=metin; yaz("Tanıma: "+(metin||"kimse yok")); }
   }
@@ -437,10 +505,11 @@
     if(c.width!==w) c.width=w; if(c.height!==h) c.height=h;
     var g=c.getContext("2d"); g.clearRect(0,0,w,h);
     // görüntü kutunun içine "contain" ile oturuyor: ölçek ve boşluğu hesapla
-    var o=Math.min(w/v.videoWidth,h/v.videoHeight), ox=(w-v.videoWidth*o)/2, oy=(h-v.videoHeight*o)/2;
+    var o=Math.min(w/v.videoWidth,h/v.videoHeight), ox=(w-v.videoWidth*o)/2, oy=(h-v.videoHeight*o)/2, gw=v.videoWidth*o, gh=v.videoHeight*o;
     // orta bölge çizgileri
     g.strokeStyle="rgba(255,255,255,.35)"; g.lineWidth=1; g.setLineDash([6,6]);
-    [0.5-ORTA_PAY,0.5+ORTA_PAY].forEach(function(f){ var xx=ox+v.videoWidth*o*f; g.beginPath(); g.moveTo(xx,oy); g.lineTo(xx,oy+v.videoHeight*o); g.stroke(); });
+    [0.5-ORTA_PAY,0.5+ORTA_PAY].forEach(function(f){ var xx=ox+gw*f; g.beginPath(); g.moveTo(xx,oy); g.lineTo(xx,oy+gh); g.stroke(); });
+    [0.5-DIKEY_PAY,0.5+DIKEY_PAY].forEach(function(f){ var yy=oy+gh*f; g.beginPath(); g.moveTo(ox,yy); g.lineTo(ox+gw,yy); g.stroke(); });
     g.setLineDash([]);
     liste.forEach(function(d){
       var b=d.boundingBox, k=d.categories[0], ad=k.categoryName;
@@ -512,12 +581,12 @@
       pc.setRemoteDescription({type:"answer",sdp:m.sdp}).catch(function(h){ yaz("Cevap işlenemedi: "+(h&&h.message||h)); });
     }
     else if(m.t==="kamera"){ kameraCevir(m.yon==="arka"?"environment":"user"); }
-    else if(m.t==="zoom") zoomAyarla(m.deger);
+    else if(m.t==="zoom"){ elleZoomSon=Date.now(); zoomAyarla(m.deger); }
     else if(m.t==="fener") fenerAyarla(m.deger);
     else if(m.t==="mik") mikAyarla(m.deger);
     else if(m.t==="gor") gorAyarla(m.deger);
     else if(m.t==="takip") takipAyarla(!!m.deger,m);
-    else if(m.t==="takipBekle"){ takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; }
+    else if(m.t==="takipBekle"){ takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; hareketiBirak(); }
     else if(m.t==="bitir"){ if(m.id===izleyen){ yaz("İzleyen ayrıldı."); baglantiyiKapat(); } }
     else if(m.t==="sor"){ gonder({t:(akis||beklemede)?"hazir":"hazirDegil"}); }
   }
