@@ -156,6 +156,13 @@
   .kYuvarlak{position:absolute;top:8px;width:42px;height:42px;min-height:0;padding:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:18px;z-index:3}
   .kKapat{right:8px} .kAyar{left:8px}
   #kBilgi.uyar{color:#ff9a9a;opacity:1}
+  #kEkran #kBilgi{background:none;border:0;padding:2px 4px;margin:0;min-height:0;width:auto;font:inherit;font-size:12px;pointer-events:auto;z-index:4;cursor:pointer}
+  #kBilgi:empty{display:none}
+  #kAyrinti{position:absolute;left:10px;right:auto;max-width:min(320px,80%);z-index:7;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.55;padding:10px 12px;border-radius:12px;bottom:28px}
+  body.buyukDuzen #kAyrinti{top:84px;bottom:auto;left:12px}
+  body.yatayDuzen.buyukDuzen #kAyrinti{top:40px;left:calc(62px + env(safe-area-inset-left,0px))}
+  #kAyrinti.gizli{display:none}
+  .kDugmeler button.ogreniyor{opacity:.55}
   /* klasik düzende zoom çubuğu kalın */
   /* büyük düzen: joystick, zoom ve düğmeler görüntünün üstünde */
   body.buyukDuzen #kEkran{height:70vh;height:70dvh;touch-action:none}
@@ -240,7 +247,8 @@
     <video id="kVideo" autoplay playsinline muted></video>
     <canvas id="kKutular"></canvas>
     <div id="kOrta"></div>
-    <div id="kBilgi"></div>
+    <button id="kBilgi" type="button" aria-label="Ayrıntılar"></button>
+    <div id="kAyrinti" class="gizli"></div>
     <button class="kYuvarlak kAyar" id="kAyarBtn" aria-label="Ayarlar">⚙</button>
     <button class="kYuvarlak kKapat" id="kKapatBtn" aria-label="Kamerayı kapat">✕</button>
     <div id="kPadYuva"></div>
@@ -390,8 +398,6 @@
       <label>Ev kamerası arkadayken yatay ters<input type="checkbox" id="arkaTersX" checked></label>
       <label>Ev kamerası arkadayken dikey ters<input type="checkbox" id="arkaTersY" checked></label>
       <label>Ev kamerası takibi: kimi<select id="takipHedef"><option value="herkes">Herkes (en büyük olan)</option><option value="insan">Sadece insan</option><option value="kedi">Sadece kedi</option></select></label>
-      <label>Ev kamerası takip yönü ters (sağ-sol)<input type="checkbox" id="takipTers"></label>
-      <label>Ev kamerası takip yönü ters (yukarı-aşağı)<input type="checkbox" id="takipTersY"></label>
       <label>Ev kamerası takipte otomatik zoom<input type="checkbox" id="takipZoom"></label>
       <label>Ev kamerasında tanıma kutularını göster<input type="checkbox" id="kutuGoster" checked></label>
       <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
@@ -1300,7 +1306,7 @@
   });
 
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","arkaTersX","arkaTersY","takipHedef","takipTers","takipTersY","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","arkaTersX","arkaTersY","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
@@ -1334,7 +1340,8 @@
     if(grPc){ try{ grPc.close(); }catch(h){} grPc=null; }
     if(haberVer&&grIstekte) grGonder({t:"bitir",id:grId});
     grIstekte=false; grYet=null; grZ=1; grC={x:0,y:0}; grZc=1; grZHedef=null; grVideo.style.transform="";
-    grVideo.srcObject=null; grKutuSon=null; grKutuCiz(); grTur=""; grCoz=""; E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar");
+    grVideo.srcObject=null; grKutuSon=null; grKutuCiz(); grTur=""; grCoz=""; grCozW=0; grCozH=0; grPx={ms:null,isi:null,kal:null};
+    E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar"); E("kAyrinti").classList.add("gizli"); E("kTakipBtn").classList.remove("ogreniyor");
     grDugmeler(false);
   }
   function grBaglan(){
@@ -1388,22 +1395,44 @@
     (m.k||[]).forEach(function(a){ ciz(a,a[4]==="i"?"#57c48c":"#f0b44c",2); });
     if(m.y) ciz(m.y,"#ffffff",2);
   }
+  var grPx={ms:null,isi:null,kal:null};
   function grKutuGeldi(veri){
     try{ grKutuSon=JSON.parse(veri); }catch(h){ return; }
+    var m=grKutuSon, eski=grPx.ms;
+    grPx.ms=m.ms; grPx.isi=m.isi; grPx.kal=m.kal;
+    if(eski===null||Math.abs(eski-m.ms)>15||!grBilgiSon||Date.now()-grBilgiSon>2000) grBilgiCiz();
     grKutuCiz();
     clearTimeout(grKutuSil); grKutuSil=setTimeout(function(){ grKutuSon=null; grKutuCiz(); },1500);   // gelmezse silinsin
   }
   E("kutuGoster").addEventListener("change",grKutuCiz);
+  var grBilgiSon=0, grCozW=0, grCozH=0;
   function grBilgiCiz(){
-    var p=grYet&&grYet.pil, parca=[];
-    if(p) parca.push("🔋 "+p.y+"%"+(p.s?" ⚡":" şarjda değil"));
-    if(grTur) parca.push(grTur);
-    if(grCoz) parca.push(grCoz);
-    var isi=grYet&&grYet.isi;
-    if(isi) parca.push("Pixel "+isi);
+    grBilgiSon=Date.now();
+    var p=grYet&&grYet.pil, parca=[], ayr=[];
+    var isi=grPx.isi||(grYet&&grYet.isi)||"", ms=grPx.ms;
+    var dusuk=grCozW&&Math.max(grCozW,grCozH)<1280;
+    // kısa satır: simgeler
+    if(p) parca.push((p.s?"⚡":(p.y<20?"🪫":"🔋"))+p.y+"%");
+    var turS={"ev ağı":"🏠","internet":"🌐","aktarma":"☁"}[grTur]; if(turS) parca.push(turS);
+    if(isi) parca.push((isi==="rahat"?"🟢":(isi==="zorlanıyor"?"🟡":"🔴"))+(typeof ms==="number"?" "+ms+" ms":""));
+    if(dusuk) parca.push("⚠ "+Math.min(grCozW,grCozH)+"p");
     E("kBilgi").textContent=parca.join(" · ");
-    E("kBilgi").classList.toggle("uyar",!!(p&&(!p.s||p.y<20))||isi==="çok zorlanıyor");
+    E("kBilgi").classList.toggle("uyar",!!(p&&!p.s&&p.y<20)||isi==="çok zorlanıyor");
+    // ayrıntı kutusu
+    if(p) ayr.push("Pil: %"+p.y+(p.s?", şarjda":", şarjda değil"));
+    if(grTur) ayr.push("Bağlantı: "+({"ev ağı":"ev ağı (doğrudan)","internet":"internet (doğrudan)","aktarma":"sunucu üzerinden aktarma"}[grTur]||grTur));
+    if(grCozW) ayr.push("Görüntü: "+grCozW+"×"+grCozH);
+    if(isi) ayr.push("Pixel: "+isi+(typeof ms==="number"?" · tanıma "+ms+" ms":""));
+    var k=grPx.kal;
+    function kd(o){ return !o?"-":(o.h?"hazır"+(o.i!==null?" · isabet %"+o.i:""):"öğreniyor "+o.n+"/3"); }
+    if(k) ayr.push("Takip öğrenmesi: ön "+kd(k.user)+" / arka "+kd(k.environment));
+    E("kAyrinti").innerHTML=ayr.map(function(a){ return a.replace(/&/g,"&amp;").replace(/</g,"&lt;"); }).join("<br>")||"Bilgi yok";
+    // takip düğmesi öğrenme bitene kadar soluk
+    var bu=k&&grYet&&k[grYet.yon];
+    E("kTakipBtn").classList.toggle("ogreniyor",!!(bu&&!bu.h));
   }
+  E("kBilgi").onclick=function(e){ e.stopPropagation(); E("kAyrinti").classList.toggle("gizli"); };
+  E("kAyrinti").onclick=function(){ E("kAyrinti").classList.add("gizli"); };
   function grYetenek(m){
     var yonDegisti=!grYet||grYet.yon!==m.yon;
     grYet=m;
@@ -1440,7 +1469,8 @@
           var ty=y&&y.candidateType, tu=u&&u.candidateType;
           tur=(ty==="relay"||tu==="relay")?"aktarma":(ty==="host"&&tu==="host")?"ev ağı":"internet";
         }
-        grTur=tur; grCoz=(vid&&vid.frameHeight)?vid.frameHeight+"p":""; grBilgiCiz();
+        grTur=tur; grCoz=(vid&&vid.frameHeight)?vid.frameHeight+"p":"";
+        grCozW=(vid&&vid.frameWidth)||0; grCozH=(vid&&vid.frameHeight)||0; grBilgiCiz();
       }).catch(function(){});
     },3000);
   }
@@ -1512,8 +1542,7 @@
   E("kGorBtn").onclick=function(){ if(grYet) grGonder({t:"gor",deger:!grYet.gor}); };
   // ---------- takip: Pixel insanı/kediyi bulup standı kendisi çevirir ----------
   function grTakipMesaji(deger){
-    return {t:"takip",deger:!!deger,hedef:E("takipHedef").value,tx:E("tersX").checked,atx:E("arkaTersX").checked,
-      ty:E("tersY").checked,aty:E("arkaTersY").checked,ters:E("takipTers").checked,tersY:E("takipTersY").checked,oto:E("takipZoom").checked};
+    return {t:"takip",deger:!!deger,hedef:E("takipHedef").value,oto:E("takipZoom").checked};
   }
   var grTakipBekleSon=0;
   function grTakipBekle(sn){ var n=Date.now(); if(n-grTakipBekleSon<1000) return; grTakipBekleSon=n; grGonder({t:"takipBekle",sn:sn}); }
@@ -1524,7 +1553,7 @@
     if(ac&&!izin&&!yk){ grKisaYazi("Takip için standda izin açık olmalı"); return; }
     grGonder(grTakipMesaji(ac)); grKisaYazi(ac?"Takip açık":"Takip kapalı");
   };
-  ["takipHedef","takipTers","takipTersY","takipZoom","tersX","arkaTersX","tersY","arkaTersY"].forEach(function(id){
+  ["takipHedef","takipZoom"].forEach(function(id){
     E(id).addEventListener("change",function(){ if(grYet&&grYet.takip) grGonder(grTakipMesaji(true)); });
   });
   E("kFenerBtn").onclick=function(){ if(grYet&&grYet.fener) grGonder({t:"fener",deger:!grYet.fenerAcik}); };
@@ -1579,7 +1608,7 @@
   }
   function grOrtaNokta(t){ return {x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2}; }
   function grMesafe(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)||1; }
-  function grKontrolMu(t){ return !!(t.target&&t.target.closest&&t.target.closest("#pad,button")); }
+  function grKontrolMu(t){ return !!(t.target&&t.target.closest&&t.target.closest("#pad,button,#kAyrinti")); }
   function grGoruntuParmaklari(t){ var l=[]; for(var i=0;i<t.length;i++){ if(!grKontrolMu(t[i])) l.push(t[i]); } return l; }
   E("kEkran").addEventListener("touchstart",function(e){
     var p=grGoruntuParmaklari(e.touches);
@@ -1635,7 +1664,7 @@
   document.addEventListener("gesturestart",function(e){ if(grAcik) e.preventDefault(); });
   // tek dokunuş: bağlantı yoksa bağlan. Çift dokunuş: yakınsa 1×'e dön, değilse doldur / tamamını göster
   E("kEkran").addEventListener("pointerup",function(e){
-    if(e.target.closest&&e.target.closest("button,#pad")) return;
+    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti")) return;
     if(grHareketVardi){ if(!grPinch&&!grTekParmak) grHareketVardi=false; return; }
     if(!grPc&&!grIstekte){ grBaglan(); return; }
     var simdi=Date.now();
