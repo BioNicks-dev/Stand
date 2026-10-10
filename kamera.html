@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
-<title>Stand kamerası (deneme)</title>
+<title>Stand kamerası</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.4/mqtt.min.js"></script>
 <style>
@@ -51,11 +51,32 @@
   #siyah{position:fixed;inset:0;background:#000;z-index:1000;cursor:none}
   #siyahYazi{position:absolute;left:20px;top:20px;color:#3a3a3a;font-size:15px;white-space:nowrap}
   #siyahYazi.izleniyor{color:#8a8a8a;font-size:22px}
+  /* görüntü + tanıma kutuları */
+  #goruntuKutu{position:relative}
+  #taniCizim{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #taniYazi{position:absolute;left:8px;top:8px;padding:4px 10px;border-radius:14px;background:rgba(0,0,0,.6);color:#fff;font-size:15px;font-weight:600;pointer-events:none}
+  #taniYazi:empty{display:none}
+  /* yatay ekran: görüntü solda büyük, kontroller sağda */
+  @media (orientation: landscape){
+    .wrap{max-width:none;padding:8px calc(12px + env(safe-area-inset-right,0px)) 8px calc(12px + env(safe-area-inset-left,0px))}
+    body.anaAcik h1{display:none}
+    #ana:not(.gizli){display:flex;gap:12px;align-items:stretch;height:calc(100vh - 16px);height:calc(100dvh - 16px)}
+    #solSutun{flex:1 1 62%;min-width:0;display:flex}
+    #goruntuKutu{flex:1;display:flex;background:#000;border-radius:var(--radius);overflow:hidden}
+    #goruntuKutu video{max-height:none;height:100%;border-radius:0}
+    #sagSutun{flex:1 1 38%;min-width:250px;max-width:420px;overflow-y:auto;padding-right:2px}
+    #sagSutun .durum{margin:0 0 8px;font-size:14px;line-height:1.4}
+    #sagSutun .satir{margin:6px 0;gap:6px}
+    #sagSutun button{min-height:42px;padding:8px 6px;font-size:15px}
+    #sagSutun .anahtar{margin:8px 0;font-size:14px}
+    #sagSutun .not{font-size:13px;margin:6px 0}
+    #kayit{max-height:none}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası (deneme)</h1>
+  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · tanıma 1</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -67,15 +88,24 @@
   </div>
 
   <div id="ana" class="gizli">
-    <video id="onizleme" autoplay playsinline muted></video>
+    <div id="solSutun">
+      <div id="goruntuKutu">
+        <video id="onizleme" autoplay playsinline muted></video>
+        <canvas id="taniCizim"></canvas>
+        <div id="taniYazi"></div>
+      </div>
+    </div>
+    <div id="sagSutun">
     <div class="durum">
       Sunucu: <b id="dSunucu" class="uyari">bağlanıyor</b><br>
       Kamera: <b id="dKamera" class="uyari">kapalı</b><br>
       İzleyen: <b id="dIzleyen">yok</b><br>
+      Tanıma: <b id="dTani">kapalı</b><br>
       <span id="dOzellik" class="not"></span>
     </div>
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
     <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal</label>
+    <label class="anahtar"><input type="checkbox" id="taniAcik"> İnsan / kedi tanıma denemesi (stand oynamaz)</label>
     <div class="satir">
       <button id="zilDene">Zili dene</button>
       <button id="baslat">Kamerayı elle aç</button>
@@ -87,6 +117,7 @@
     <p class="not">Bekleme modunda ekran siyah kalır, kamera kapalı bekler. Biri bağlanınca (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Çıkmak için siyah ekrana hızlıca iki kez dokunun.</p>
     <div id="kayit"></div>
     <p class="not"><a href="#" id="degistir">Bağlantı bilgilerini değiştir</a></p>
+    </div>
   </div>
 </div>
 
@@ -227,6 +258,7 @@
         kameraYazisi();
         ekranAcikTut();
         yaz("Kamera ve mikrofon açıldı.");
+        taniDurum();
       })
       .catch(function(h){
         if(ses) ses.stop();
@@ -243,6 +275,7 @@
     goster(E("dKamera"),beklemede?"kapalı (beklemede)":"kapalı","");
     E("dOzellik").textContent="";
     yaz("Kamera kapatıldı.");
+    taniDurum();
   }
   function kameraYazisi(){ goster(E("dKamera"),yon==="user"?"açık (ön)":"açık (arka)","iyi"); }
 
@@ -310,6 +343,80 @@
   E("baslat").onclick=function(){ kameraAc().then(bildir).catch(function(){}); };
   E("onBtn").onclick=function(){ kameraCevir("user"); };
   E("arkaBtn").onclick=function(){ kameraCevir("environment"); };
+
+  // ---------- insan / kedi tanıma (deneme: stand oynamaz) ----------
+  // Google MediaPipe nesne bulucu, Pixel'in içinde (Chrome) çalışır; görüntü hiçbir yere gitmez.
+  var MP_ADRES="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+  var MP_MODEL="https://storage.googleapis.com/mediapipe-models/object_detector/efficientdet_lite0/float16/1/efficientdet_lite0.tflite";
+  var TANI_ARA=200;          // ms: saniyede 5 kez bak (ısınmasın)
+  var ORTA_PAY=0.15;         // ortadan bu kadar kayınca "sağda/solda"
+  var ADLAR={person:"insan",cat:"kedi",dog:"köpek"};
+  var bulucu=null, bulucuYukleniyor=false, taniZaman=null, taniSure=0, sonTaniYazi="";
+  E("taniAcik").checked=oku("stand_kamTani")==="1";
+  E("taniAcik").onchange=function(){ yazLS("stand_kamTani",E("taniAcik").checked?"1":"0"); taniDurum(); };
+  function bulucuHazirla(){
+    if(bulucu||bulucuYukleniyor) return;
+    bulucuYukleniyor=true; goster(E("dTani"),"yükleniyor…","uyari"); yaz("Tanıma yükleniyor (ilk seferde biraz sürer).");
+    var vision;
+    import(MP_ADRES+"/vision_bundle.mjs").then(function(m){ vision=m; return m.FilesetResolver.forVisionTasks(MP_ADRES+"/wasm"); })
+      .then(function(fs){
+        function yap(isle){ return vision.ObjectDetector.createFromOptions(fs,{
+          baseOptions:{modelAssetPath:MP_MODEL,delegate:isle}, runningMode:"VIDEO",
+          scoreThreshold:0.4, maxResults:5, categoryAllowlist:["person","cat","dog"]}); }
+        return yap("GPU").catch(function(){ yaz("Tanıma GPU'da açılmadı, CPU ile deneniyor."); return yap("CPU"); });
+      })
+      .then(function(b){ bulucu=b; bulucuYukleniyor=false; yaz("Tanıma hazır."); taniDurum(); })
+      .catch(function(h){ bulucuYukleniyor=false; goster(E("dTani"),"yüklenemedi","kotu"); yaz("Tanıma yüklenemedi: "+(h&&h.message||h)); });
+  }
+  function taniDurum(){
+    var istek=E("taniAcik").checked;
+    if(!istek){ clearInterval(taniZaman); taniZaman=null; taniTemizle(); goster(E("dTani"),"kapalı",""); return; }
+    if(!bulucu){ bulucuHazirla(); return; }
+    if(!akis){ clearInterval(taniZaman); taniZaman=null; taniTemizle(); goster(E("dTani"),"hazır (kamera kapalı)",""); return; }
+    if(!taniZaman) taniZaman=setInterval(taniBak,TANI_ARA);
+  }
+  function taniTemizle(){
+    var c=E("taniCizim"); c.getContext("2d").clearRect(0,0,c.width,c.height);
+    E("taniYazi").textContent=""; sonTaniYazi="";
+  }
+  function taniBak(){
+    var v=E("onizleme");
+    if(!bulucu||!akis||!gorAcik||v.readyState<2||!v.videoWidth) return;
+    var t0=performance.now(), sonuc;
+    try{ sonuc=bulucu.detectForVideo(v,t0); }catch(h){ return; }
+    taniSure=Math.round(performance.now()-t0);
+    var liste=(sonuc&&sonuc.detections)||[];
+    taniCiz(v,liste);
+    // en büyük olanı "hedef" say
+    var hedef=null, enBuyuk=0;
+    liste.forEach(function(d){ var b=d.boundingBox, a=b.width*b.height; if(a>enBuyuk){ enBuyuk=a; hedef=d; } });
+    var metin="";
+    if(hedef){
+      var b=hedef.boundingBox, k=hedef.categories[0];
+      var x=(b.originX+b.width/2)/v.videoWidth-0.5;
+      var yer=x<-ORTA_PAY?"solda":(x>ORTA_PAY?"sağda":"ortada");
+      metin=(ADLAR[k.categoryName]||k.categoryName)+" · "+yer;
+      E("taniYazi").textContent=metin+" · %"+Math.round(k.score*100);
+    } else E("taniYazi").textContent="kimse yok";
+    goster(E("dTani"),"açık ("+taniSure+" ms)","iyi");
+    if(metin!==sonTaniYazi){ sonTaniYazi=metin; yaz("Tanıma: "+(metin||"kimse yok")); }
+  }
+  function taniCiz(v,liste){
+    var c=E("taniCizim"), w=c.clientWidth, h=c.clientHeight;
+    if(c.width!==w) c.width=w; if(c.height!==h) c.height=h;
+    var g=c.getContext("2d"); g.clearRect(0,0,w,h);
+    // görüntü kutunun içine "contain" ile oturuyor: ölçek ve boşluğu hesapla
+    var o=Math.min(w/v.videoWidth,h/v.videoHeight), ox=(w-v.videoWidth*o)/2, oy=(h-v.videoHeight*o)/2;
+    // orta bölge çizgileri
+    g.strokeStyle="rgba(255,255,255,.35)"; g.lineWidth=1; g.setLineDash([6,6]);
+    [0.5-ORTA_PAY,0.5+ORTA_PAY].forEach(function(f){ var xx=ox+v.videoWidth*o*f; g.beginPath(); g.moveTo(xx,oy); g.lineTo(xx,oy+v.videoHeight*o); g.stroke(); });
+    g.setLineDash([]);
+    liste.forEach(function(d){
+      var b=d.boundingBox, k=d.categories[0], ad=k.categoryName;
+      g.strokeStyle=ad==="person"?"#57c48c":"#f0b44c"; g.lineWidth=3;
+      g.strokeRect(ox+b.originX*o, oy+b.originY*o, b.width*o, b.height*o);
+    });
+  }
 
   // ---------- görüntü bağlantısı ----------
   function toplamaBitsin(p){
@@ -414,8 +521,9 @@
   }
 
   if(!kod||!ss){ kurulumuGoster(); return; }
-  E("ana").className="";
+  E("ana").className=""; document.body.classList.add("anaAcik");
   goster(E("dKamera"),"kapalı","");
+  taniDurum();
   sunucuyaBaglan();
 })();
 </script>
