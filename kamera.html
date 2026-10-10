@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 3</span></h1>
+  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 4</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -104,6 +104,7 @@
       İzleyen: <b id="dIzleyen">yok</b><br>
       Tanıma: <b id="dTani">kapalı</b><br>
       Pixel: <b id="dIsi">rahat</b><br>
+      Kalibrasyon: <b id="dKal">-</b> <a href="#" id="kalSifirla">sıfırla</a><br>
       <span id="dOzellik" class="not"></span>
     </div>
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
@@ -390,30 +391,77 @@
       if(!x&&!y){ hareketiBirak(); setTimeout(function(){ karta({t:"joy",x:510,y:510}); },120); }
     }
     h.tik=setInterval(gonder,150); hareket=h; gonder();
-    sonrakiKarar=bas+Math.max(msX,msY)+600;   // dönüş bitsin, görüntü yetişsin, sonra tekrar bak
+    sonrakiKarar=bas+Math.max(msX,msY)+500;   // dönüş bitsin, görüntü yetişsin, sonra tekrar bak
   }
-  function aci(f,gorus,z){   // görüntüde merkezden f kadar (-0.5..0.5) uzaktaki noktanın açısı
-    var t=Math.tan(gorus*Math.PI/360)/Math.max(1,z);
-    return Math.atan(2*f*t)*180/Math.PI;
+  // ---------- kendi kendini ayarlama (kalibrasyon) ----------
+  // k = 1 ms dönüşte hedefin görüntüde ne kadar kaydığı (zoom 1'de, görüntü genişliği/yüksekliği oranı olarak).
+  // Başlangıç değeri tahmin; her hareketten sonra gerçekte ne kadar kaydığına bakıp öğrenir, Pixel'de saklar.
+  var KAL_HAZIR=3, ORTA_IC=0.07, EN_FAZLA_MS=Math.round(20/DONUS_HIZI*1000);
+  var kal=null, olcum=null, ortadaX=true, ortadaY=true;
+  function kalBaslangic(){
+    function k(gorus,hiz){ return hiz/1000/gorus; }
+    var o={};
+    ["environment","user"].forEach(function(c){
+      var gx=GORUS[c], gy=2*Math.atan(Math.tan(gx*Math.PI/360)*9/16)*180/Math.PI;
+      o[c]={x:{k:k(gx,DONUS_HIZI),n:0},y:{k:k(gy,EGME_HIZI),n:0}};
+    });
+    return o;
+  }
+  try{ kal=JSON.parse(oku("stand_kamKal")||"null"); }catch(h){ kal=null; }
+  if(!kal||!kal.environment||!kal.user) kal=kalBaslangic();
+  function kalKaydet(){ yazLS("stand_kamKal",JSON.stringify(kal)); kalYazisi(); }
+  function kalYazisi(){
+    var on=kal.user, ar=kal.environment;
+    function d(c){ return Math.min(c.x.n,c.y.n)>=KAL_HAZIR?"hazır":"öğreniyor ("+Math.min(c.x.n,KAL_HAZIR)+"/"+KAL_HAZIR+")"; }
+    E("dKal").textContent="ön "+d(on)+" · arka "+d(ar);
+  }
+  E("kalSifirla").onclick=function(e){ e.preventDefault(); kal=kalBaslangic(); olcum=null; kalKaydet(); yaz("Kalibrasyon sıfırlandı, yeniden öğrenecek."); };
+  function kalOgren(fx,fy,z){
+    var o=olcum; olcum=null;
+    if(!o||o.yon!==yon||Math.abs(o.z-z)>0.05) return;
+    var c=kal[yon], degisti=false;
+    [["x",o.fx,fx,o.msX],["y",o.fy,fy,o.msY]].forEach(function(e){
+      var eks=e[0], f0=e[1], f1=e[2], ms=e[3];
+      if(ms<150) return;                                   // çok kısa hareket: ölçüm güvenilmez
+      var kay=f0-f1;
+      if(Math.abs(kay)<0.03||Math.sign(kay)!==Math.sign(f0)) return;   // hiç kaymadı ya da ters kaydı: sen hareket etmişsin
+      var olc=Math.abs(kay)/(ms*z), eski=c[eks].k, oran=olc/eski;
+      if(oran<0.33||oran>3) return;                        // saçma ölçüm, at
+      oran=Math.max(0.6,Math.min(1.6,oran));               // tek ölçüm çok değiştirmesin
+      c[eks].k=eski*(0.7+0.3*oran); c[eks].n++; degisti=true;
+    });
+    if(degisti){
+      var hazirOldu=Math.min(c.x.n,c.y.n)===KAL_HAZIR;
+      kalKaydet();
+      if(hazirOldu) yaz("Kalibrasyon hazır ("+(yon==="environment"?"arka":"ön")+" kamera).");
+    }
   }
   function takipKarar(v,fx,fy,dPay,simdi){
     if(!takipAcik||simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
-    var disX=Math.abs(fx)>ORTA_PAY, disY=Math.abs(fy)>dPay;
+    var z=Math.max(1,mevcutZoom());
+    if(olcum) kalOgren(fx,fy,z);
+    // ortaya oturunca dur; çizgiye kadar kaçmadan tekrar oynama (ortadaki titreme yok sayılır)
+    if(Math.abs(fx)<ORTA_IC) ortadaX=true; else if(Math.abs(fx)>ORTA_PAY) ortadaX=false;
+    if(Math.abs(fy)<ORTA_IC) ortadaY=true; else if(Math.abs(fy)>dPay) ortadaY=false;
+    var disX=!ortadaX, disY=!ortadaY;
     if(!disX&&!disY){ disariSayi=0; return ""; }
-    if(++disariSayi<2) return "";            // bir kere dışarıda görünmesi yetmez, titremesin
+    if(++disariSayi<2) return "";            // bir kere dışarıda görünmesi yetmez
     disariSayi=0;
-    var z=mevcutZoom(), gx=GORUS[yon]||65;
-    var gy=2*Math.atan(Math.tan(gx*Math.PI/360)*v.videoHeight/v.videoWidth)*180/Math.PI;
-    var ax=disX?aci(fx,gx,z):0, ay=disY?aci(fy,gy,z):0;
-    ax=Math.max(-EN_FAZLA_DERECE,Math.min(EN_FAZLA_DERECE,ax)); ay=Math.max(-20,Math.min(20,ay));
+    var c=kal[yon]||kal.environment;
+    // öğrenmeden önce hatanın %60'ı, öğrendikten sonra %80'i kadar dön: hedefi geçmesin
+    function sure(f,eks){ var o=c[eks].n>=KAL_HAZIR?0.8:0.6; return Math.min(EN_FAZLA_MS,Math.abs(f)*o/(c[eks].k*z)); }
+    var efX=disX?sure(fx,"x"):0, efY=disY?sure(fy,"y"):0;
+    if(efX<60){ efX=0; disX=false; ortadaX=true; }
+    if(efY<60){ efY=0; disY=false; ortadaY=true; }
+    if(!disX&&!disY) return "";
     var arka=yon==="environment";
-    // yön: sayfadaki joystick ayarlarıyla aynı mantık, ilk denemeye göre çevrilmiş
-    var sx=ax>0?-1:1, sy=ay>0?-1:1;
+    // yön: sayfadaki joystick ayarlarıyla aynı mantık, ön ve arka kamerada birbirinin tersi
+    var sx=fx>0?-1:1, sy=fy>0?-1:1;
     if(takipAyar.tx!==(arka&&takipAyar.atx)) sx=-sx; if(takipAyar.ters) sx=-sx;
     if(takipAyar.ty!==(arka&&takipAyar.aty)) sy=-sy; if(takipAyar.tersY) sy=-sy;
-    var msX=disX?BASLAMA+Math.abs(ax)/DONUS_HIZI*1000:0, msY=disY?BASLAMA+Math.abs(ay)/EGME_HIZI*1000:0;
-    donusBaslat(disX?sx:0,disY?sy:0,msX,msY);
-    return (disX?(fx>0?"sağa ":"sola ")+Math.round(Math.abs(ax))+"°":"")+(disX&&disY?", ":"")+(disY?(fy>0?"aşağı ":"yukarı ")+Math.round(Math.abs(ay))+"°":"");
+    olcum={yon:yon,z:z,fx:fx,fy:fy,msX:efX,msY:efY};
+    donusBaslat(disX?sx:0,disY?sy:0,disX?BASLAMA+efX:0,disY?BASLAMA+efY:0);
+    return (disX?(fx>0?"sağa":"sola"):"")+(disX&&disY?" ve ":"")+(disY?(fy>0?"aşağı":"yukarı"):"");
   }
 
   // ---------- otomatik zoom: hedefi belli bir boyutta tut ----------
@@ -436,6 +484,7 @@
     v.applyConstraints({advanced:[{zoom:Math.round(yeni*10)/10}]}).then(bildir).catch(function(){});
   }
 
+  kalYazisi();
   E("taniAcik").checked=oku("stand_kamTani")==="1";
   E("taniAcik").onchange=function(){ yazLS("stand_kamTani",E("taniAcik").checked?"1":"0"); taniDurum(); };
   function bulucuHazirla(){
@@ -513,7 +562,7 @@
       var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":(hareket?" · dönüyor":" · takip")):"";
       E("taniYazi").textContent=metin+" · %"+Math.round(k.score*100)+ek;
     } else {
-      disariSayi=0; otoZoom(null,0,0,simdi);
+      disariSayi=0; if(!hareket&&simdi>=sonrakiKarar) olcum=null; otoZoom(null,0,0,simdi);
       E("taniYazi").textContent="kimse yok"+(takipAcik?" · takip":"");
     }
     kutulariGonder(v,liste,yuz);
@@ -642,7 +691,7 @@
     else if(m.t==="mik") mikAyarla(m.deger);
     else if(m.t==="gor") gorAyarla(m.deger);
     else if(m.t==="takip") takipAyarla(!!m.deger,m);
-    else if(m.t==="takipBekle"){ takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; hareketiBirak(); }
+    else if(m.t==="takipBekle"){ takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; olcum=null; hareketiBirak(); }
     else if(m.t==="bitir"){ if(m.id===izleyen){ yaz("İzleyen ayrıldı."); baglantiyiKapat(); } }
     else if(m.t==="sor"){ gonder({t:(akis||beklemede)?"hazir":"hazirDegil"}); }
   }
