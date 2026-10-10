@@ -137,6 +137,37 @@
   .secilir{-webkit-user-select:text;user-select:text}
   .ustLink{color:var(--ink-soft);text-decoration:none;font-size:14px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:7px 10px;white-space:nowrap}
   .gizle{display:none !important}
+
+  /* ev kamerası (Pixel) */
+  html,body,button,input{touch-action:manipulation}
+  .kameraAc{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+  #kameraAlan{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);max-width:480px;margin:0 auto;padding-bottom:6px;border-bottom:1px solid var(--line)}
+  #kEkran{position:relative;height:45vh;height:45dvh;background:#000;overflow:hidden}
+  #kVideo{width:100%;height:100%;display:block;object-fit:contain;background:#000}
+  #kVideo.doldur{object-fit:cover}
+  #kOrta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#cfd4d2;font-size:15px;pointer-events:none}
+  #kOrta.dokun{text-decoration:underline;text-underline-offset:3px}
+  #kBilgi{position:absolute;left:10px;bottom:7px;color:#fff;font-size:12px;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none}
+  .kKapat{position:absolute;top:8px;right:8px;width:40px;height:40px;min-height:0;padding:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:17px}
+  .kDugmeler{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:8px 14px 0}
+  .kDugmeler button{min-height:50px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:19px;line-height:1.1}
+  .kDugmeler button span{font-size:11px;font-weight:500;color:var(--ink-soft)}
+  .kDugmeler button.kapali{border-color:var(--stop)} .kDugmeler button.kapali span{color:var(--stop)}
+  .kDugmeler button.acik{border-color:var(--live)} .kDugmeler button.acik span{color:var(--live)}
+  .kZoomSatir{display:flex;align-items:center;gap:10px;padding:6px 14px 0}
+  .kZoomSatir span{flex:0 0 44px;font-size:13px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .kZoomSatir input{flex:1;height:34px;margin:0;accent-color:var(--live)}
+  .kZoomSatir input:disabled{opacity:.4}
+  body.kameraModu #ana>header, body.kameraModu .gostergeler, body.kameraModu #baglanPanel,
+  body.kameraModu #iphonePanel, body.kameraModu #altDugmeler, body.kameraModu .altbilgi,
+  body.kameraModu #kameraAcBtn{display:none !important}
+  body.kameraModu #ana{padding-top:10px}
+  body.kameraModu #standKontrol{display:grid;grid-template-columns:48% 1fr;gap:10px;align-items:center}
+  body.kameraModu #pad{margin:0;max-width:none}
+  body.kameraModu #standKontrol .izgara3{grid-template-columns:1fr;gap:7px}
+  body.kameraModu #standKontrol .izgara3 button{min-height:44px;padding:6px}
+  body.kameraModu #sinirNot{grid-column:1 / -1}
+  body.kameraModu .konumlar{margin:8px 0}
 </style>
 </head>
 <body>
@@ -170,12 +201,32 @@
   </div>
 </div>
 
+<!-- ============ EV KAMERASI (Pixel) ============ -->
+<div id="kameraAlan" class="gizle">
+  <div id="kEkran">
+    <video id="kVideo" autoplay playsinline muted></video>
+    <div id="kOrta"></div>
+    <div id="kBilgi"></div>
+    <button class="kKapat" id="kKapatBtn" aria-label="Kamerayı kapat">✕</button>
+  </div>
+  <div class="kDugmeler">
+    <button id="kCevirBtn" aria-label="Ön / arka kamera" disabled>🔄<span>Ön</span></button>
+    <button id="kSesBtn" class="kapali" aria-label="Sesi aç veya kapat">🔈<span>Ses</span></button>
+    <button id="kMikBtn" aria-label="Evdeki mikrofonu aç veya kapat" disabled>🎙<span>Mikrofon</span></button>
+    <button id="kGorBtn" aria-label="Görüntüyü aç veya kapat" disabled>📷<span>Görüntü</span></button>
+    <button id="kFenerBtn" aria-label="Feneri aç veya kapat" disabled>🔦<span>Fener</span></button>
+  </div>
+  <div class="kZoomSatir"><span id="kZoomDeger">—</span><input type="range" id="kZoom" min="1" max="2" step="0.1" value="1" aria-label="Zoom" disabled></div>
+</div>
+
 <!-- ============ ANA EKRAN ============ -->
 <div class="wrap gizle" id="ana">
   <header>
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
+
+  <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
 
   <div class="gostergeler">
     <div class="gosterge"><span>Stand</span><b id="gStand" class="soluk">bağlı değil</b></div>
@@ -197,6 +248,7 @@
     <p class="not">Stand listede yoksa tuşuna basıp açın, sonra telefonu NFC noktasına yaklaştırın.</p>
   </div>
 
+  <div id="standKontrol">
   <div id="pad" aria-label="Joystick">
     <div id="topuz"></div>
   </div>
@@ -207,6 +259,7 @@
     <button id="sagBtn">Sağ 180°</button>
   </div>
   <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
+  </div>
 
   <div class="konumlar" id="konumlar"></div>
 
@@ -667,6 +720,7 @@
     istemci.on("connect",function(){
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
+      istemci.subscribe("comitok/"+kod+"/goruntu/i");
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -677,6 +731,7 @@
         if(yk) istemci.subscribe("comitok/"+kod+"/kayit");
         varligimiBildir();
       }
+      grSunucuBaglandi();
       guncelle();
     });
     istemci.on("reconnect",guncelle);
@@ -694,6 +749,7 @@
       yaz("Sunucu hatası: "+m);
     });
     istemci.on("message",function(konu,veri){
+      if(konu.slice(-10)==="/goruntu/i"){ grMesaj(veri.toString()); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-4)==="/var" && rol==="evde"){
@@ -1194,6 +1250,169 @@
       if(id==="araInput"&&dongu_){ clearInterval(dongu_); dongu_=setInterval(dongu,ayar("araInput",120)); }
     });
   });
+
+
+  // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
+  // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
+  var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
+  var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null, grZHedef=null;
+  var grSurukle=false, grZSon=0, grZBekleyen=null, grId="g"+benimKimlik;
+  var grVideo=E("kVideo");
+  function grGonder(m){
+    if(istemci&&istemci.connected&&kod){ istemci.publish("comitok/"+kod+"/goruntu/k",JSON.stringify(m)); return true; }
+    return false;
+  }
+  function grOrta(m,dokun){ var o=E("kOrta"); o.textContent=m||""; o.classList.toggle("gizle",!m); o.classList.toggle("dokun",!!dokun); }
+  function grDugmeler(etkin){ ["kCevirBtn","kMikBtn","kGorBtn","kFenerBtn","kZoom"].forEach(function(i){ E(i).disabled=!etkin; }); }
+  function grToplama(p){
+    return new Promise(function(bitti){
+      if(p.iceGatheringState==="complete") return bitti();
+      var z=setTimeout(bitti,4000);
+      p.addEventListener("icegatheringstatechange",function(){ if(p.iceGatheringState==="complete"){ clearTimeout(z); bitti(); } });
+    });
+  }
+  function grBagKapat(haberVer){
+    clearTimeout(grBekleme); clearInterval(grOlcum);
+    if(grPc){ try{ grPc.close(); }catch(h){} grPc=null; }
+    if(haberVer&&grIstekte) grGonder({t:"bitir",id:grId});
+    grIstekte=false; grYet=null;
+    grVideo.srcObject=null; E("kBilgi").textContent="";
+    grDugmeler(false);
+  }
+  function grBaglan(){
+    grBagKapat(true);
+    if(!grGonder({t:"istek",id:grId})){ grOrta("Sunucuya bağlanılıyor…"); return; }   // bağlanınca kendisi tekrar dener
+    grIstekte=true;
+    grOrta("Eve bağlanılıyor…");
+    grVideo.play().catch(function(){});
+    grBekleme=setTimeout(function(){
+      if(!grPc){ grIstekte=false; grOrta("Kamera cevap vermedi. Pixel'de kamera sayfası bekleme modunda mı? Tekrar denemek için dokunun.",true); }
+    },15000);
+  }
+  function grTeklif(m){
+    if(m.id!==grId||!grIstekte||!grAcik) return;
+    clearTimeout(grBekleme);
+    if(grPc){ try{ grPc.close(); }catch(h){} }
+    var p=new RTCPeerConnection({iceServers:GR_BUZ});
+    grPc=p;
+    p.ontrack=function(e){
+      if(e.streams&&e.streams[0]){ if(grVideo.srcObject!==e.streams[0]) grVideo.srcObject=e.streams[0]; }
+      else { var s=grVideo.srcObject||new MediaStream(); s.addTrack(e.track); grVideo.srcObject=s; }
+      grVideo.play().catch(function(){});
+    };
+    p.onconnectionstatechange=function(){
+      if(p!==grPc) return;
+      var s=p.connectionState;
+      if(s==="connected"){ grOrta(grYet&&!grYet.gor?"Görüntü kapalı":""); grOlcumBaslat(); }
+      else if(s==="disconnected") grOrta("Bağlantı zayıf, bekleniyor…");
+      else if(s==="failed"){ grBagKapat(true); grOrta("Bağlantı kurulamadı. Tekrar denemek için dokunun.",true); }
+    };
+    grOrta("Bağlanıyor…");
+    p.setRemoteDescription({type:"offer",sdp:m.sdp})
+      .then(function(){ return p.createAnswer(); })
+      .then(function(c){ return p.setLocalDescription(c); })
+      .then(function(){ return grToplama(p); })
+      .then(function(){ if(p===grPc) grGonder({t:"cevap",id:grId,sdp:p.localDescription.sdp}); })
+      .catch(function(h){ grOrta("Bağlantı hatası: "+(h&&h.message||h),true); });
+  }
+  function grYetenek(m){
+    grYet=m;
+    grDugmeler(true);
+    E("kCevirBtn").querySelector("span").textContent=m.yon==="environment"?"Arka":"Ön";
+    E("kMikBtn").classList.toggle("kapali",!m.mik);
+    E("kGorBtn").classList.toggle("kapali",!m.gor);
+    E("kFenerBtn").disabled=!m.fener;
+    E("kFenerBtn").classList.toggle("acik",!!m.fenerAcik);
+    var kz=E("kZoom");
+    if(m.zoom){
+      kz.disabled=false; kz.min=m.zoom.min; kz.max=m.zoom.max; kz.step=Math.max(m.zoom.step||0.1,0.1);
+      if(!grSurukle){ grZHedef=(m.zoomDeger==null)?m.zoom.min:m.zoomDeger; kz.value=grZHedef; E("kZoomDeger").textContent=(Math.round(grZHedef*10)/10)+"×"; }
+    } else { kz.disabled=true; E("kZoomDeger").textContent="—"; }
+    if(grPc&&grPc.connectionState==="connected") grOrta(m.gor?"":"Görüntü kapalı");
+  }
+  function grOlcumBaslat(){
+    clearInterval(grOlcum);
+    grOlcum=setInterval(function(){
+      if(!grPc) return;
+      grPc.getStats().then(function(r){
+        var cift=null, yerel={}, uzak={}, vid=null;
+        r.forEach(function(s){
+          if(s.type==="transport"&&s.selectedCandidatePairId) cift=r.get(s.selectedCandidatePairId);
+          if(s.type==="local-candidate") yerel[s.id]=s;
+          if(s.type==="remote-candidate") uzak[s.id]=s;
+          if(s.type==="inbound-rtp"&&s.kind==="video") vid=s;
+        });
+        if(!cift) r.forEach(function(s){ if(s.type==="candidate-pair"&&s.state==="succeeded"&&(s.nominated||s.selected)) cift=s; });
+        var tur="";
+        if(cift){
+          var y=yerel[cift.localCandidateId], u=uzak[cift.remoteCandidateId];
+          var ty=y&&y.candidateType, tu=u&&u.candidateType;
+          tur=(ty==="relay"||tu==="relay")?"aktarma":(ty==="host"&&tu==="host")?"ev ağı":"internet";
+        }
+        E("kBilgi").textContent=tur+(vid&&vid.frameHeight?" · "+vid.frameHeight+"p":"");
+      }).catch(function(){});
+    },3000);
+  }
+  function grMesaj(metin){
+    if(!grAcik) return;
+    var m; try{ m=JSON.parse(metin); }catch(h){ return; }
+    if(m.t==="teklif") grTeklif(m);
+    else if(m.t==="yetenek"&&grIstekte) grYetenek(m);
+    else if(m.t==="hazirDegil"&&(!m.id||m.id===grId)&&grIstekte&&!grPc){
+      clearTimeout(grBekleme); grIstekte=false;
+      grOrta("Pixel'deki kamera sayfası bekleme modunda değil. Pixel'de \"Bekleme modunu başlat\"a basın, sonra buraya dokunun.",true);
+    }
+    else if(m.t==="hazir"&&grAcik&&!grPc&&!grIstekte) grBaglan();   // Pixel yeniden hazır olunca kendiliğinden bağlan
+  }
+  function grSunucuBaglandi(){ if(grAcik&&!grPc) grBaglan(); }
+  function kameraModuAc(){
+    grAcik=true;
+    document.body.classList.add("kameraModu");
+    E("kameraAlan").classList.remove("gizle");
+    window.scrollTo(0,0);
+    grDugmeler(false);
+    grBaglan();
+  }
+  function kameraModuKapat(){
+    grBagKapat(true);
+    grAcik=false;
+    document.body.classList.remove("kameraModu");
+    E("kameraAlan").classList.add("gizle");
+    grVideo.muted=true; E("kSesBtn").classList.add("kapali"); E("kSesBtn").firstChild.nodeValue="🔈";
+  }
+  E("kameraAcBtn").onclick=kameraModuAc;
+  E("kKapatBtn").onclick=kameraModuKapat;
+  E("kEkran").onclick=function(e){
+    if(e.target.id==="kKapatBtn") return;
+    if(!grPc&&!grIstekte){ grBaglan(); return; }
+    grVideo.classList.toggle("doldur");
+  };
+  E("kSesBtn").onclick=function(){
+    grVideo.muted=!grVideo.muted;
+    E("kSesBtn").classList.toggle("kapali",grVideo.muted);
+    E("kSesBtn").firstChild.nodeValue=grVideo.muted?"🔈":"🔊";
+    grVideo.play().catch(function(){});
+  };
+  E("kCevirBtn").onclick=function(){ if(grYet) grGonder({t:"kamera",yon:grYet.yon==="environment"?"on":"arka"}); };
+  E("kMikBtn").onclick=function(){ if(grYet) grGonder({t:"mik",deger:!grYet.mik}); };
+  E("kGorBtn").onclick=function(){ if(grYet) grGonder({t:"gor",deger:!grYet.gor}); };
+  E("kFenerBtn").onclick=function(){ if(grYet&&grYet.fener) grGonder({t:"fener",deger:!grYet.fenerAcik}); };
+  // Zoom kaydırma: sürüklerken en fazla 150 ms'de bir gönderir, bırakınca son değeri gönderir
+  function grZoomGonder(){
+    clearTimeout(grZBekleyen);
+    var simdi=Date.now(), fark=simdi-grZSon;
+    if(fark<150){ grZBekleyen=setTimeout(grZoomGonder,150-fark); return; }
+    grZSon=simdi; grGonder({t:"zoom",deger:grZHedef});
+  }
+  E("kZoom").addEventListener("input",function(){
+    grSurukle=true; grZHedef=Math.round(Number(this.value)*10)/10;
+    E("kZoomDeger").textContent=grZHedef+"×"; grZoomGonder();
+  });
+  E("kZoom").addEventListener("change",function(){
+    grZHedef=Math.round(Number(this.value)*10)/10; grZoomGonder();
+    setTimeout(function(){ grSurukle=false; },400);
+  });
+  window.addEventListener("pagehide",function(){ if(grIstekte) grGonder({t:"bitir",id:grId}); });
 
   // ---------- başlangıç ----------
   // Yönetici: yönetici kodu girilmiş telefon ya da köprü modundaki telefon
