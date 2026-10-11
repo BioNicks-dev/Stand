@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 7 (kart adımı)</span></h1>
+  <h1>Stand kamerası <span class="not">· 11 Ekim 2026 · takip 8</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -396,19 +396,20 @@
   // ---------- kendi kendini ayarlama (kalibrasyon) ----------
   // k = 1 ms dönüşte hedefin görüntüde ne kadar kaydığı (zoom 1'de, görüntü genişliği/yüksekliği oranı olarak).
   // Başlangıç değeri tahmin; her hareketten sonra gerçekte ne kadar kaydığına bakıp öğrenir, Pixel'de saklar.
-  var KAL_HAZIR=3, ORTA_IC=0.07, EN_FAZLA_MS=Math.round(20/DONUS_HIZI*1000);
+  // Öğrenme ve yön testi sadece yüzle (insan) veya gövdeyle (kedi) yapılır; vücut kutusuyla yapılmaz.
+  var KAL_SURUM=2, KAL_HAZIR=3, ORTA_IC=0.07, EN_FAZLA_MS=Math.round(20/DONUS_HIZI*1000);
   var kal=null, olcum=null, ortadaX=true, ortadaY=true;
   function kalBaslangic(){
     function k(gorus,hiz){ return hiz/1000/gorus; }
-    var o={};
+    var o={v:KAL_SURUM};
     ["environment","user"].forEach(function(c){
       var gx=GORUS[c], gy=2*Math.atan(Math.tan(gx*Math.PI/360)*9/16)*180/Math.PI;
-      o[c]={x:{k:k(gx,DONUS_HIZI),n:0,yon:1,ters:0,i:null,dog:false},y:{k:k(gy,EGME_HIZI),n:0,yon:1,ters:0,i:null,dog:false}};
+      o[c]={x:{k:k(gx,DONUS_HIZI),n:0,yon:1,i:null,dog:false,son:[]},y:{k:k(gy,EGME_HIZI),n:0,yon:1,i:null,dog:false,son:[]}};
     });
     return o;
   }
   try{ kal=JSON.parse(oku("stand_kamKal")||"null"); }catch(h){ kal=null; }
-  if(!kal||!kal.environment||!kal.user||kal.environment.x.dog===undefined) kal=kalBaslangic();
+  if(!kal||kal.v!==KAL_SURUM) kal=kalBaslangic();   // eski (yanlış öğrenilmiş olabilecek) kayıt: baştan öğren
   function kalKaydet(){ yazLS("stand_kamKal",JSON.stringify(kal)); kalYazisi(); }
   function kalYazisi(){
     var on=kal.user, ar=kal.environment;
@@ -421,30 +422,32 @@
     var d=!!(c.x.dog&&c.y.dog);
     return {d:d, h:d&&n>=KAL_HAZIR, n:Math.min(n,KAL_HAZIR), i:l.length?Math.round(l.reduce(function(a,b){ return a+b; },0)/l.length*100):null};
   }
-  function kalOgren(fx,fy,z){
+  function kamAdi(){ return yon==="environment"?"arka kamera":"ön kamera"; }
+  function eksAdi(e){ return e==="x"?"sağ-sol":"yukarı-aşağı"; }
+  // sürekli kontrol: son 3 hareketten 2'si kötüyse (hedef ortadan uzaklaştı) yön yeniden test edilir
+  function sonucEkle(eks,iyi){
+    var e=kal[yon][eks]; e.son.push(!!iyi); if(e.son.length>3) e.son.shift();
+    var kotu=e.son.filter(function(a){ return !a; }).length;
+    if(kotu>=2&&e.dog){ e.dog=false; e.son=[]; yaz("Yön şüpheli ("+kamAdi()+", "+eksAdi(eks)+"): stand duruyor, yön yeniden test edilecek."); return true; }
+    return false;
+  }
+  function kalOgren(kaynak,fx,fy,z){
     var o=olcum; olcum=null;
-    if(!o||o.yon!==yon||Math.abs(o.z-z)>0.05) return;
+    if(!o||o.yon!==yon||o.kaynak!==kaynak||Math.abs(o.z-z)>0.05) return;
     var c=kal[yon], degisti=false;
     [["x",o.fx,fx,o.msX,o.sx],["y",o.fy,fy,o.msY,o.sy]].forEach(function(e){
       var eks=e[0], f0=e[1], f1=e[2], ms=e[3];
       if(ms<150) return;                                   // çok kısa hareket: ölçüm güvenilmez
       var kay=f0-f1, bek=c[eks].k*ms*z;                     // beklenen kayma
-      if(bek>=0.05&&Math.abs(kay)<0.35*bek){
-        // komut verildi ama görüntü (neredeyse) kaymadı: stand o yönde sınıra dayanmış. Hata sayma, o yöne bir süre itme.
+      if(bek>=0.05&&Math.abs(kay)<0.35*bek&&Math.abs(kay)<0.03){
+        // komut verildi ama görüntü kaymadı: stand o yönde sınıra dayanmış. Hata sayma, o yöne bir süre itme.
         engel[eks]={s:e[4],bitis:Date.now()+20000};
         yaz("Stand "+(eks==="x"?"yatay":"dikey")+" sınırda görünüyor, o yöne itilmeyecek.");
         return;
       }
-      if(Math.abs(kay)<0.03) return;                       // hiç kaymadı: ölçüm yok
-      if(Math.sign(kay)!==Math.sign(f0)){
-        // hedef beklenenin tersine kaydı: üst üste 2 kere olursa yön testi yeniden yapılır
-        if(Math.abs(kay)>=0.04&&++c[eks].ters>=2){
-          c[eks].dog=false; c[eks].ters=0; degisti=true;
-          yaz("Yön şüpheli ("+kamAdi()+", "+eksAdi(eks)+"), yeniden test edilecek.");
-        }
-        return;
-      }
-      c[eks].ters=0;
+      if(Math.abs(kay)<0.03) return;                       // pek kaymadı: ölçüm yok
+      if(Math.sign(kay)!==Math.sign(f0)){ if(sonucEkle(eks,false)) degisti=true; return; }   // hedef ortadan uzaklaştı
+      sonucEkle(eks,true);
       var olc=Math.abs(kay)/(ms*z), eski=c[eks].k, oran=olc/eski;
       if(oran<0.33||oran>3) return;                        // saçma ölçüm, at
       var tut=1-Math.min(1,Math.abs(1-oran));              // tahmin ne kadar tuttu
@@ -454,60 +457,56 @@
       c[eks].k=eski*(1-ag+ag*oran); c[eks].n++; degisti=true;
     });
     if(degisti){
-      var hazirOldu=Math.min(c.x.n,c.y.n)===KAL_HAZIR;
+      var hazirOldu=Math.min(c.x.n,c.y.n)===KAL_HAZIR&&c.x.dog&&c.y.dog;
       kalKaydet();
-      if(hazirOldu) yaz("Kalibrasyon hazır ("+(yon==="environment"?"arka":"ön")+" kamera).");
+      if(hazirOldu) yaz("Kalibrasyon hazır ("+kamAdi()+").");
     }
   }
-  function kamAdi(){ return yon==="environment"?"arka kamera":"ön kamera"; }
-  function eksAdi(e){ return e==="x"?"sağ-sol":"yukarı-aşağı"; }
-  // ---------- yön testi: kısa bir deneme hareketiyle hedefin hangi yöne kaydığına bakar ----------
-  var test=null, kayipSayi=0, engel={x:null,y:null}, engelKam=null;
-  function yonTesti(fx,fy,simdi){
+  // ---------- yön testi: önce sağa, sonra sola küçük deneme; iki sonuç aynı yönü göstermeli ----------
+  var test=null, engel={x:null,y:null}, engelKam=null;
+  function yonTesti(kaynak,fx,fy,simdi){
     var c=kal[yon]; if(!c) return false;
-    if(engelKam!==yon){ engel={x:null,y:null}; engelKam=yon; }
     if(test){
       if(simdi<sonrakiKarar||hareket) return true;
-      var t=test, f1=t.eks==="x"?fx:fy, kay=f1-t.f0; test=null;
-      if(Math.abs(kay)<0.02){
-        if(t.deneme>=3){ yaz("Yön testi sonuç vermedi ("+kamAdi()+", "+eksAdi(t.eks)+"). Stand sınırda olabilir; sonra tekrar denenecek."); takipBekleBitis=simdi+15000; return true; }
-        testBaslat(t.eks,t.f0,t.deneme+1,simdi); return true;
+      if(test.kaynak!==kaynak){ test=null; return true; }      // hedef türü değişti: testi bırak
+      var t=test, f1=t.eks==="x"?fx:fy, kay=f1-t.f0;
+      var sonuc=Math.abs(kay)<0.02?0:((kay*t.isaret<0)?-1:1);   // 0: kaymadı (sınır olabilir)
+      if(t.faz===1){ t.s1=sonuc; t.k1=Math.abs(kay); t.faz=2; testHareket(t,f1,-1); return true; }
+      test=null;
+      var s1=t.s1, s2=sonuc, karar=0;
+      if(s1&&s2&&s1===s2) karar=s1;            // ikisi de aynı yönü gösterdi
+      else if(s1&&!s2) karar=s1;               // bir yön sınırdaydı, öbürü net
+      else if(!s1&&s2) karar=s2;
+      if(!karar){
+        if(t.tur>=3){ yaz("Yön testi sonuç vermedi ("+kamAdi()+", "+eksAdi(t.eks)+"). 15 sn sonra tekrar denenecek."); takipBekleBitis=simdi+15000; return true; }
+        testBaslat(kaynak,t.eks,t.eks==="x"?fx:fy,t.tur+1); return true;
       }
-      // isaret yönünde joystick verince hedef görüntüde kay yönüne kaydı
-      c[t.eks].yon=(kay*t.isaret<0)?-1:1; c[t.eks].dog=true; c[t.eks].ters=0;
-      var olc=Math.abs(kay)/(t.ms*Math.max(1,mevcutZoom()));
-      if(olc/c[t.eks].k>0.33&&olc/c[t.eks].k<3){ c[t.eks].k=c[t.eks].k*0.5+olc*0.5; c[t.eks].n++; }
+      var e=c[t.eks]; e.yon=karar; e.dog=true; e.son=[];
+      var olc=Math.max(t.k1,Math.abs(kay))/(t.ms*Math.max(1,mevcutZoom()));
+      if(olc/e.k>0.33&&olc/e.k<3){ e.k=e.k*0.5+olc*0.5; e.n++; }
       kalKaydet(); yaz("Yön bulundu ("+kamAdi()+", "+eksAdi(t.eks)+").");
       return true;
     }
     var eks=!c.x.dog?"x":(!c.y.dog?"y":null);
     if(!eks) return false;
-    var f=eks==="x"?fx:fy;
     if(Math.abs(fx)>0.35||Math.abs(fy)>0.35) return true;     // hedef ortaya yakın olsun, test onu kaçırmasın
-    testBaslat(eks,f,1,simdi); return true;
+    testBaslat(kaynak,eks,eks==="x"?fx:fy,1); return true;
   }
-  function testBaslat(eks,f0,deneme,simdi){
-    var isaret=(deneme%2===1)?1:-1, ms=deneme>=3?400:250;    // 2. denemede ters yöne (sınırda olabilir), 3.'de biraz uzun
-    test={eks:eks,f0:f0,deneme:deneme,isaret:isaret,ms:ms};
-    olcum=null;
-    if(deneme===1) yaz("Yön testi ("+kamAdi()+", "+eksAdi(eks)+")…");
-    donusBaslat(eks==="x"?isaret:0,eks==="y"?isaret:0,eks==="x"?BASLAMA+ms:0,eks==="y"?BASLAMA+ms:0);
+  function testBaslat(kaynak,eks,f0,tur){
+    var t={kaynak:kaynak,eks:eks,tur:tur,faz:1,ms:tur>=3?400:250,s1:0,k1:0};
+    test=t; olcum=null;
+    if(tur===1) yaz("Yön testi ("+kamAdi()+", "+eksAdi(eks)+")…");
+    testHareket(t,f0,1);
   }
-  // takip hareketinden hemen sonra hedef kaybolduysa: yön yanlış olabilir, dur ve yeniden test et
-  function hareketSonrasiKayip(simdi){
-    if(++kayipSayi<2) return;
-    if(test){ test=null; hareketiBirak(); yaz("Yön testinde hedef kayboldu, bekleniyor."); return; }
-    if(!olcum||simdi>sonrakiKarar+1000) return;
-    var c=kal[yon];
-    if(olcum.msX>0) c.x.dog=false; if(olcum.msY>0) c.y.dog=false;
-    olcum=null; arama={bitti:true}; hareketiBirak(); kalKaydet();
-    yaz("Dönüşten sonra hedef kayboldu: stand durdu, yön yeniden test edilecek.");
+  function testHareket(t,f0,isaret){
+    t.f0=f0; t.isaret=isaret;
+    donusBaslat(t.eks==="x"?isaret:0,t.eks==="y"?isaret:0,t.eks==="x"?BASLAMA+t.ms:0,t.eks==="y"?BASLAMA+t.ms:0);
   }
-  // ---------- kaybolunca peşinden git (kenardan çıktıysa, en fazla 2 adım) ----------
-  var gecmis=[], arama=null;
+  // ---------- kaybolunca peşinden git (yüz kenardan çıktıysa, en fazla 2 adım) ----------
+  var gecmis=[], arama=null, yuzYok=0, yuzSon=0;
   function gecmisEkle(fx,fy,simdi){ gecmis.push({t:simdi,fx:fx,fy:fy}); while(gecmis.length&&simdi-gecmis[0].t>1200) gecmis.shift(); }
   function aramaKarar(simdi){
-    if(!takipAcik||simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
+    if(simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
     if(!arama){
       var son=gecmis[gecmis.length-1]; if(!son||simdi-son.t>1500){ gecmis=[]; return ""; }
       var ilk=gecmis[0], dt=Math.max(0.2,(son.t-ilk.t)/1000), vx=(son.fx-ilk.fx)/dt, vy=(son.fy-ilk.fy)/dt;
@@ -527,13 +526,49 @@
     var dx=arama.sx?(arama.sx>0?-1:1)*c.x.yon:0, dy=arama.sy?(arama.sy>0?-1:1)*c.y.yon:0;
     olcum=null;
     donusBaslat(dx,dy,dx?BASLAMA+arama.derX/DONUS_HIZI*1000:0,dy?BASLAMA+arama.derY/EGME_HIZI*1000:0);
-    return "kayboldu, "+(arama.sx?(arama.sx>0?"sağa":"sola"):"")+(arama.sx&&arama.sy?" ve ":"")+(arama.sy?(arama.sy>0?"aşağı":"yukarı"):"")+" arıyor";
+    return "yüz kayboldu, "+(arama.sx?(arama.sx>0?"sağa":"sola"):"")+(arama.sx&&arama.sy?" ve ":"")+(arama.sy?(arama.sy>0?"aşağı":"yukarı"):"")+" arıyor";
   }
-  function takipKarar(v,fx,fy,dPay,simdi){
-    if(!takipAcik||simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
-    if(yonTesti(fx,fy,simdi)) return "";
+  // ---------- takip yönetimi ----------
+  // kaynak: "yuz" (insanın yüzü), "hayvan" (kedi/köpek gövdesi), "govde" (insan var ama yüzü yok), null (hiçbiri)
+  function takipYonet(kaynak,fx,fy,dPay,simdi){
+    if(!takipAcik) return "";
+    if(engelKam!==yon){ engel={x:null,y:null}; engelKam=yon; }
+    if(kaynak==="yuz"||kaynak==="hayvan"){
+      yuzYok=0; yuzSon=simdi; arama=null; gecmisEkle(fx,fy,simdi);
+      return takipKarar(kaynak,fx,fy,dPay,simdi);
+    }
+    if(++yuzYok<2) return "";                  // tek kare kaçırma sayılmaz
+    if(test){ test=null; hareketiBirak(); yaz("Yön testinde yüz kayboldu, bekleniyor."); gecmis=[]; return ""; }
+    // bizim dönüşümüzden hemen sonra yüz kaybolduysa: kötü sonuç say, peşinden gitme (yön yanlış olabilir)
+    if(olcum&&simdi<=sonrakiKarar+1000){
+      if(olcum.msX>0) sonucEkle("x",false); if(olcum.msY>0) sonucEkle("y",false);
+      kalKaydet(); olcum=null; gecmis=[]; arama={bitti:true}; return "";
+    }
+    if(!hareket&&simdi>=sonrakiKarar+1000) olcum=null;
+    var ara=aramaKarar(simdi); if(ara) return ara;
+    if(arama&&!arama.bitti) return "";
+    // yüz 1,5 sn'dir yok ama vücut görünüyor: sadece sağ-sol, temkinli; yukarı-aşağı hiç yapılmaz
+    if(kaynak==="govde"&&simdi-yuzSon>1500) return govdeTakip(fx,simdi);
+    return "";
+  }
+  function govdeTakip(fx,simdi){
+    if(simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
+    var c=kal[yon]; if(!c||!c.x.dog||Math.abs(fx)<=ORTA_PAY) return "";
+    var z=Math.max(1,mevcutZoom()), ms=Math.min(EN_FAZLA_MS*0.6,Math.abs(fx)*0.4/(c.x.k*z));
+    if(ms<60) return "";
+    var sx=(fx>0?-1:1)*c.x.yon;
+    if(engel.x){ if(simdi>engel.x.bitis||engel.x.s!==sx) engel.x=null; else return ""; }
+    olcum=null;
+    donusBaslat(sx,0,BASLAMA+ms,0);
+    return "yüz yok, vücuda göre "+(fx>0?"sağa":"sola");
+  }
+  function takipKarar(kaynak,fx,fy,dPay,simdi){
+    if(simdi<takipBekleBitis||simdi<sonrakiKarar||hareket) return "";
+    if(yonTesti(kaynak,fx,fy,simdi)) return "";
     var z=Math.max(1,mevcutZoom());
-    if(olcum) kalOgren(fx,fy,z);
+    if(olcum) kalOgren(kaynak,fx,fy,z);
+    var c=kal[yon]||kal.environment;
+    if(!c.x.dog||!c.y.dog) return "";          // yön şüpheli çıktı: önce test
     // ortaya oturunca dur; çizgiye kadar kaçmadan tekrar oynama (ortadaki titreme yok sayılır)
     if(Math.abs(fx)<ORTA_IC) ortadaX=true; else if(Math.abs(fx)>ORTA_PAY) ortadaX=false;
     if(Math.abs(fy)<ORTA_IC) ortadaY=true; else if(Math.abs(fy)>dPay) ortadaY=false;
@@ -541,9 +576,7 @@
     if(!disX&&!disY){ disariSayi=0; return ""; }
     if(++disariSayi<2) return "";            // bir kere dışarıda görünmesi yetmez
     disariSayi=0;
-    var c=kal[yon]||kal.environment;
-    // öğrenmeden önce hatanın %60'ı, öğrendikten sonra %80'i kadar dön: hedefi geçmesin
-    // isabet arttıkça %90'a kadar çıkar
+    // öğrenmeden önce hatanın %60'ı, öğrendikçe isabete göre %90'a kadar: hedefi geçmesin
     function sure(f,eks){ var e=c[eks], o=0.6; if(e.n>=KAL_HAZIR) o=0.6+0.3*Math.max(0,Math.min(1,((e.i===null?0.7:e.i)-0.6)/0.3));
       return Math.min(EN_FAZLA_MS,Math.abs(f)*o/(e.k*z)); }
     var efX=disX?sure(fx,"x"):0, efY=disY?sure(fy,"y"):0;
@@ -556,7 +589,7 @@
     if(disX&&engel.x){ if(simdi>engel.x.bitis||engel.x.s!==sx) engel.x=null; else { disX=false; efX=0; } }
     if(disY&&engel.y){ if(simdi>engel.y.bitis||engel.y.s!==sy) engel.y=null; else { disY=false; efY=0; } }
     if(!disX&&!disY) return "";
-    olcum={yon:yon,z:z,fx:fx,fy:fy,msX:efX,msY:efY,sx:sx,sy:sy};
+    olcum={yon:yon,kaynak:kaynak,z:z,fx:fx,fy:fy,msX:efX,msY:efY,sx:sx,sy:sy};
     donusBaslat(disX?sx:0,disY?sy:0,disX?BASLAMA+efX:0,disY?BASLAMA+efY:0);
     return (disX?(fx>0?"sağa":"sola"):"")+(disX&&disY?" ve ":"")+(disY?(fy>0?"aşağı":"yukarı"):"");
   }
@@ -640,32 +673,28 @@
     // en büyük olanı "hedef" say
     var hedef=null, enBuyuk=0;
     liste.forEach(function(d){ var b=d.boundingBox, a=b.width*b.height; if(a>enBuyuk){ enBuyuk=a; hedef=d; } });
-    var metin="", simdi=Date.now(), yuz=null;
+    var metin="", simdi=Date.now(), yuz=null, kaynak=null, fx=0, fy=0, dPay=DIKEY_PAY, boyY=0;
     if(hedef){
       sonGorulme=simdi;
       var b=hedef.boundingBox, k=hedef.categories[0], vw=v.videoWidth, vh=v.videoHeight;
-      var fx=(b.originX+b.width/2)/vw-0.5, fy, dPay=DIKEY_PAY;
-      var boyY=b.height/vh;
+      boyY=b.height/vh;
+      fx=(b.originX+b.width/2)/vw-0.5;
       if(k.categoryName==="person"){
         yuz=yuzBul(v,b);
-        if(yuz){ fx=(yuz.originX+yuz.width/2)/vw-0.5; fy=(yuz.originY+yuz.height/2)/vh-0.5-YUZ_YERI; dPay=YUZ_PAY; }
-        else if(b.originY<vh*0.02) fy=-0.25;                       // baş görüntünün üstünden taşmış: yukarı bak
-        else fy=(b.originY+b.height*0.12)/vh-0.5-YUZ_YERI;          // yüz yok: vücudun baş tarafı
-      } else fy=(b.originY+b.height/2)/vh-0.5;                      // kedi/köpek: gövde ortası
+        if(yuz){ kaynak="yuz"; fx=(yuz.originX+yuz.width/2)/vw-0.5; fy=(yuz.originY+yuz.height/2)/vh-0.5-YUZ_YERI; dPay=YUZ_PAY; }
+        else kaynak="govde";                                     // yüz yok: yukarı-aşağı yapılmaz
+      } else { kaynak="hayvan"; fy=(b.originY+b.height/2)/vh-0.5; }   // kedi/köpek: gövde ortası
       var yer=fx<-ORTA_PAY?"solda":(fx>ORTA_PAY?"sağda":"ortada");
-      metin=(ADLAR[k.categoryName]||k.categoryName)+" · "+yer;
-      arama=null; kayipSayi=0; gecmisEkle(fx,fy,simdi);
-      var adim=takipKarar(v,fx,fy,dPay,simdi);
-      if(adim) yaz("Takip: "+adim+".");
+      metin=(ADLAR[k.categoryName]||k.categoryName)+(kaynak==="govde"?" (yüz yok)":"")+" · "+yer;
+    }
+    var adim=takipYonet(kaynak,fx,fy,dPay,simdi);
+    if(adim) yaz("Takip: "+adim+".");
+    if(hedef){
       otoZoom(hedef,boyY,fx,simdi);
-      var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":(hareket?" · dönüyor":" · takip")):"";
-      E("taniYazi").textContent=metin+" · %"+Math.round(k.score*100)+ek;
+      var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":(test?" · yön testi":(hareket?" · dönüyor":" · takip"))):"";
+      E("taniYazi").textContent=metin+" · %"+Math.round(hedef.categories[0].score*100)+ek;
     } else {
-      disariSayi=0;
-      if(takipAcik&&(test||olcum)) hareketSonrasiKayip(simdi);
-      if(!hareket&&simdi>=sonrakiKarar+1000) olcum=null;
-      var ara=aramaKarar(simdi); if(ara) yaz("Takip: "+ara+".");
-      otoZoom(null,0,0,simdi);
+      disariSayi=0; otoZoom(null,0,0,simdi);
       E("taniYazi").textContent="kimse yok"+(takipAcik?" · takip":"");
     }
     kutulariGonder(v,liste,yuz);
