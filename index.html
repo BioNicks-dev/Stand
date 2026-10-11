@@ -1340,7 +1340,7 @@
     if(grPc){ try{ grPc.close(); }catch(h){} grPc=null; }
     if(haberVer&&grIstekte) grGonder({t:"bitir",id:grId});
     grIstekte=false; grYet=null; grZ=1; grC={x:0,y:0}; grZc=1; grZHedef=null; grVideo.style.transform="";
-    grVideo.srcObject=null; grKutuSon=null; grKutuCiz(); grTur=""; grCoz=""; grCozW=0; grCozH=0; grPx={ms:null,isi:null,kal:null};
+    grVideo.srcObject=null; grKutuSon=null; grKutuCiz(); grOto=null; grOtoVar=false; grTur=""; grCoz=""; grCozW=0; grCozH=0; grPx={ms:null,isi:null,kal:null};
     E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar"); E("kAyrinti").classList.add("gizli"); E("kTakipBtn").classList.remove("ogreniyor");
     grDugmeler(false);
   }
@@ -1400,11 +1400,33 @@
     try{ grKutuSon=JSON.parse(veri); }catch(h){ return; }
     var m=grKutuSon, eski=grPx.ms;
     grPx.ms=m.ms; grPx.isi=m.isi; grPx.kal=m.kal;
+    if(m.oz!==undefined) grOtoAl(m.oz);
     if(eski===null||Math.abs(eski-m.ms)>15||!grBilgiSon||Date.now()-grBilgiSon>2000) grBilgiCiz();
     grKutuCiz();
     clearTimeout(grKutuSil); grKutuSil=setTimeout(function(){ grKutuSon=null; grKutuCiz(); },1500);   // gelmezse silinsin
   }
   E("kutuGoster").addEventListener("change",grKutuCiz);
+  // ---------- otomatik zoom (takip): Pixel "şu kadar büyüt, şu noktaya bak" der, bu sayfa yumuşakça uygular ----------
+  // Saniyede ~60 kare küçük adımlarla hedefe kayar: kameraman kaydırması gibi. Elle zoom yapılınca 8 sn karışmaz.
+  // Değerler "toplam zoom" olarak tutulur; Pixel uzak hedef için kendi zoom'unu açarsa toplam aynı kalır, sadece paylaşım değişir.
+  var grOto=null, grOtoCur=null, grOtoRaf=null, grOtoVar=false;
+  function grElleMi(){ return grPinch||grTekParmak||Date.now()-grElleZoomSon<8000; }
+  function grOtoAl(o){
+    if(grElleMi()) return;
+    if(o===null){ if(!grOtoVar) return; grOto={T:1,X:0,Y:0}; }
+    else { var zc=o.zc||1; grOto={T:o.s*zc,X:o.x/zc,Y:o.y/zc}; grOtoVar=true; }
+    if(!grOtoRaf){ grOtoCur={T:grZ,X:grC.x,Y:grC.y}; grOtoRaf=requestAnimationFrame(grOtoKare); }   // şu anki halden başla
+  }
+  function grOtoKare(){
+    grOtoRaf=null;
+    if(!grOto||grElleMi()||!grPc) return;
+    var h=grOto, c=grOtoCur, k=0.06;
+    c.T+=(h.T-c.T)*k; c.X+=(h.X-c.X)*k; c.Y+=(h.Y-c.Y)*k;
+    grZ=Math.max(1,c.T); grC={x:c.X,y:c.Y};
+    grZoomUygula();
+    if(Math.abs(h.T-c.T)+Math.abs(h.X-c.X)+Math.abs(h.Y-c.Y)>0.002) grOtoRaf=requestAnimationFrame(grOtoKare);
+    else if(h.T<=1.001&&Math.abs(h.X)<0.001&&Math.abs(h.Y)<0.001&&!(grYet&&grYet.otoZoom)){ grOto=null; grOtoVar=false; }
+  }
   var grBilgiSon=0, grCozW=0, grCozH=0;
   function grBilgiCiz(){
     grBilgiSon=Date.now();
@@ -1439,7 +1461,6 @@
     grYet=m;
     if(yonDegisti){ grZ=1; grC={x:0,y:0}; grZHedef=null; }   // kamera değişince zoom sıfırlanır
     grZc=(m.zoom&&typeof m.zoomDeger==="number")?m.zoomDeger:(m.zoom?m.zoom.min:1);
-    if(m.takip&&m.otoZoom&&!grPinch&&!grTekParmak&&Date.now()-grElleZoomSon>8000){ grZ=Math.max(1,grZc); grC={x:0,y:0}; }
     grZoomUygula();
     grBilgiCiz();
     grDugmeler(true);
