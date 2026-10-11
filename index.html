@@ -417,7 +417,7 @@
         <div class="satir" style="border-top:1px solid var(--line);padding:8px 0;align-items:center;color:var(--ink)"><span style="color:var(--ink)">Hibrit dönüş süresi</span><span class="adimlar"><button class="kucuk" id="kaGeriEksi" aria-label="Kısalt">−</button><b id="kaGeri">—</b><button class="kucuk" id="kaGeriArti" aria-label="Uzat">+</button></span></div>
         <label>Dönüş sınırı (başlangıca göre)<select id="kaSinir">
           <option value="360">± 360° (1 tur)</option><option value="450">± 450°</option>
-          <option value="540">± 540° (1,5 tur)</option><option value="720">± 720° (2 tur)</option>
+          <option value="540">± 540° (1,5 tur)</option><option value="720">± 720° (2 tur)</option><option value="1440">± 1440° (4 tur, kablo yoksa)</option>
         </select></label>
         <label>Standın 180° yönü<select id="kaY180"><option value="1">Sağa</option><option value="-1">Sola</option></select></label>
         <label>WhatsApp menü açık kalma süresi<select id="kaUyandir">
@@ -754,7 +754,7 @@
     return k;
   }
   function komutGonder(k){
-    if(grAcik&&grYet&&grYet.takip) grTakipBekle(k.t==="joy"?5:8);
+    if(grAcik&&grYet&&grYet.takip) grTakipBekle(15);
     k=yonuCevir(k);
     if(rol==="evde"){ k.kaynak="yerel"; komutUygula(k); }
     else if(istemci&&istemci.connected){ k.kaynak="uzak"; if(yk) k.yk=yk; istemci.publish("comitok/"+kod+"/komut",JSON.stringify(k)); }
@@ -1424,7 +1424,7 @@
     if(grCozW) ayr.push("Görüntü: "+grCozW+"×"+grCozH);
     if(isi) ayr.push("Pixel: "+isi+(typeof ms==="number"?" · tanıma "+ms+" ms":""));
     var k=grPx.kal;
-    function kd(o){ return !o?"-":(o.h?"hazır"+(o.i!==null?" · isabet %"+o.i:""):"öğreniyor "+o.n+"/3"); }
+    function kd(o){ return !o?"-":(!o.d?"yön testi bekliyor":(o.h?"hazır"+(o.i!==null?" · isabet %"+o.i:""):"öğreniyor "+o.n+"/3")); }
     if(k) ayr.push("Takip öğrenmesi: ön "+kd(k.user)+" / arka "+kd(k.environment));
     E("kAyrinti").innerHTML=ayr.map(function(a){ return a.replace(/&/g,"&amp;").replace(/</g,"&lt;"); }).join("<br>")||"Bilgi yok";
     // takip düğmesi öğrenme bitene kadar soluk
