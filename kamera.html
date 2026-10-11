@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 11 Ekim 2026 · takip 10</span></h1>
+  <h1>Stand kamerası <span class="not">· 11 Ekim 2026 · takip 11</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -582,6 +582,8 @@
     if(!akici&&!(hizli||uzak)) return null;
     // biraz ileriyi tahmin et (hedef gitmeye devam ediyor)
     var px=fx+h.vx*0.35, py=fy+h.vy*0.35;
+    // kameraman gibi: gittiği yönde boşluk kalsın (hedef merkezin biraz gerisinde dursun)
+    if(c.x.dog&&Math.abs(h.vx)>0.15) px+=Math.sign(h.vx)*Math.min(0.1,Math.abs(h.vx)*0.25);
     var sakin=Math.abs(px)<ORTA_IC*1.5&&Math.abs(py)<ORTA_IC*1.5&&Math.abs(h.vx)<0.1&&Math.abs(h.vy)<0.1;
     if(akici&&sakin){ akici=false; sonrakiKarar=simdi+400; ortadaX=true; ortadaY=true; return ""; }   // durdu: normale dön, sakince ortala
     if(!akici){ akici=true; olcum=null; }
@@ -635,34 +637,53 @@
 
   // ---------- otomatik zoom: hedefi belli bir boyutta tut ----------
   function mevcutZoom(){ var t=vTrack(), a={}; try{ a=t&&t.getSettings?t.getSettings():{}; }catch(h){} return typeof a.zoom==="number"?a.zoom:1; }
-  // İnsanda yüzün boyutuna göre (yüz görüntü yüksekliğinin ~1/5'i), kedide gövdeye göre.
-  // Uzaklaşma her zaman serbest ve çabuk; yakınlaşma yön bulunup isabet %45'i geçince, ölçüm sırasında değil.
-  function otoZoom(hedef,boyY,fx,simdi,yuzBoy){
-    if(!takipAcik||!takipAyar.oto||test) return;
-    if(simdi-elleZoomSon<8000) return;
+  // ---------- otomatik zoom: kameraman gibi ----------
+  // Önce ortala, sonra yakınlaş. Hedef hareket ediyorsa biraz geniş tut, durunca yavaşça yakınlaş.
+  // Zoom hep yumuşak kayar (hedef zoom'a ~1-2 sn'de küçük adımlarla gider), atlamaz.
+  // İnsanda yüzün boyutuna göre (yüz görüntü yüksekliğinin ~1/5'i), yüz görünmüyorsa vücuda, kedide gövdeye göre.
+  var zoomHedef=null, zoomTik=null, zoomIstek={yon:0,bas:0}, zoomYakinSon=0;
+  function zoomKay(){
+    var t=vTrack(), c=yetenekler().zoom;
+    if(!t||!c||zoomHedef===null){ clearInterval(zoomTik); zoomTik=null; return; }
+    var z=mevcutZoom(), fark=zoomHedef-z;
+    if(Math.abs(fark)<0.02){ clearInterval(zoomTik); zoomTik=null; bildir(); return; }   // vardı: sayfaya bir kere haber ver
+    var adim=fark*0.18; if(Math.abs(adim)<0.02) adim=fark>0?0.02:-0.02;              // yumuşak yaklaş
+    var yeni=Math.round(Math.max(c.min,Math.min(c.max,z+adim))*100)/100;
+    t.applyConstraints({advanced:[{zoom:yeni}]}).catch(function(){});
+  }
+  function zoomaGit(z){
     var c=yetenekler().zoom; if(!c) return;
-    var z=mevcutZoom(), enCok=Math.min(c.max,4), yeni=z;
-    if(!hedef){ if(simdi-sonGorulme>2500&&z>c.min+0.05) yeni=Math.max(c.min,z/1.3); }   // kaybolunca uzaklaş, ara
-    else {
-      var boy, istenen;
-      if(yuzBoy){ boy=yuzBoy; istenen=0.2; }
-      else if(hedef.categories[0].categoryName==="person"){ boy=boyY; istenen=0.6; }
-      else { boy=boyY; istenen=0.4; }
-      if(Math.abs(fx)>0.35||akici) yeni=Math.max(c.min,z/1.2);           // kenara kaçıyorsa / yürüyorsa biraz uzaklaş
-      else if(boy>istenen*1.4) yeni=Math.max(c.min,z/Math.min(1.4,boy/istenen));
-      else if(boy<istenen*0.7) yeni=Math.min(enCok,z*Math.min(1.25,istenen/boy));
+    zoomHedef=Math.max(c.min,Math.min(Math.min(c.max,4),z));
+    if(!zoomTik) zoomTik=setInterval(zoomKay,120);
+  }
+  function otoZoom(hedef,boyY,fx,simdi,yuzBoy,fy){
+    if(!takipAcik||!takipAyar.oto||test) return;
+    if(simdi-elleZoomSon<8000){ zoomHedef=null; return; }        // elle zoom yapıldı: karışma
+    var c=yetenekler().zoom; if(!c) return;
+    var z=mevcutZoom(), simdiki=zoomHedef!==null?zoomHedef:z, istenen=simdiki;
+    if(!hedef){
+      if(simdi-sonGorulme>2500&&simdiki>c.min+0.05){ if(simdi-zoomIstek.bas>1500){ zoomIstek.bas=simdi; zoomaGit(Math.max(c.min,simdiki/1.4)); } }   // kaybolunca uzaklaş, ara
+      return;
     }
-    if(Math.abs(yeni-z)<0.08) return;
-    var uzaklas=yeni<z;
-    if(simdi-otoSonAdim<(uzaklas?600:1500)) return;
-    if(!uzaklas){
-      if(hareket||olcum) return;
-      var oz=kal[yon]&&kalOzet(kal[yon]); if(!oz||!oz.d||oz.i===null||oz.i<45) return;   // önce öğrensin
-    }
-    olcum=null;   // zoom değişince süren ölçüm geçersiz
-    otoSonAdim=simdi;
-    var v=vTrack(); if(!v) return;
-    v.applyConstraints({advanced:[{zoom:Math.round(yeni*10)/10}]}).then(bildir).catch(function(){});
+    var boy, oran;
+    if(yuzBoy){ boy=yuzBoy; oran=0.2; }
+    else if(hedef.categories[0].categoryName==="person"){ boy=boyY; oran=0.65; }
+    else { boy=boyY; oran=0.4; }
+    istenen=z*oran/Math.max(0.02,boy);                           // hedefi istenen boyuta getiren zoom
+    var h=hedefHizi(simdi), hiz=Math.max(Math.abs(h.vx),Math.abs(h.vy));
+    if(akici||hiz>0.2) istenen=istenen/(1+Math.min(1,hiz)*0.6);  // hareket varsa biraz geniş tut
+    if(Math.abs(fx)>0.3) istenen=Math.min(istenen,simdiki/1.25); // kenara kaçıyor: uzaklaş
+    istenen=Math.max(c.min,Math.min(Math.min(c.max,4),istenen));
+    var yon_=istenen>simdiki*1.18?1:(istenen<simdiki*0.85?-1:0);  // geniş "uygun" aralığı: ufak boyut değişimine tepki yok
+    if(!yon_){ zoomIstek={yon:0,bas:simdi}; return; }
+    if(zoomIstek.yon!==yon_){ zoomIstek={yon:yon_,bas:simdi}; return; }   // aynı istek bir süre sürsün
+    if(yon_<0){ if(simdi-zoomIstek.bas<400) return; zoomaGit(istenen); return; }   // uzaklaşma: çabuk
+    // yakınlaşma: önce ortala, yön bulunup isabet %45'i geçmiş olsun, istek ~1 sn sürsün, iki yakınlaşma arası 1 sn
+    if(simdi-zoomIstek.bas<1000||simdi-zoomYakinSon<1000) return;
+    if(Math.abs(fx)>0.15||Math.abs(fy||0)>0.2) return;
+    var oz=kal[yon]&&kalOzet(kal[yon]); if(!oz||!oz.d||oz.i===null||oz.i<45) return;
+    zoomYakinSon=simdi;
+    zoomaGit(Math.min(istenen,simdiki*1.6));                     // tek seferde çok yakınlaşma
   }
 
   kalYazisi();
@@ -740,7 +761,7 @@
     var adim=takipYonet(kaynak,fx,fy,dPay,simdi);
     if(adim) yaz("Takip: "+adim+".");
     if(hedef){
-      otoZoom(hedef,boyY,fx,simdi,yuz?yuz.height/v.videoHeight:0);
+      otoZoom(hedef,boyY,fx,simdi,yuz?yuz.height/v.videoHeight:0,fy);
       var ek=takipAcik?(simdi<takipBekleBitis?" · takip bekliyor":(test?" · yön testi":(akici?" · izliyor":(hareket?" · dönüyor":" · takip")))):"";
       E("taniYazi").textContent=metin+" · %"+Math.round(hedef.categories[0].score*100)+ek;
     } else {
@@ -869,7 +890,7 @@
       pc.setRemoteDescription({type:"answer",sdp:m.sdp}).catch(function(h){ yaz("Cevap işlenemedi: "+(h&&h.message||h)); });
     }
     else if(m.t==="kamera"){ kameraCevir(m.yon==="arka"?"environment":"user"); }
-    else if(m.t==="zoom"){ elleZoomSon=Date.now(); zoomAyarla(m.deger); }
+    else if(m.t==="zoom"){ elleZoomSon=Date.now(); zoomHedef=null; zoomAyarla(m.deger); }
     else if(m.t==="fener") fenerAyarla(m.deger);
     else if(m.t==="mik") mikAyarla(m.deger);
     else if(m.t==="gor") gorAyarla(m.deger);
