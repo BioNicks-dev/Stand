@@ -417,7 +417,7 @@
         <div class="satir" style="border-top:1px solid var(--line);padding:8px 0;align-items:center;color:var(--ink)"><span style="color:var(--ink)">Hibrit dönüş süresi</span><span class="adimlar"><button class="kucuk" id="kaGeriEksi" aria-label="Kısalt">−</button><b id="kaGeri">—</b><button class="kucuk" id="kaGeriArti" aria-label="Uzat">+</button></span></div>
         <label>Dönüş sınırı (başlangıca göre)<select id="kaSinir">
           <option value="360">± 360° (1 tur)</option><option value="450">± 450°</option>
-          <option value="540">± 540° (1,5 tur)</option><option value="720">± 720° (2 tur)</option><option value="1440">± 1440° (4 tur, kablo yoksa)</option>
+          <option value="540">± 540° (1,5 tur)</option><option value="720">± 720° (2 tur)</option><option value="1440">± 1440° (4 tur, kablo yoksa)</option><option value="0">Sınırsız (kablo yoksa)</option>
         </select></label>
         <label>Standın 180° yönü<select id="kaY180"><option value="1">Sağa</option><option value="-1">Sola</option></select></label>
         <label>WhatsApp menü açık kalma süresi<select id="kaUyandir">
@@ -611,8 +611,8 @@
   // ---------- sayaçlar ----------
   function sayaclariYaz(){
     E("donus").textContent=Math.round(netDonus)+"°";
-    var sinir=(sonDurum&&sonDurum.ayarlar&&sonDurum.ayarlar.sinir)||360;
-    E("donus").className=Math.abs(netDonus)>sinir-90?"uyari":"";
+    var sinir=sonDurum&&sonDurum.ayarlar?sonDurum.ayarlar.sinir:360; if(sinir===undefined) sinir=360;
+    E("donus").className=(sinir>0&&Math.abs(netDonus)>sinir-90)?"uyari":"";
     E("tiltDeger").textContent=Math.round(netTilt)+"°";
   }
   function donusEkle(yon,ms){ netDonus+=yon*ayar("hizInput",27)*(ms/1000); sayaclariYaz(); }
@@ -1071,7 +1071,7 @@
     E("kaGeri").textContent=(a.geri180/1000).toFixed(1)+" sn";
     E("kaGeri").dataset.ms=a.geri180;
     if(seciliDegil("kaY180")) E("kaY180").value=String(a.y180>0?1:-1);
-    if(a.sinir&&seciliDegil("kaSinir")){
+    if(a.sinir!==undefined&&seciliDegil("kaSinir")){
       var sv=String(a.sinir);
       if(!E("kaSinir").querySelector('option[value="'+sv+'"]')){ var op=document.createElement("option"); op.value=sv; op.textContent="± "+sv+"°"; E("kaSinir").appendChild(op); }
       E("kaSinir").value=sv;

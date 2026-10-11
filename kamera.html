@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 6</span></h1>
+  <h1>Stand kamerası <span class="not">· 10 Ekim 2026 · takip 7 (kart adımı)</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -381,17 +381,17 @@
   E("takipKutu").onchange=function(){ takipAyarla(E("takipKutu").checked); };
 
   // ---------- dönüş: hedefin açısı kadar, joystick komutuyla (kart sınırı korur, komut kesilirse 0,6 sn'de durur) ----------
-  function hareketiBirak(){ if(hareket){ clearInterval(hareket.tik); hareket=null; } }
+  // Dönüşü kart zamanlar: tek komut "şu yöne şu kadar ms" (internet gecikmesi dönüş miktarını bozmaz).
+  // Kart sınırı ve izni kendisi kontrol eder; joystick veya düğme gelirse adımı kendisi bitirir.
+  function hareketiBirak(){ if(hareket){ clearTimeout(hareket.tik); hareket=null; } }
   function donusBaslat(dx,dy,msX,msY){
     hareketiBirak();
-    var bas=Date.now(), h={};
-    function gonder(){
-      var g=Date.now()-bas, x=g<msX?dx:0, y=g<msY?dy:0;
-      karta({t:"joy",x:510+x*190,y:510+y*190});
-      if(!x&&!y){ hareketiBirak(); setTimeout(function(){ karta({t:"joy",x:510,y:510}); },120); }
-    }
-    h.tik=setInterval(gonder,150); hareket=h; gonder();
-    sonrakiKarar=bas+Math.max(msX,msY)+500;   // dönüş bitsin, görüntü yetişsin, sonra tekrar bak
+    msX=dx?Math.min(1500,Math.round(msX)):0; msY=dy?Math.min(1500,Math.round(msY)):0;
+    if(!msX&&!msY) return;
+    karta({t:"adim",x:dx,y:dy,mx:msX,my:msY});
+    var en=Math.max(msX,msY), bas=Date.now();
+    hareket={tik:setTimeout(function(){ hareket=null; },en+250)};   // komutun karta ulaşma payı
+    sonrakiKarar=bas+en+250+450;   // dönüş bitsin, görüntü yetişsin, sonra tekrar bak
   }
   // ---------- kendi kendini ayarlama (kalibrasyon) ----------
   // k = 1 ms dönüşte hedefin görüntüde ne kadar kaydığı (zoom 1'de, görüntü genişliği/yüksekliği oranı olarak).
@@ -415,7 +415,7 @@
     function d(c){ var o=kalOzet(c); return !o.d?"yön testi bekliyor":(o.h?"hazır"+(o.i!==null?" · isabet %"+o.i:""):"öğreniyor ("+o.n+"/"+KAL_HAZIR+")"); }
     E("dKal").textContent="ön "+d(on)+" / arka "+d(ar);
   }
-  E("kalSifirla").onclick=function(e){ e.preventDefault(); kal=kalBaslangic(); olcum=null; test=null; kalKaydet(); yaz("Kalibrasyon sıfırlandı, yeniden öğrenecek."); };
+  E("kalSifirla").onclick=function(e){ e.preventDefault(); kal=kalBaslangic(); olcum=null; test=null; engel={x:null,y:null}; kalKaydet(); yaz("Kalibrasyon sıfırlandı, yeniden öğrenecek."); };
   function kalOzet(c){
     var n=Math.min(c.x.n,c.y.n), l=[c.x.i,c.y.i].filter(function(a){ return a!==null; });
     var d=!!(c.x.dog&&c.y.dog);
@@ -425,10 +425,16 @@
     var o=olcum; olcum=null;
     if(!o||o.yon!==yon||Math.abs(o.z-z)>0.05) return;
     var c=kal[yon], degisti=false;
-    [["x",o.fx,fx,o.msX],["y",o.fy,fy,o.msY]].forEach(function(e){
+    [["x",o.fx,fx,o.msX,o.sx],["y",o.fy,fy,o.msY,o.sy]].forEach(function(e){
       var eks=e[0], f0=e[1], f1=e[2], ms=e[3];
       if(ms<150) return;                                   // çok kısa hareket: ölçüm güvenilmez
-      var kay=f0-f1;
+      var kay=f0-f1, bek=c[eks].k*ms*z;                     // beklenen kayma
+      if(bek>=0.05&&Math.abs(kay)<0.35*bek){
+        // komut verildi ama görüntü (neredeyse) kaymadı: stand o yönde sınıra dayanmış. Hata sayma, o yöne bir süre itme.
+        engel[eks]={s:e[4],bitis:Date.now()+20000};
+        yaz("Stand "+(eks==="x"?"yatay":"dikey")+" sınırda görünüyor, o yöne itilmeyecek.");
+        return;
+      }
       if(Math.abs(kay)<0.03) return;                       // hiç kaymadı: ölçüm yok
       if(Math.sign(kay)!==Math.sign(f0)){
         // hedef beklenenin tersine kaydı: üst üste 2 kere olursa yön testi yeniden yapılır
@@ -456,9 +462,10 @@
   function kamAdi(){ return yon==="environment"?"arka kamera":"ön kamera"; }
   function eksAdi(e){ return e==="x"?"sağ-sol":"yukarı-aşağı"; }
   // ---------- yön testi: kısa bir deneme hareketiyle hedefin hangi yöne kaydığına bakar ----------
-  var test=null, kayipSayi=0;
+  var test=null, kayipSayi=0, engel={x:null,y:null}, engelKam=null;
   function yonTesti(fx,fy,simdi){
     var c=kal[yon]; if(!c) return false;
+    if(engelKam!==yon){ engel={x:null,y:null}; engelKam=yon; }
     if(test){
       if(simdi<sonrakiKarar||hareket) return true;
       var t=test, f1=t.eks==="x"?fx:fy, kay=f1-t.f0; test=null;
@@ -545,7 +552,11 @@
     if(!disX&&!disY) return "";
     // yön: takip kendi öğreniyor (manuel joystick ayarlarına bakmaz)
     var sx=(fx>0?-1:1)*c.x.yon, sy=(fy>0?-1:1)*c.y.yon;
-    olcum={yon:yon,z:z,fx:fx,fy:fy,msX:efX,msY:efY};
+    // sınıra dayandığı yöne itme; ters yöne gidince yasak kalkar
+    if(disX&&engel.x){ if(simdi>engel.x.bitis||engel.x.s!==sx) engel.x=null; else { disX=false; efX=0; } }
+    if(disY&&engel.y){ if(simdi>engel.y.bitis||engel.y.s!==sy) engel.y=null; else { disY=false; efY=0; } }
+    if(!disX&&!disY) return "";
+    olcum={yon:yon,z:z,fx:fx,fy:fy,msX:efX,msY:efY,sx:sx,sy:sy};
     donusBaslat(disX?sx:0,disY?sy:0,disX?BASLAMA+efX:0,disY?BASLAMA+efY:0);
     return (disX?(fx>0?"sağa":"sola"):"")+(disX&&disY?" ve ":"")+(disY?(fy>0?"aşağı":"yukarı"):"");
   }
