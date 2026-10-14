@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 11 Ekim 2026 · takip 12</span></h1>
+  <h1>Stand kamerası <span class="not">· 14 Ekim 2026 · takip 12 · teşhis 1</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -120,6 +120,10 @@
       <button id="arkaBtn">Arka kamera</button>
     </div>
     <p class="not">Bekleme modunda ekran siyah kalır, kamera kapalı bekler. Biri bağlanınca (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Çıkmak için siyah ekrana hızlıca iki kez dokunun.</p>
+    <div class="satir">
+      <button id="kayitKopyala">Kaydı kopyala</button>
+      <button id="kayitTemizle">Temizle</button>
+    </div>
     <div id="kayit"></div>
     <p class="not"><a href="#" id="degistir">Bağlantı bilgilerini değiştir</a></p>
     </div>
@@ -138,12 +142,39 @@
   function yazLS(a,v){ try{ localStorage.setItem(a,v); }catch(h){} }
   function saat(){ var d=new Date(); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)+":"+("0"+d.getSeconds()).slice(-2); }
   function yaz(m){ var k=E("kayit"); k.textContent=saat()+" "+m+"\n"+k.textContent.slice(0,3000); }
+  function kayitKopyalaYap(){
+    var m=E("kayit").textContent, b=E("kayitKopyala");
+    var bitti=function(){ b.textContent="Kopyalandı"; setTimeout(function(){ b.textContent="Kaydı kopyala"; },1500); };
+    var elle=function(){ var t=document.createElement("textarea"); t.value=m; document.body.appendChild(t); t.select(); try{ document.execCommand("copy"); }catch(h){} t.remove(); bitti(); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(m).then(bitti).catch(elle); else elle();
+  }
   function goster(el,metin,sinif){ el.textContent=metin; el.className=sinif||""; }
 
   var kod=oku("stand_kod"), ss=oku("stand_ss");
   var mikAcik=true, gorAcik=true, fenerAcik=false;
   var istemci=null, videoGonderen=null, akis=null, yon="user", pc=null, izleyen=null, ekranKilidi=null;
   var beklemede=false, hazirlaniyor=false, kopmaZamani=null;
+  // ---------- bağlantı teşhisi: her denemenin adımları kayda yazılır ve izleyenin (iPhone) kaydına da gönderilir ----------
+  var sayfaKimlik=Math.random().toString(16).slice(2,8);
+  var taniId=null, taniSatir=[], taniTik=null, taniCevap=false;
+  var DURUM_TR={"new":"yeni","checking":"aranıyor","connecting":"bağlanıyor","connected":"bağlandı","completed":"tamam","failed":"başarısız","disconnected":"koptu","closed":"kapandı"};
+  function tYaz(m){ yaz(m); if(taniId){ taniSatir.push(saat()+" "+m); clearTimeout(taniTik); taniTik=setTimeout(taniGonder,400); } }
+  function taniGonder(){
+    if(!taniId||!taniSatir.length) return;
+    gonder({t:"pkayit",id:taniId,sayfa:sayfaKimlik,cevap:taniCevap,satirlar:taniSatir.splice(0,40)});
+  }
+  function tekSatirGonder(id,m){ yaz(m); gonder({t:"pkayit",id:id,sayfa:sayfaKimlik,satirlar:[saat()+" "+m]}); }
+  // SDP'deki adres adaylarının özeti: ev ağı (host), internet (srflx), aktarma (relay)
+  function adresOzet(sdp){
+    var ev=0, evAd=0, net=[], akt=0;
+    String(sdp||"").split(/\r?\n/).forEach(function(l){
+      var m=l.match(/^a=candidate:\S+ \d+ \S+ \d+ (\S+) \d+ typ (\w+)/); if(!m) return;
+      if(m[2]==="host"){ ev++; if(/\.local$/.test(m[1])) evAd++; }
+      else if(m[2]==="srflx"||m[2]==="prflx"){ if(net.indexOf(m[1])<0) net.push(m[1]); }
+      else if(m[2]==="relay") akt++;
+    });
+    return "ev ağı "+ev+(evAd?" (gizli ad "+evAd+")":"")+", internet "+net.length+(net.length?" ("+net.join(", ")+")":"")+", aktarma "+akt;
+  }
   // Pil durumu (Chrome Android okuyabiliyor); görüşme sırasında izleyene gider
   var pil=null;
   if(navigator.getBattery) navigator.getBattery().then(function(b){
@@ -166,6 +197,8 @@
     location.reload();
   };
   E("degistir").onclick=function(e){ e.preventDefault(); if(istemci) istemci.end(true); kurulumuGoster(); };
+  E("kayitKopyala").onclick=kayitKopyalaYap;
+  E("kayitTemizle").onclick=function(){ E("kayit").textContent=""; };
 
   // ---------- zil ----------
   E("zilAcik").checked=oku("stand_kamZil")!=="0";
@@ -875,28 +908,31 @@
     if(beklemede) siyahYazisi();
   }
   function istekGeldi(id){
-    if(hazirlaniyor) return;
+    if(hazirlaniyor){ tekSatirGonder(id,"İstek geldi ama önceki istek için kamera hâlâ hazırlanıyor, bu istek yok sayıldı."); return; }
     if(!akis&&!beklemede){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ama bekleme modu kapalı ve kamera açık değil."); return; }
-    if(pc) baglantiyiKapat();
+    if(pc){ tYaz("Yeni istek geldi, önceki izleyenin bağlantısı kapatılıyor."); taniGonder(); baglantiyiKapat(); }
     izleyen=id;
     hazirlaniyor=true;
+    taniId=id; taniSatir=[]; taniCevap=false;
     if(beklemede) siyahYazisi();
-    yaz("İzleme isteği geldi.");
+    tYaz("İzleme isteği geldi (izleyen "+String(id).slice(-4)+", bu sayfa "+sayfaKimlik+").");
     var zilVar=beklemede&&!akis&&E("zilAcik").checked;
     if(zilVar){ zilCal(ZIL_SURE); yaz("Zil çalıyor."); }
     new Promise(function(r){ setTimeout(r,zilVar?ZIL_SURE:0); })
       .then(kameraAc)
-      .then(function(){ hazirlaniyor=false; if(izleyen===id) teklifHazirla(id); })
-      .catch(function(){ hazirlaniyor=false; izleyen=null; gonder({t:"hazirDegil",id:id}); });
+      .then(function(){ hazirlaniyor=false; tYaz("Kamera hazır."); if(izleyen===id) teklifHazirla(id); else tYaz("Bu arada başka istek geldi, teklif hazırlanmadı."); })
+      .catch(function(h){ hazirlaniyor=false; izleyen=null; tYaz("Kamera açılamadı: "+(h&&(h.name||h.message)||h)); taniGonder(); gonder({t:"hazirDegil",id:id}); });
   }
   function teklifHazirla(id){
     var p=new RTCPeerConnection({iceServers:BUZ});
     pc=p;
     try{ kutuKanali=p.createDataChannel("kutular",{ordered:false,maxRetransmits:0}); }catch(h){ kutuKanali=null; }
     akis.getTracks().forEach(function(t){ var g=p.addTrack(t,akis); if(t.kind==="video") videoGonderen=g; });
+    p.oniceconnectionstatechange=function(){ if(p===pc) tYaz("Yol durumu: "+(DURUM_TR[p.iceConnectionState]||p.iceConnectionState)); };
     p.onconnectionstatechange=function(){
       if(p!==pc) return;
       var s=p.connectionState;
+      tYaz("Bağlantı: "+(DURUM_TR[s]||s));
       clearTimeout(kopmaZamani);
       if(s==="connected"){ goster(E("dIzleyen"),"bağlı","iyi"); yaz("İzleyen bağlandı."); bildir(); }
       else if(s==="connecting"){ goster(E("dIzleyen"),"bağlanıyor","uyari"); }
@@ -911,14 +947,23 @@
     goster(E("dIzleyen"),"bağlanıyor","uyari");
     p.createOffer().then(function(o){ return p.setLocalDescription(o); })
       .then(function(){ return toplamaBitsin(p); })
-      .then(function(){ if(p===pc) gonder({t:"teklif",id:id,sdp:p.localDescription.sdp,yon:yon}); })
-      .catch(function(h){ yaz("Teklif hazırlanamadı: "+(h&&h.message||h)); });
+      .then(function(){
+        if(p!==pc) return;
+        gonder({t:"teklif",id:id,sdp:p.localDescription.sdp,yon:yon,sayfa:sayfaKimlik});
+        tYaz("Teklif gönderildi. Pixel adresleri: "+adresOzet(p.localDescription.sdp));
+      })
+      .catch(function(h){ tYaz("Teklif hazırlanamadı: "+(h&&h.message||h)); });
   }
   function mesajGeldi(m){
     if(m.t==="istek") istekGeldi(m.id);
     else if(m.t==="cevap"){
-      if(!pc||m.id!==izleyen) return;
-      pc.setRemoteDescription({type:"answer",sdp:m.sdp}).catch(function(h){ yaz("Cevap işlenemedi: "+(h&&h.message||h)); });
+      if(!pc){ tekSatirGonder(m.id,"Cevap geldi ama Pixel'de açık bağlantı yok, yok sayıldı."); return; }
+      if(m.id!==izleyen){ tekSatirGonder(m.id,"Cevap geldi ama Pixel şu an başka bir izleyene bağlanıyor, yok sayıldı."); return; }
+      var bu=pc;
+      tYaz("Cevap alındı. iPhone adresleri: "+adresOzet(m.sdp));
+      pc.setRemoteDescription({type:"answer",sdp:m.sdp})
+        .then(function(){ if(bu===pc){ taniCevap=true; tYaz("Cevap işlendi, yol aranıyor."); } })
+        .catch(function(h){ tYaz("Cevap işlenemedi: "+(h&&h.message||h)); });
     }
     else if(m.t==="kamera"){ kameraCevir(m.yon==="arka"?"environment":"user"); }
     else if(m.t==="zoom"){ elleZoomSon=Date.now(); toplamHedef=null; gorunum={s:1,x:0,y:0}; kamZoomOto=false; zoomAyarla(m.deger); }
@@ -927,7 +972,7 @@
     else if(m.t==="gor") gorAyarla(m.deger);
     else if(m.t==="takip") takipAyarla(!!m.deger,m);
     else if(m.t==="takipBekle"){ akici=false; takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; olcum=null; test=null; arama={bitti:true}; gecmis=[]; hareketiBirak(); }
-    else if(m.t==="bitir"){ if(m.id===izleyen){ yaz("İzleyen ayrıldı."); baglantiyiKapat(); } }
+    else if(m.t==="bitir"){ if(m.id===izleyen){ tYaz("İzleyen ayrıldı."); taniGonder(); baglantiyiKapat(); } }
     else if(m.t==="sor"){ gonder({t:(akis||beklemede)?"hazir":"hazirDegil"}); }
   }
 

@@ -1372,20 +1372,64 @@
     grDugmeler(false);
   }
   var grDevralindi=false;
+  // ---------- bağlantı teşhisi ----------
+  var grTeklifSayfa=null, grSayfalar={}, grPkCevap=false, grTaniTik=null, grIkiSayfa=false;
+  var GR_DURUM_TR={"new":"yeni","checking":"aranıyor","connecting":"bağlanıyor","connected":"bağlandı","completed":"tamam","failed":"başarısız","disconnected":"koptu","closed":"kapandı"};
+  function grAdresOzet(sdp){
+    var ev=0, evAd=0, net=[], akt=0;
+    String(sdp||"").split(/\r?\n/).forEach(function(l){
+      var m=l.match(/^a=candidate:\S+ \d+ \S+ \d+ (\S+) \d+ typ (\w+)/); if(!m) return;
+      if(m[2]==="host"){ ev++; if(/\.local$/.test(m[1])) evAd++; }
+      else if(m[2]==="srflx"||m[2]==="prflx"){ if(net.indexOf(m[1])<0) net.push(m[1]); }
+      else if(m[2]==="relay") akt++;
+    });
+    return "ev ağı "+ev+(evAd?" (gizli ad "+evAd+")":"")+", internet "+net.length+(net.length?" ("+net.join(", ")+")":"")+", aktarma "+akt;
+  }
+  function grTeshis(p,sonuc){
+    // yol denemelerinin özeti + en olası sebep
+    var bitir=function(ist,cvp,cift){
+      var neden;
+      if(grIkiSayfa) neden="Kamera sayfası iki yerde açık (Pixel'de iki sekme ya da başka bir cihaz). Birini kapatın.";
+      else if(!grPkCevap) neden="Pixel, iPhone'un cevabını almadı ya da işleyemedi.";
+      else if(cift===0||cvp===0) neden="İki telefon birbirine ulaşamadı (ağ yolu kapalı).";
+      else neden="Bağlantı kurulamadı.";
+      yaz("Teşhis: yol denemesi "+cift+", gönderilen "+ist+", Pixel'den karşılık "+cvp+", Pixel cevabı aldı: "+(grPkCevap?"evet":"hayır/bilinmiyor")+", kamera sayfası sayısı: "+Object.keys(grSayfalar).length+".");
+      yaz("Sonuç: "+neden);
+      sonuc(neden);
+    };
+    if(!p||!p.getStats){ bitir(0,0,0); return; }
+    p.getStats().then(function(r){
+      var ist=0, cvp=0, cift=0;
+      r.forEach(function(x){ if(x.type==="candidate-pair"){ cift++; ist+=x.requestsSent||0; cvp+=x.responsesReceived||0; } });
+      bitir(ist,cvp,cift);
+    }).catch(function(){ bitir(0,0,0); });
+  }
   function grGorunur(){ return document.visibilityState!=="hidden"; }
   function grBaglan(){
     grDevralindi=false;
     grBagKapat(true);
+    grSayfalar={}; grTeklifSayfa=null; grPkCevap=false; grIkiSayfa=false; clearTimeout(grTaniTik);
     if(!grGonder({t:"istek",id:grId})){ grOrta("Sunucuya bağlanılıyor…"); return; }   // bağlanınca kendisi tekrar dener
+    yaz("Evi izle: istek gönderildi.");
     grIstekte=true;
     grOrta("Eve bağlanılıyor…");
     grVideo.play().catch(function(){});
     grBekleme=setTimeout(function(){
-      if(!grPc){ grIstekte=false; grOrta("Kamera cevap vermedi. Pixel'de kamera sayfası bekleme modunda mı? Tekrar denemek için dokunun.",true); }
+      if(!grPc){ grIstekte=false; yaz("Evi izle: 15 sn içinde Pixel'den teklif gelmedi."); grOrta("Kamera cevap vermedi. Pixel'de kamera sayfası bekleme modunda mı? Tekrar denemek için dokunun.",true); }
     },15000);
   }
   function grTeklif(m){
     if(m.id!==grId||!grIstekte||!grAcik) return;
+    var sk=m.sayfa||"?";
+    if(grTeklifSayfa&&grTeklifSayfa!==sk){
+      grIkiSayfa=true; grSayfalar[sk]=1;
+      yaz("UYARI: ikinci bir kamera sayfasından teklif geldi ("+sk+"). Kamera sayfası iki yerde açık.");
+      grBagKapat(true);
+      grOrta("Kamera sayfası iki yerde açık (Pixel'de iki sekme ya da başka bir cihaz). Birini kapatıp buraya dokunun.",true);
+      return;
+    }
+    grSayfalar[sk]=1; grTeklifSayfa=sk;
+    yaz("Evi izle: teklif geldi (kamera sayfası "+sk+"). Pixel adresleri: "+grAdresOzet(m.sdp));
     clearTimeout(grBekleme);
     if(grPc){ try{ grPc.close(); }catch(h){} }
     var p=new RTCPeerConnection({iceServers:GR_BUZ});
@@ -1396,19 +1440,27 @@
       else { var s=grVideo.srcObject||new MediaStream(); s.addTrack(e.track); grVideo.srcObject=s; }
       grVideo.play().catch(function(){});
     };
+    p.oniceconnectionstatechange=function(){ if(p===grPc) yaz("Evi izle: yol durumu "+(GR_DURUM_TR[p.iceConnectionState]||p.iceConnectionState)); };
+    clearTimeout(grTaniTik);
+    grTaniTik=setTimeout(function(){
+      if(p!==grPc||p.connectionState==="connected") return;
+      yaz("Evi izle: 25 sn'de bağlantı kurulamadı.");
+      grTeshis(p,function(neden){ if(p!==grPc) return; grBagKapat(true); grOrta(neden+" Ayrıntı: ⚙ > Kayıt. Tekrar denemek için dokunun.",true); });
+    },25000);
     p.onconnectionstatechange=function(){
       if(p!==grPc) return;
       var s=p.connectionState;
+      yaz("Evi izle: bağlantı "+(GR_DURUM_TR[s]||s));
       if(s==="connected"){ grOrta(grYet&&!grYet.gor?"Görüntü kapalı":""); grOlcumBaslat(); setTimeout(grMikEsitle,300); }
       else if(s==="disconnected") grOrta("Bağlantı zayıf, bekleniyor…");
-      else if(s==="failed"){ grBagKapat(true); grOrta("Bağlantı kurulamadı. Tekrar denemek için dokunun.",true); }
+      else if(s==="failed"){ clearTimeout(grTaniTik); grTeshis(p,function(neden){ if(p!==grPc) return; grBagKapat(true); grOrta(neden+" Ayrıntı: ⚙ > Kayıt. Tekrar denemek için dokunun.",true); }); }
     };
     grOrta("Bağlanıyor…");
     p.setRemoteDescription({type:"offer",sdp:m.sdp})
       .then(function(){ return p.createAnswer(); })
       .then(function(c){ return p.setLocalDescription(c); })
       .then(function(){ return grToplama(p); })
-      .then(function(){ if(p===grPc) grGonder({t:"cevap",id:grId,sdp:p.localDescription.sdp}); })
+      .then(function(){ if(p===grPc){ grGonder({t:"cevap",id:grId,sdp:p.localDescription.sdp}); yaz("Evi izle: cevap gönderildi. iPhone adresleri: "+grAdresOzet(p.localDescription.sdp)); } })
       .catch(function(h){ grOrta("Bağlantı hatası: "+(h&&h.message||h),true); });
   }
   function grArkada(){ return grAcik&&!!grYet&&grYet.yon==="environment"; }
@@ -1530,6 +1582,20 @@
   function grMesaj(metin){
     if(!grAcik) return;
     var m; try{ m=JSON.parse(metin); }catch(h){ return; }
+    if(m.t==="pkayit"){
+      if(m.id!==grId) return;
+      if(m.cevap) grPkCevap=true;
+      if(m.sayfa&&!grSayfalar[m.sayfa]){
+        if(Object.keys(grSayfalar).length&&!grIkiSayfa){
+          grIkiSayfa=true;
+          yaz("UYARI: ikinci bir kamera sayfası da bu isteğe cevap veriyor ("+m.sayfa+"). Kamera sayfası iki yerde açık.");
+          if(!grPc||grPc.connectionState!=="connected") grOrta("Kamera sayfası iki yerde açık (Pixel'de iki sekme ya da başka bir cihaz). Birini kapatıp buraya dokunun.",true);
+        }
+        grSayfalar[m.sayfa]=1;
+      }
+      (m.satirlar||[]).forEach(function(l){ yaz("Pixel "+(m.sayfa?"("+m.sayfa+") ":"")+l); });
+      return;
+    }
     if(m.t==="teklif"&&m.id&&m.id!==grId){
       // Pixel başka bir izleyene bağlanıyor: bu ekranı durdur, kendiliğinden geri bağlanıp onu düşürme
       if(grPc||grIstekte){ grBagKapat(false); grDevralindi=true; grOrta("Başka bir cihaz Evi izle'yi açtı. Bu ekran durduruldu, tekrar bağlanmak için dokun.",true); }
