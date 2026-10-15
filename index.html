@@ -275,7 +275,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 21:30</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 22:30</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
 
@@ -405,6 +405,8 @@
       <label>Ev kamerasında tanıma kutularını göster<input type="checkbox" id="kutuGoster" checked></label>
       <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
+      <label>Saat kumandası (⏭ sağa, ⏮ sola, ⏯ 180° / dur)<input type="checkbox" id="saatAcik"></label>
+      <p class="not" id="saatDurum" style="margin:0 0 8px"></p>
       <label class="sadeceYonetici">Arama zili<input type="checkbox" id="aramaZil" checked></label>
       <label class="sadeceYonetici">Arama titreşimi<input type="checkbox" id="aramaTitresim" checked></label>
     </div>
@@ -823,6 +825,7 @@
         izin=!!m.izin; netDonus=m.donus||0; netTilt=m.tilt||0; sayaclariYaz();
         if(oturumBas===null) oturumBas={d:netDonus,t:netTilt};
         guncelle();
+        saatSimge();
       }
     });
     clearInterval(durumTik);
@@ -1333,8 +1336,105 @@
     E(id).addEventListener("change",function(){ if(zilCalisiyor){ zilDur(); zilBasla(); } });
   });
 
+  // ---------- saat kumandası (Redmi Watch'un müzik tuşları) ----------
+  // Sayfa duyulmayacak kadar kısık bir ses çalar; iPhone saatin müzik tuşlarını bu sayfaya iletir.
+  // ⏭ biraz sağa, ⏮ biraz sola (sayfadaki küçük adım düğmeleriyle aynı), ⏯ kumandanın 180 tuşunun aynısı
+  // (kartta "k180": aynı gidiş-dönüş sırası); stand dönüyorsa ⏯ durdurur. Saatteki simge standın durumunu izler.
+  var saatSes=null, saatBip=null, saatHazir=false, saatSonTik=Date.now(), saatUyandi=0, saatYokSayi=0, saat180=0, saatSonBaslik="";
+  function saatWav(sn,bip){
+    var hz=8000,n=Math.round(hz*sn),b=new ArrayBuffer(44+n*2),v=new DataView(b);
+    function y(o,t){ for(var i=0;i<t.length;i++) v.setUint8(o+i,t.charCodeAt(i)); }
+    y(0,"RIFF");v.setUint32(4,36+n*2,true);y(8,"WAVE");y(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+    v.setUint32(24,hz,true);v.setUint32(28,hz*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);y(36,"data");v.setUint32(40,n*2,true);
+    for(var i=0;i<n;i++){
+      var d=bip?Math.sin(i*2*Math.PI*1200/hz)*9000*Math.min(1,(n-i)/200):Math.sin(i*2*Math.PI*200/hz)*6;   // bip ya da duyulmayacak kadar kısık ses
+      v.setInt16(44+i*2,Math.round(d),true);
+    }
+    return URL.createObjectURL(new Blob([b],{type:"audio/wav"}));
+  }
+  function saatDonuyor(){
+    var tazeDurum=sonDurum&&typeof sonDurum.donuyor==="boolean"&&Date.now()-sonDurumZaman<90000;
+    if(tazeDurum) return sonDurum.donuyor||Date.now()-saat180<1500;   // komut gitti, kartın cevabı yolda
+    return Date.now()-saat180<7000;                                     // eski kart: 180 yaklaşık 7 sn sürer
+  }
+  function saatYazi(){
+    var el=E("saatDurum");
+    if(!E("saatAcik").checked){ el.textContent=""; return; }
+    if(!saatHazir){ el.textContent="Ses durdu: sayfaya bir kez dokunun."; el.style.color="var(--stop)"; return; }
+    el.style.color="";
+    var sira=sonDurum&&sonDurum.sira180;
+    el.textContent="Hazır. Stand "+(saatDonuyor()?"dönüyor":"duruyor")+(sira?" · sıradaki 180: "+(sira==="donus"?"geri dönüş":"gidiş"):"");
+  }
+  function saatSimge(){
+    saatYazi();
+    if(!saatHazir||!("mediaSession" in navigator)) return;
+    var don=saatDonuyor(), sira=sonDurum&&sonDurum.sira180;
+    try{ navigator.mediaSession.playbackState=don?"playing":"paused"; }catch(h){}
+    var baslik=don?"Stand dönüyor":"Stand duruyor", alt=don?"⏸ durdur":(sira==="donus"?"▶ geri dön":"▶ 180° dön");
+    if(baslik+alt!==saatSonBaslik){
+      saatSonBaslik=baslik+alt;
+      try{ navigator.mediaSession.metadata=new MediaMetadata({title:baslik,artist:alt,album:"Stand kumandası"}); }catch(h){}
+    }
+  }
+  function saatKomut(k,ad){
+    if(rol!=="evde"&&!(istemci&&istemci.connected)){ yaz("Saat: "+ad+" gönderilemedi (sunucuya bağlı değil)."); return; }
+    komutGonder(k);
+    yaz("Saat: "+ad);
+    if(saatBip){ try{ saatBip.currentTime=0; var b=saatBip.play(); if(b&&b.catch) b.catch(function(){}); }catch(h){} }
+    if(saatSes&&saatSes.paused){ var s=saatSes.play(); if(s&&s.catch) s.catch(function(){}); }
+  }
+  function saatBasildi(tus){
+    if(!E("saatAcik").checked) return;
+    var simdi=Date.now();
+    // Safari sayfayı uyuttuysa, uyurken basılanlar uyanınca topluca gelir: hareket ettirmesin
+    if(simdi-saatSonTik>2500||simdi-saatUyandi<1500){
+      if(simdi-saatSonTik>2500) saatUyandi=simdi;
+      saatYokSayi++;
+      clearTimeout(saatBasildi.t);
+      saatBasildi.t=setTimeout(function(){ yaz("Saat: sayfa uyurken basılan "+saatYokSayi+" tuş yok sayıldı."); saatYokSayi=0; },1600);
+      return;
+    }
+    if(tus==="sag") saatKomut({t:"azsag"},"⏭ biraz sağa");
+    else if(tus==="sol") saatKomut({t:"azsol"},"⏮ biraz sola");
+    else if(saatDonuyor()){ saat180=0; saatKomut({t:"dur"},"⏸ dur"); }
+    else { saat180=simdi; saatKomut({t:"k180"},"▶ 180°"); }
+    saatSimge();
+    setTimeout(saatSimge,1600);
+  }
+  var SAAT_EYLEM={play:"oynat",pause:"oynat",stop:"oynat",nexttrack:"sag",previoustrack:"sol",seekforward:"sag",seekbackward:"sol"};
+  function saatBaslat(){
+    if(!E("saatAcik").checked) return;
+    if(!saatSes){
+      saatSes=new Audio(saatWav(2,false)); saatSes.loop=true;
+      saatBip=new Audio(saatWav(0.12,true));
+      saatSes.addEventListener("pause",function(){ if(!E("saatAcik").checked) return; saatHazir=false; saatYazi(); yaz("Saat: ses durdu (iPhone durdurdu). Sayfaya bir kez dokunun."); });
+      saatSes.addEventListener("playing",function(){ saatHazir=true; saatSimge(); });
+    }
+    var s=saatSes.play();
+    if(s&&s.then) s.then(function(){ saatHazir=true; saatSimge(); }).catch(function(){ saatHazir=false; saatYazi(); });
+    try{ var b=saatBip.play(); if(b&&b.then) b.then(function(){ saatBip.pause(); saatBip.currentTime=0; }).catch(function(){}); }catch(h){}
+    if(!("mediaSession" in navigator)){ E("saatDurum").textContent="Bu tarayıcı saat tuşlarını desteklemiyor."; return; }
+    Object.keys(SAAT_EYLEM).forEach(function(k){
+      try{ navigator.mediaSession.setActionHandler(k,function(){ saatBasildi(SAAT_EYLEM[k]); }); }catch(h){}
+    });
+    saatSonBaslik="";
+  }
+  function saatKapat(){
+    saatHazir=false;
+    if(saatSes){ try{ saatSes.pause(); }catch(h){} }
+    if("mediaSession" in navigator){
+      Object.keys(SAAT_EYLEM).forEach(function(k){ try{ navigator.mediaSession.setActionHandler(k,null); }catch(h){} });
+      try{ navigator.mediaSession.metadata=null; navigator.mediaSession.playbackState="none"; }catch(h){}
+    }
+    saatYazi();
+  }
+  setInterval(function(){ saatSonTik=Date.now(); },1000);
+  // Telefon sesi ancak dokunuşla başlatır: kumanda açıksa ve ses durmuşsa her dokunuşta yeniden dene
+  document.addEventListener("pointerdown",function(){ if(E("saatAcik").checked&&(!saatSes||saatSes.paused)) saatBaslat(); },true);
+  E("saatAcik").addEventListener("change",function(){ if(E("saatAcik").checked){ saatBaslat(); yaz("Saat kumandası açıldı."); } else { saatKapat(); yaz("Saat kumandası kapandı."); } });
+
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim","saatAcik"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
@@ -1342,12 +1442,13 @@
       if(id==="araInput"&&dongu_){ clearInterval(dongu_); dongu_=setInterval(dongu,ayar("araInput",120)); }
     });
   });
+  saatYazi();
 
 
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="14 Eki 21:30";
+  var SAYFA_SURUM="14 Eki 22:30";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grId="g"+benimKimlik;
