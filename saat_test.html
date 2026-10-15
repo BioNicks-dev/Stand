@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Saat testi</title>
+<style>
+:root{--zemin:#eef2f5;--yazi:#16202a;--soluk:#5b6b7a;--vurgu:#1f6feb;--iyi:#1a7f37;--kotu:#c62828;--kutu:#ffffff;color-scheme:light;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--zemin:#0f1720;--yazi:#e6edf3;--soluk:#8b98a5;--vurgu:#58a6ff;--iyi:#3fb950;--kotu:#ff6b6b;--kutu:#18222d;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--zemin);color:var(--yazi);font-family:-apple-system,system-ui,sans-serif;touch-action:manipulation}
+main{max-width:520px;margin:0 auto;padding:18px}
+h1{font-size:22px;margin:4px 0 6px}
+p{color:var(--soluk);margin:0 0 14px;line-height:1.45}
+button{width:100%;font-size:20px;font-weight:600;padding:16px;border:0;border-radius:14px;background:var(--vurgu);color:#fff}
+#son{font-size:30px;font-weight:700;text-align:center;margin:18px 0 6px;min-height:40px}
+#durum{text-align:center;color:var(--soluk);margin-bottom:14px}
+label{display:flex;gap:10px;align-items:center;margin:10px 0;font-size:16px}
+#kayit{background:var(--kutu);border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.5;max-height:45vh;overflow:auto;white-space:pre-wrap}
+.iyi{color:var(--iyi)}.kotu{color:var(--kotu)}
+</style>
+</head>
+<body>
+<main>
+<h1>Saat testi</h1>
+<p>Başlat'a bas. Saatin müzik ekranında "Stand Kumanda" görünmeli. Sonra saatteki ileri, geri, oynat/duraklat tuşlarına bas.</p>
+<button id="basla">Başlat</button>
+<div id="son">—</div>
+<div id="durum">Henüz başlamadı</div>
+<label><input type="checkbox" id="bip" checked> Her basışta kısa bip (kilitliyken duymak için)</label>
+<div id="kayit"></div>
+</main>
+<script>
+(function(){
+  var kayitEl=document.getElementById("kayit"), sonEl=document.getElementById("son"), durumEl=document.getElementById("durum");
+  var sayac=0, sesli=null, bipSes=null, sonTik=Date.now(), uykuBasi=null;
+
+  function saat(){var d=new Date();return d.toTimeString().slice(0,8);}
+  function yaz(metin,sinif){var s=document.createElement("div");if(sinif)s.className=sinif;s.textContent=saat()+"  "+metin;kayitEl.prepend(s);}
+
+  // Ses dosyası üret (WAV). sessiz=true ise tamamen sessiz.
+  function wav(saniye,sessiz){
+    var hz=8000,n=hz*saniye,b=new ArrayBuffer(44+n*2),v=new DataView(b);
+    function y(o,t){for(var i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i));}
+    y(0,"RIFF");v.setUint32(4,36+n*2,true);y(8,"WAVE");y(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+    v.setUint32(24,hz,true);v.setUint32(28,hz*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);y(36,"data");v.setUint32(40,n*2,true);
+    for(var i=0;i<n;i++){v.setInt16(44+i*2,sessiz?0:Math.round(Math.sin(i*2*Math.PI*1200/hz)*9000*Math.min(1,(n-i)/200)),true);}
+    return URL.createObjectURL(new Blob([b],{type:"audio/wav"}));
+  }
+
+  function basildi(ad){
+    sayac++;
+    sonEl.textContent=ad;
+    var arka=document.hidden?" (sayfa arkadayken)":"";
+    yaz("#"+sayac+" "+ad+arka,"iyi");
+    if(document.getElementById("bip").checked&&bipSes){bipSes.currentTime=0;bipSes.play().catch(function(){yaz("bip çalınamadı","kotu");});}
+    if(sesli&&sesli.paused)sesli.play().catch(function(){});
+  }
+
+  document.getElementById("basla").onclick=function(){
+    if(!sesli){
+      sesli=new Audio(wav(2,true));sesli.loop=true;
+      bipSes=new Audio(wav(0.12,false));
+      sesli.addEventListener("pause",function(){yaz("ses durdu (iPhone durdurdu)","kotu");durumEl.textContent="Ses durdu — Başlat'a tekrar bas";});
+      sesli.addEventListener("playing",function(){durumEl.textContent="Çalışıyor, saatten dene";});
+    }
+    sesli.play().then(function(){yaz("başladı");}).catch(function(e){yaz("başlatılamadı: "+e.message,"kotu");});
+    bipSes.play().then(function(){bipSes.pause();bipSes.currentTime=0;}).catch(function(){});
+    if(!("mediaSession" in navigator)){yaz("Bu tarayıcıda medya kontrolü yok","kotu");return;}
+    navigator.mediaSession.metadata=new MediaMetadata({title:"Stand Kumanda",artist:"Comitok"});
+    var eylemler={nexttrack:"İLERİ ⏭",previoustrack:"GERİ ⏮",play:"OYNAT ▶",pause:"DURAKLAT ⏸",stop:"DUR ⏹",seekforward:"ileri sar",seekbackward:"geri sar",seekto:"konuma sar"};
+    Object.keys(eylemler).forEach(function(k){
+      try{navigator.mediaSession.setActionHandler(k,function(){basildi(eylemler[k]);});}
+      catch(e){yaz(k+" desteklenmiyor");}
+    });
+    try{navigator.mediaSession.playbackState="playing";}catch(e){}
+  };
+
+  // Sayfa uyutuldu mu? Her saniye tik; arada boşluk varsa yaz.
+  setInterval(function(){var s=Date.now();if(s-sonTik>3000)yaz("sayfa "+Math.round((s-sonTik)/1000)+" sn uyudu");sonTik=s;},1000);
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden){uykuBasi=Date.now();yaz("sayfa arkaya gitti / ekran kilitlendi");}
+    else{yaz("sayfa geri geldi ("+Math.round((Date.now()-(uykuBasi||Date.now()))/1000)+" sn sonra)");}
+  });
+})();
+</script>
+</body>
+</html>
