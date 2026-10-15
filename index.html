@@ -275,7 +275,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 22:30</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 23:15</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
 
@@ -405,7 +405,7 @@
       <label>Ev kamerasında tanıma kutularını göster<input type="checkbox" id="kutuGoster" checked></label>
       <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
       <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
-      <label>Saat kumandası (⏭ sağa, ⏮ sola, ⏯ 180° / dur)<input type="checkbox" id="saatAcik"></label>
+      <label>Saat kumandası (⏭ sağa dön, ⏮ sola dön, ⏯ 180°; tekrar basınca durur)<input type="checkbox" id="saatAcik"></label>
       <p class="not" id="saatDurum" style="margin:0 0 8px"></p>
       <label class="sadeceYonetici">Arama zili<input type="checkbox" id="aramaZil" checked></label>
       <label class="sadeceYonetici">Arama titreşimi<input type="checkbox" id="aramaTitresim" checked></label>
@@ -1338,21 +1338,24 @@
 
   // ---------- saat kumandası (Redmi Watch'un müzik tuşları) ----------
   // Sayfa duyulmayacak kadar kısık bir ses çalar; iPhone saatin müzik tuşlarını bu sayfaya iletir.
-  // ⏭ biraz sağa, ⏮ biraz sola (sayfadaki küçük adım düğmeleriyle aynı), ⏯ kumandanın 180 tuşunun aynısı
-  // (kartta "k180": aynı gidiş-dönüş sırası); stand dönüyorsa ⏯ durdurur. Saatteki simge standın durumunu izler.
-  var saatSes=null, saatBip=null, saatHazir=false, saatSonTik=Date.now(), saatUyandi=0, saatYokSayi=0, saat180=0, saatSonBaslik="";
-  function saatWav(sn,bip){
+  // ⏭ sağa, ⏮ sola dönmeye başlar (joystick gibi sürekli sinyal; en fazla 180° kadar sürer), ⏯ kumandanın
+  // 180 tuşunun aynısı (kartta "k180": aynı gidiş-dönüş sırası). Stand dönerken herhangi bir tuş durdurur.
+  // Saatteki simge standın durumunu izler. Sayfa uyursa sinyal kesilir, kart 0,6 sn içinde standı durdurur.
+  var saatSurekli=null, SAAT_SUREKLI_MS=6600;   // 180 derecenin süresi (kartta YARIM_TUR)
+  var saatSes=null, saatHazir=false, saatSonTik=Date.now(), saatUyandi=0, saatYokSayi=0, saat180=0, saatSonBaslik="";
+  function saatWav(sn){
     var hz=8000,n=Math.round(hz*sn),b=new ArrayBuffer(44+n*2),v=new DataView(b);
     function y(o,t){ for(var i=0;i<t.length;i++) v.setUint8(o+i,t.charCodeAt(i)); }
     y(0,"RIFF");v.setUint32(4,36+n*2,true);y(8,"WAVE");y(12,"fmt ");v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
     v.setUint32(24,hz,true);v.setUint32(28,hz*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);y(36,"data");v.setUint32(40,n*2,true);
     for(var i=0;i<n;i++){
-      var d=bip?Math.sin(i*2*Math.PI*1200/hz)*9000*Math.min(1,(n-i)/200):Math.sin(i*2*Math.PI*200/hz)*6;   // bip ya da duyulmayacak kadar kısık ses
+      var d=Math.sin(i*2*Math.PI*200/hz)*6;   // duyulmayacak kadar kısık ses
       v.setInt16(44+i*2,Math.round(d),true);
     }
     return URL.createObjectURL(new Blob([b],{type:"audio/wav"}));
   }
   function saatDonuyor(){
+    if(saatSurekli) return true;
     var tazeDurum=sonDurum&&typeof sonDurum.donuyor==="boolean"&&Date.now()-sonDurumZaman<90000;
     if(tazeDurum) return sonDurum.donuyor||Date.now()-saat180<1500;   // komut gitti, kartın cevabı yolda
     return Date.now()-saat180<7000;                                     // eski kart: 180 yaklaşık 7 sn sürer
@@ -1379,8 +1382,7 @@
   function saatKomut(k,ad){
     if(rol!=="evde"&&!(istemci&&istemci.connected)){ yaz("Saat: "+ad+" gönderilemedi (sunucuya bağlı değil)."); return; }
     komutGonder(k);
-    yaz("Saat: "+ad);
-    if(saatBip){ try{ saatBip.currentTime=0; var b=saatBip.play(); if(b&&b.catch) b.catch(function(){}); }catch(h){} }
+    if(ad) yaz("Saat: "+ad);
     if(saatSes&&saatSes.paused){ var s=saatSes.play(); if(s&&s.catch) s.catch(function(){}); }
   }
   function saatBasildi(tus){
@@ -1394,25 +1396,49 @@
       saatBasildi.t=setTimeout(function(){ yaz("Saat: sayfa uyurken basılan "+saatYokSayi+" tuş yok sayıldı."); saatYokSayi=0; },1600);
       return;
     }
-    if(tus==="sag") saatKomut({t:"azsag"},"⏭ biraz sağa");
-    else if(tus==="sol") saatKomut({t:"azsol"},"⏮ biraz sola");
-    else if(saatDonuyor()){ saat180=0; saatKomut({t:"dur"},"⏸ dur"); }
+    if(saatSurekli) saatSurekliDur("durdu");                       // sürekli dönüş: herhangi bir tuş durdurur
+    else if(saatDonuyor()){ saat180=0; saatKomut({t:"dur"},"dur"); }   // 180 sürüyor: herhangi bir tuş durdurur
+    else if(tus==="sag") saatSurekliBaslat(1);
+    else if(tus==="sol") saatSurekliBaslat(-1);
     else { saat180=simdi; saatKomut({t:"k180"},"▶ 180°"); }
     saatSimge();
     setTimeout(saatSimge,1600);
+  }
+  function saatSurekliBaslat(yon){
+    if(rol!=="evde"&&!(istemci&&istemci.connected)){ yaz("Saat: dönüş başlatılamadı (sunucuya bağlı değil)."); return; }
+    var x=E("tersX").checked?-yon:yon;                 // sayfadaki yön tuşlarıyla aynı yön kuralı
+    var deger=x>0?ORTA+SAPMA:ORTA-SAPMA;
+    var bu={yon:yon,bitis:Date.now()+SAAT_SUREKLI_MS,tik:null,son:Date.now()};
+    function gonder(){
+      if(saatSurekli!==bu) return;
+      var n=Date.now();
+      if(n-bu.son>1000){ saatSurekliDur("sayfa uyuduğu için bitti"); return; }   // kart zaten durdurdu; uyanınca yeniden başlamasın
+      bu.son=n;
+      if(n>=bu.bitis){ saatSurekliDur("180° kadar döndü, kendisi durdu"); return; }
+      saatKomut({t:"joy",x:deger,y:ORTA},"");
+    }
+    saatSurekli=bu;
+    bu.tik=setInterval(gonder,150);
+    yaz("Saat: "+(yon>0?"⏭ sağa":"⏮ sola")+" dönüyor");
+    gonder();
+  }
+  function saatSurekliDur(neden){
+    if(!saatSurekli) return;
+    clearInterval(saatSurekli.tik); saatSurekli=null;
+    komutGonder({t:"joy",x:ORTA,y:ORTA});
+    yaz("Saat: dönüş "+neden+".");
+    saatSimge();
   }
   var SAAT_EYLEM={play:"oynat",pause:"oynat",stop:"oynat",nexttrack:"sag",previoustrack:"sol",seekforward:"sag",seekbackward:"sol"};
   function saatBaslat(){
     if(!E("saatAcik").checked) return;
     if(!saatSes){
-      saatSes=new Audio(saatWav(2,false)); saatSes.loop=true;
-      saatBip=new Audio(saatWav(0.12,true));
+      saatSes=new Audio(saatWav(2)); saatSes.loop=true;
       saatSes.addEventListener("pause",function(){ if(!E("saatAcik").checked) return; saatHazir=false; saatYazi(); yaz("Saat: ses durdu (iPhone durdurdu). Sayfaya bir kez dokunun."); });
       saatSes.addEventListener("playing",function(){ saatHazir=true; saatSimge(); });
     }
     var s=saatSes.play();
     if(s&&s.then) s.then(function(){ saatHazir=true; saatSimge(); }).catch(function(){ saatHazir=false; saatYazi(); });
-    try{ var b=saatBip.play(); if(b&&b.then) b.then(function(){ saatBip.pause(); saatBip.currentTime=0; }).catch(function(){}); }catch(h){}
     if(!("mediaSession" in navigator)){ E("saatDurum").textContent="Bu tarayıcı saat tuşlarını desteklemiyor."; return; }
     Object.keys(SAAT_EYLEM).forEach(function(k){
       try{ navigator.mediaSession.setActionHandler(k,function(){ saatBasildi(SAAT_EYLEM[k]); }); }catch(h){}
@@ -1420,6 +1446,7 @@
     saatSonBaslik="";
   }
   function saatKapat(){
+    saatSurekliDur("durdu (kumanda kapatıldı)");
     saatHazir=false;
     if(saatSes){ try{ saatSes.pause(); }catch(h){} }
     if("mediaSession" in navigator){
@@ -1448,7 +1475,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="14 Eki 22:30";
+  var SAYFA_SURUM="14 Eki 23:15";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grId="g"+benimKimlik;
