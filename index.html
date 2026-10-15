@@ -175,6 +175,14 @@
   body.buyukDuzen #kEkran .kDugmeler button.kapali{border-color:#ff8a8a;background:rgba(140,30,30,.55)}
   body.buyukDuzen #kEkran .kDugmeler button.acik{border-color:#7fe0aa;background:rgba(30,110,70,.55)}
   body.buyukDuzen #kBilgi{top:60px;left:12px;bottom:auto}
+  /* Beni göster / Konuş: sağ altta iki yuvarlak düğme, açıkken üstünde kendi küçük görüntün */
+  #kBenYuva{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:5}
+  #kBenVideo{width:72px;height:96px;object-fit:cover;border-radius:10px;border:2px solid #7fe0aa;transform:scaleX(-1);background:#000}
+  .kBenDugmeler{display:flex;gap:8px}
+  #kBenYuva button{width:52px;height:52px;min-height:0;padding:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:23px}
+  #kBenYuva button.acik{border-color:#7fe0aa;background:rgba(30,110,70,.75)}
+  #kBenYuva button:disabled{opacity:.35}
+  body.yatayDuzen.buyukDuzen #kBenYuva{right:calc(66px + env(safe-area-inset-right,0px));bottom:12px;flex-direction:row}
   #kPadYuva{position:absolute;left:12px;bottom:12px;width:min(44vw,200px);z-index:5;transform:translateZ(0)}
   #kPadYuva:empty{display:none}
   #kPadYuva #pad{margin:0;max-width:none;background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.45)}
@@ -258,6 +266,13 @@
     <div id="kPadYuva"></div>
     <div id="kZoomGosterge"></div>
     <div id="kAltYuva"></div>
+    <div id="kBenYuva">
+      <video id="kBenVideo" class="gizle" autoplay playsinline muted></video>
+      <div class="kBenDugmeler">
+        <button id="kBeniBtn" type="button" aria-label="Beni göster: görüntün ve sesin evdeki ekrana gider" disabled>📺</button>
+        <button id="kKonusBtn" type="button" aria-label="Konuş: sesin evde duyulur" disabled>🎙</button>
+      </div>
+    </div>
   </div>
   <div class="kDugmeler" id="kDugmeler">
     <button id="kCevirBtn" aria-label="Ön / arka kamera" disabled>🔄<span>Ön</span></button>
@@ -275,7 +290,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 23:40</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki · P2</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
 
@@ -1475,9 +1490,10 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="14 Eki 23:40";
+  var SAYFA_SURUM="14 Eki · P2";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
+  var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
   var grId="g"+benimKimlik;
   var grVideo=E("kVideo");
   function grGonder(m){
@@ -1501,6 +1517,7 @@
     grVideo.srcObject=null; grKutuSon=null; grKutuCiz(); grOto=null; grOtoVar=false; grTur=""; grCoz=""; grCozW=0; grCozH=0; grPx={ms:null,isi:null,kal:null};
     E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar"); E("kAyrinti").classList.add("gizli"); E("kTakipBtn").classList.remove("ogreniyor");
     grDugmeler(false);
+    grBeni=false; grKonus=false; grYerelDurdur(); grBenDugmeler();
   }
   var grDevralindi=false;
   // ---------- bağlantı teşhisi ----------
@@ -1589,13 +1606,13 @@
       if(p!==grPc) return;
       var s=p.connectionState;
       yaz("Evi izle: bağlantı "+(GR_DURUM_TR[s]||s));
-      if(s==="connected"){ grOrta(grYet&&!grYet.gor?"Görüntü kapalı":""); grOlcumBaslat(); setTimeout(grMikEsitle,300); }
+      if(s==="connected"){ grOrta(grYet&&!grYet.gor?"Görüntü kapalı":""); grOlcumBaslat(); setTimeout(grMikEsitle,300); grBenDugmeler(); }
       else if(s==="disconnected") grOrta("Bağlantı zayıf, bekleniyor…");
       else if(s==="failed"){ clearTimeout(grTaniTik); grTeshis(p,function(neden){ if(p!==grPc) return; grBagKapat(true); grOrta(neden+" Ayrıntı: ⚙ > Kayıt. Tekrar denemek için dokunun.",true); }); }
     };
     grOrta("Bağlanıyor…");
     p.setRemoteDescription({type:"offer",sdp:m.sdp})
-      .then(function(){ return p.createAnswer(); })
+      .then(function(){ try{ p.getTransceivers().forEach(function(t){ t.direction="sendrecv"; }); }catch(h){} return p.createAnswer(); })
       .then(function(c){ return p.setLocalDescription(c); })
       .then(function(){ return grToplama(p); })
       .then(function(){ if(p===grPc){ grGonder({t:"cevap",id:grId,sdp:p.localDescription.sdp}); yaz("Evi izle: cevap gönderildi. iPhone adresleri: "+grAdresOzet(p.localDescription.sdp)); } })
@@ -1692,6 +1709,10 @@
     E("kGorBtn").classList.toggle("kapali",!m.gor);
     E("kFenerBtn").disabled=!m.fener;
     E("kFenerBtn").classList.toggle("acik",!!m.fenerAcik);
+    var isikMi=!!m.isik&&m.yon!=="environment";
+    E("kFenerBtn").firstChild.nodeValue=isikMi?"💡":"🔦";
+    E("kFenerBtn").querySelector("span").textContent=isikMi?"Işık":"Fener";
+    grBenDugmeler();
     E("kTakipBtn").classList.toggle("acik",!!m.takip);
     if(grPc&&grPc.connectionState==="connected") grOrta(m.gor?"":"Görüntü kapalı");
   }
@@ -1743,6 +1764,11 @@
     }
     if(m.t==="teklif") grTeklif(m);
     else if(m.t==="yetenek"&&grIstekte) grYetenek(m);
+    else if(m.t==="bosta"&&(!m.id||m.id===grId)){
+      if(grBeni||grKonus){ grBeni=false; grKonus=false; grBenUygula(); }
+      yaz("Evi izle: 3 dk boşta kaldığı için Beni göster / Konuş kapandı.");
+      grKisaYazi("3 dk boşta kaldı\nBeni göster / Konuş kapandı",4000);
+    }
     else if(m.t==="hazirDegil"&&(!m.id||m.id===grId)&&grIstekte&&!grPc){
       clearTimeout(grBekleme); grIstekte=false;
       grOrta("Pixel'deki kamera sayfası bekleme modunda değil. Pixel'de \"Bekleme modunu başlat\"a basın, sonra buraya dokunun.",true);
@@ -1837,7 +1863,75 @@
   ["takipHedef","takipZoom"].forEach(function(id){
     E(id).addEventListener("change",function(){ if(grYet&&grYet.takip) grGonder(grTakipMesaji(true)); });
   });
-  E("kFenerBtn").onclick=function(){ if(grYet&&grYet.fener) grGonder({t:"fener",deger:!grYet.fenerAcik}); };
+  E("kFenerBtn").onclick=function(){
+    if(!grYet||!grYet.fener) return;
+    var ac=!grYet.fenerAcik;
+    grGonder({t:"fener",deger:ac});
+    if(grYet.isik&&grYet.yon!=="environment") grKisaYazi(ac?"Ekran ışığı açık\nPixel'in ekranı beyaz yanar"+(grBeni?" (görüntünün etrafında çerçeve)":""):"Ekran ışığı kapandı");
+  };
+  // ---------- Beni göster / Konuş: bu telefonun ön kamerası ve sesi Pixel'e gider ----------
+  // Beni göster = görüntün + sesin; Konuş = sadece sesin. Pixel 3 dk boşta kalınca kapatır ("bosta" mesajı).
+  function grGonderen(tur){
+    if(!grPc||!grPc.getTransceivers) return null;
+    var s=null;
+    grPc.getTransceivers().forEach(function(t){ if(!s&&t.receiver&&t.receiver.track&&t.receiver.track.kind===tur) s=t.sender; });
+    return s;
+  }
+  function grYerelDurdur(){
+    if(grYerel){ ["ses","gor"].forEach(function(k){ if(grYerel[k]){ try{ grYerel[k].stop(); }catch(h){} } }); grYerel=null; }
+    var v=E("kBenVideo"); v.srcObject=null; v.classList.add("gizle");
+  }
+  function grBenDugmeler(){
+    var hazir=!!(grYet&&grYet.benVar&&grPc&&grPc.connectionState==="connected");
+    E("kBeniBtn").disabled=!hazir||grBenMesgul; E("kKonusBtn").disabled=!hazir||grBenMesgul;
+    E("kBeniBtn").classList.toggle("acik",grBeni); E("kKonusBtn").classList.toggle("acik",grKonus);
+  }
+  function grBenUygula(){
+    var ist={ses:grKonus,gor:grBeni}, var_=grYerel||{ses:null,gor:null};
+    var sesAl=ist.ses&&!var_.ses, gorAl=ist.gor&&!var_.gor;
+    var al=(sesAl||gorAl)?navigator.mediaDevices.getUserMedia({
+        audio:sesAl?{echoCancellation:true,noiseSuppression:true,autoGainControl:true}:false,
+        video:gorAl?{facingMode:"user",width:{ideal:640},height:{ideal:480},frameRate:{ideal:20}}:false}):Promise.resolve(null);
+    grBenMesgul=true; grBenDugmeler();
+    return al.then(function(st){
+      grYerel=var_;
+      if(st){ st.getAudioTracks().forEach(function(t){ grYerel.ses=t; }); st.getVideoTracks().forEach(function(t){ grYerel.gor=t; }); }
+      if(!ist.ses&&grYerel.ses){ grYerel.ses.stop(); grYerel.ses=null; }
+      if(!ist.gor&&grYerel.gor){ grYerel.gor.stop(); grYerel.gor=null; }
+      if(!grPc){ grBeni=false; grKonus=false; grYerelDurdur(); return; }   // bu arada bağlantı kapandı
+      var gs=grGonderen("audio"), gv=grGonderen("video");
+      if(gs) gs.replaceTrack(grYerel.ses).catch(function(){});
+      if(gv){
+        gv.replaceTrack(grYerel.gor).catch(function(){});
+        if(grYerel.gor){ try{ var pr=gv.getParameters(); if(pr.encodings&&pr.encodings[0]){ pr.encodings[0].maxBitrate=700000; gv.setParameters(pr).catch(function(){}); } }catch(h){} }
+      }
+      var v=E("kBenVideo");
+      if(grYerel.gor){ if(!v.srcObject||v.srcObject.getVideoTracks()[0]!==grYerel.gor) v.srcObject=new MediaStream([grYerel.gor]); v.classList.remove("gizle"); v.play().catch(function(){}); }
+      else { v.srcObject=null; v.classList.add("gizle"); }
+      grGonder({t:"ben",id:grId,gor:grBeni,ses:grKonus});
+      yaz("Evi izle: "+(grBeni?(grKonus?"Beni göster açık (görüntü + ses).":"Beni göster açık, sesin kapalı."):(grKonus?"Konuş açık.":"Beni göster / Konuş kapalı.")));
+      // iPhone kamera/mikrofon açınca diğer sesleri durdurabiliyor: Evi dinle ve saat kumandası sürsün
+      grVideo.play().catch(function(){});
+      if(E("saatAcik").checked&&(!saatSes||saatSes.paused)) saatBaslat();
+    }).catch(function(h){
+      grBeni=false; grKonus=false; grYerelDurdur();
+      grGonder({t:"ben",id:grId,gor:false,ses:false});
+      yaz("Evi izle: kamera/mikrofon açılamadı ("+(h&&h.name||"")+" "+(h&&h.message||"")+").");
+      grKisaYazi("Kamera / mikrofon açılamadı\nSafari'de kamera ve mikrofon izni verilmeli",4000);
+    }).then(function(){ grBenMesgul=false; grBenDugmeler(); });
+  }
+  E("kBeniBtn").onclick=function(){
+    if(grBenMesgul||E("kBeniBtn").disabled) return;
+    grBeni=!grBeni; grKonus=grBeni;
+    grKisaYazi(grBeni?"Beni göster açık\ngörüntün ve sesin evdeki ekranda":"Beni göster kapandı",2500);
+    grBenUygula();
+  };
+  E("kKonusBtn").onclick=function(){
+    if(grBenMesgul||E("kKonusBtn").disabled) return;
+    grKonus=!grKonus;
+    grKisaYazi(grKonus?"Konuşuyorsun\nsesin evde duyulur":(grBeni?"Sesin kapandı\ngörüntün gitmeye devam ediyor":"Konuş kapandı"),2500);
+    grBenUygula();
+  };
   // ---------- akıllı zoom: iki parmakla, parmakların arasındaki noktaya ----------
   // Z: toplam yakınlaşma, grC: görüntü merkezinin Pixel'in tam açısındaki yeri (-0.5..0.5).
   // Pixel'in zoom'u sadece ortaya yakınlaşır; Pixel'e, istenen yer görüntüde kalacak kadar zoom yaptırılır
@@ -1897,7 +1991,7 @@
   }
   function grOrtaNokta(t){ return {x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2}; }
   function grMesafe(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)||1; }
-  function grKontrolMu(t){ return !!(t.target&&t.target.closest&&t.target.closest("#pad,button,#kAyrinti")); }
+  function grKontrolMu(t){ return !!(t.target&&t.target.closest&&t.target.closest("#pad,button,#kAyrinti,#kBenYuva")); }
   function grGoruntuParmaklari(t){ var l=[]; for(var i=0;i<t.length;i++){ if(!grKontrolMu(t[i])) l.push(t[i]); } return l; }
   E("kEkran").addEventListener("touchstart",function(e){
     var p=grGoruntuParmaklari(e.touches);
@@ -1953,7 +2047,7 @@
   document.addEventListener("gesturestart",function(e){ if(grAcik) e.preventDefault(); });
   // tek dokunuş: bağlantı yoksa bağlan. Çift dokunuş: yakınsa 1×'e dön, değilse doldur / tamamını göster
   E("kEkran").addEventListener("pointerup",function(e){
-    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti")) return;
+    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva")) return;
     if(grHareketVardi){ if(!grPinch&&!grTekParmak) grHareketVardi=false; return; }
     if(!grPc&&!grIstekte){ grBaglan(); return; }
     var simdi=Date.now();

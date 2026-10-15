@@ -51,6 +51,13 @@
   #siyah{position:fixed;inset:0;background:#000;z-index:1000;cursor:none}
   #siyahYazi{position:absolute;left:20px;top:20px;color:#3a3a3a;font-size:15px;white-space:nowrap}
   #siyahYazi.izleniyor{color:#8a8a8a;font-size:22px}
+  /* Beni göster: iPhone'dan gelen görüntü tam ekran; ekran ışığı: bembeyaz ekran (ikisi de dokunuşları geçirir) */
+  #benKutu{position:fixed;inset:0;background:#000;z-index:1001;display:none;pointer-events:none}
+  #benKutu video{width:100%;height:100%;max-height:none;border-radius:0;object-fit:cover;display:block}
+  body.beni #benKutu{display:block}
+  #isik{position:fixed;inset:0;background:#fff;z-index:1001;display:none;pointer-events:none}
+  body.isik:not(.beni) #isik{display:block}
+  body.beni.isik #benKutu{border:7vmin solid #fff}
   /* görüntü + tanıma kutuları */
   #goruntuKutu{position:relative}
   #taniCizim{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -78,7 +85,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not">· 14 Eki 23:40</span></h1>
+  <h1>Kamera <span class="not">· 14 Eki · P2</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -103,6 +110,8 @@
       Kamera: <b id="dKamera" class="uyari">kapalı</b><br>
       İzleyen: <b id="dIzleyen">yok</b><br>
       Aktarma: <b id="dAktarma">girilmedi</b><br>
+      Gelen (Beni göster / Konuş): <b id="dGelen">yok</b><br>
+      <span id="dBostaSatir" class="gizli">Boşta kapanma: <b id="dBosta" class="uyari"></b><br></span>
       Tanıma: <b id="dTani">kapalı</b><br>
       Pixel: <b id="dIsi">rahat</b><br>
       Kalibrasyon: <b id="dKal">-</b> <a href="#" id="kalSifirla">sıfırla</a><br>
@@ -141,12 +150,15 @@
 </div>
 
 <div id="siyah" class="gizli"><div id="siyahYazi"></div></div>
+<div id="benKutu"><video id="benVideo" autoplay playsinline muted></video></div>
+<div id="isik"></div>
+<audio id="benSes" autoplay></audio>
 
 <script>
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="14 Eki 23:40";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="14 Eki · P2";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000;
   function E(id){ return document.getElementById(id); }
@@ -298,6 +310,12 @@
   document.addEventListener("visibilitychange",function(){
     if(document.visibilityState==="visible"&&(beklemede||akis)) ekranAcikTut();
   });
+  // Bekleme modu da kamera da yoksa ekran açık tutulmaz: Pixel kendi normal ayarına döner (Screen timeout)
+  function ekranBirak(){
+    if(beklemede||akis) return;
+    if(ekranKilidi&&!ekranKilidi.released){ try{ ekranKilidi.release().catch(function(){}); }catch(h){} yaz("Ekran artık açık tutulmuyor (Pixel kendi ayarıyla kapanır)."); }
+    ekranKilidi=null;
+  }
 
   // ---------- siyah bekleme ekranı ----------
   var yaziZamani=null, sonDokunus=0;
@@ -328,6 +346,7 @@
     clearInterval(yaziZamani);
     try{ if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); }catch(h){}
     yaz("Bekleme modundan çıkıldı.");
+    ekranBirak();
   }
   E("beklemeBtn").onclick=beklemeBaslat;
   E("siyah").addEventListener("pointerdown",function(){
@@ -345,7 +364,7 @@
     if(akis) return Promise.resolve();
     goster(E("dKamera"),"açılıyor","uyari");
     var ses;
-    mikAcik=true; gorAcik=true; fenerAcik=false;
+    mikAcik=true; gorAcik=true; fenerAcik=false; isikGuncelle();
     if(takipAcik){ takipAcik=false; E("takipKutu").checked=false; }
     return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})
       .then(function(s){ ses=s.getAudioTracks()[0]; return videoAl(); })
@@ -367,12 +386,13 @@
   function kameraKapat(){
     if(!akis) return;
     akis.getTracks().forEach(function(t){ t.stop(); });
-    akis=null; videoGonderen=null; fenerAcik=false;
+    akis=null; videoGonderen=null; fenerAcik=false; isikGuncelle();
     E("onizleme").srcObject=null;
     goster(E("dKamera"),beklemede?"kapalı (beklemede)":"kapalı","");
     E("dOzellik").textContent="";
     yaz("Kamera kapatıldı.");
     taniDurum();
+    ekranBirak();
   }
   function kameraYazisi(){ goster(E("dKamera"),yon==="user"?"açık (ön)":"açık (arka)","iyi"); }
 
@@ -382,27 +402,31 @@
     return {t:"yetenek", yon:yon,
       zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
       zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
-      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto, isi:isiDurum, surum:SURUM};
+      fener:!!c.torch||yon==="user", isik:yon==="user", fenerAcik:fenerAcik, benVar:true, ben:{gor:benGor,ses:benSes}, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto, isi:isiDurum, surum:SURUM};
   }
   function bildir(){
     if(!akis) return;
     var y=yetenekler();
     E("dOzellik").textContent="Zoom: "+(y.zoom?("var ("+y.zoom.min+"–"+y.zoom.max+", şu an "+(y.zoomDeger==null?"?":y.zoomDeger)+")"):"yok")+
-      " · Fener: "+(y.fener?(fenerAcik?"açık":"kapalı"):"yok")+
+      (yon==="user"?" · Ekran ışığı: "+(fenerAcik?"açık":"kapalı"):" · Fener: "+(c_torch()?(fenerAcik?"açık":"kapalı"):"yok"))+
       " · Takip: "+(takipAcik?"açık":"kapalı")+
       " · Mikrofon: "+(mikAcik?"açık":"kapalı")+" · Görüntü: "+(gorAcik?"açık":"kapalı")+
       (pil?" · Pil: "+pil.y+"%"+(pil.s?" (şarjda)":" (şarjda değil)"):"");
     gonder(y);
   }
+  function c_torch(){ var v=vTrack(); try{ return !!(v&&v.getCapabilities&&v.getCapabilities().torch); }catch(h){ return false; } }
   function zoomAyarla(d){
     var v=vTrack(); if(!v) return;
     var c=yetenekler().zoom; if(!c){ yaz("Bu kamerada zoom yok."); return; }
     d=Math.max(c.min,Math.min(c.max,Number(d)||c.min));
     v.applyConstraints({advanced:[{zoom:d}]}).then(bildir).catch(function(h){ yaz("Zoom olmadı: "+(h&&h.message||h)); });
   }
+  // Ön kamerada fener yok: onun yerine Pixel ekranı bembeyaz yanar (Beni göster açıksa görüntünün etrafında beyaz çerçeve)
+  function isikGuncelle(){ document.body.classList.toggle("isik",!!(fenerAcik&&akis&&yon==="user")); }
   function fenerAyarla(d){
     var v=vTrack(); if(!v) return;
-    if(!yetenekler().fener){ yaz("Bu kamerada fener yok (ön kamerada olmaz)."); bildir(); return; }
+    if(yon==="user"){ fenerAcik=!!d; isikGuncelle(); yaz(fenerAcik?"Ekran ışığı açıldı.":"Ekran ışığı kapandı."); bildir(); return; }
+    if(!c_torch()){ yaz("Bu kamerada fener yok (ön kamerada olmaz)."); bildir(); return; }
     v.applyConstraints({advanced:[{torch:!!d}]})
       .then(function(){ fenerAcik=!!d; yaz(fenerAcik?"Fener açıldı.":"Fener kapandı."); bildir(); })
       .catch(function(h){ yaz("Fener olmadı: "+(h&&h.message||h)); });
@@ -426,7 +450,7 @@
     eski.stop();   // Android iki kamerayı aynı anda açamayabilir: önce eskiyi kapat
     yon=yeniYon;
     videoAl().then(function(v){
-      v.enabled=gorAcik; fenerAcik=false;
+      v.enabled=gorAcik; fenerAcik=false; isikGuncelle();
       akis.removeTrack(eski); akis.addTrack(v);
       E("onizleme").srcObject=new MediaStream([v]);
       if(pc&&videoGonderen) videoGonderen.replaceTrack(v);
@@ -967,6 +991,7 @@
     var vardi=!!pc;
     if(pc){ try{ pc.close(); }catch(h){} pc=null; }
     izleyen=null; buradaVar=false; goster(E("dIzleyen"),"yok","");
+    benAyarla(false,false); gelenTemizle();
     // izleyen gidince takip ve fener de kapanır (sayfa kapandı, arka plana geçti ya da bağlantı koptu)
     if(vardi&&takipAcik) takipAyarla(false);
     if(vardi&&fenerAcik&&!beklemede) fenerAyarla(false);   // bekleme modunda kamera zaten kapanıyor
@@ -1004,6 +1029,12 @@
     pc=p;
     try{ kutuKanali=p.createDataChannel("kutular",{ordered:false,maxRetransmits:0}); }catch(h){ kutuKanali=null; }
     akis.getTracks().forEach(function(t){ var g=p.addTrack(t,akis); if(t.kind==="video") videoGonderen=g; });
+    // iPhone'dan gelen görüntü ve ses (Beni göster / Konuş). iPhone gerekmedikçe bir şey göndermez.
+    p.ontrack=function(e){
+      if(p!==pc||!e.track) return;
+      if(e.track.kind==="audio"){ E("benSes").srcObject=new MediaStream([e.track]); sesOlcerKur(e.track); }
+      else if(e.track.kind==="video"){ E("benVideo").srcObject=new MediaStream([e.track]); }
+    };
     p.oniceconnectionstatechange=function(){ if(p===pc) tYaz("Yol durumu: "+(DURUM_TR[p.iceConnectionState]||p.iceConnectionState)); };
     p.onconnectionstatechange=function(){
       if(p!==pc) return;
@@ -1046,6 +1077,7 @@
     else if(m.t==="kamera"){ kameraCevir(m.yon==="arka"?"environment":"user"); }
     else if(m.t==="zoom"){ elleZoomSon=Date.now(); toplamHedef=null; gorunum={s:1,x:0,y:0}; kamZoomOto=false; zoomAyarla(m.deger); }
     else if(m.t==="fener") fenerAyarla(m.deger);
+    else if(m.t==="ben"){ if(pc&&(!m.id||m.id===izleyen)) benAyarla(m.gor,m.ses); }
     else if(m.t==="mik") mikAyarla(m.deger);
     else if(m.t==="gor") gorAyarla(m.deger);
     else if(m.t==="takip") takipAyarla(!!m.deger,m);
@@ -1053,6 +1085,99 @@
     else if(m.t==="bitir"){ if(m.id===izleyen){ tYaz("İzleyen ayrıldı."); taniGonder(); baglantiyiKapat(); } }
     else if(m.t==="sor"){ gonder({t:(akis||beklemede)?"hazir":"hazirDegil"}); }
   }
+
+  // ---------- Beni göster / Konuş: iPhone'un görüntüsü ve sesi bu ekranda ----------
+  // 3 dk kuralı: Beni göster açıkken 3 dk ne iPhone'dan ses ne Pixel kamerasında hareket olursa kapanır.
+  // Sadece Konuş açıkken 3 dk iPhone'dan ses gelmezse kapanır. Kapanınca iPhone'a "bosta" gider.
+  var BOSTA_SURE=180000, SES_ESIK=0.02;
+  var benGor=false, benSes=false, benSonEtkinlik=0, benSonSes=0, benSayac=0;
+  var sesOlcer=null, sesKaynak=null, sesVeri=null, hareketKare=null;
+  var hareketTuval=document.createElement("canvas"); hareketTuval.width=32; hareketTuval.height=24;
+  function gelenYazisi(){
+    var m=benGor?(benSes?"görüntü + ses":"görüntü (ses kapalı)"):(benSes?"ses":"yok");
+    goster(E("dGelen"),m,(benGor||benSes)?"iyi":"");
+  }
+  function benAyarla(gor,ses,neden){
+    gor=!!gor; ses=!!ses;
+    if(gor===benGor&&ses===benSes) return;
+    var simdi=Date.now();
+    if(gor&&!benGor){ benSonEtkinlik=simdi; hareketKare=null; }
+    if(ses&&!benSes){ benSonSes=simdi; if(!gor) benSonEtkinlik=simdi; }
+    benGor=gor; benSes=ses;
+    document.body.classList.toggle("beni",benGor);
+    var s=E("benSes"); s.muted=!benSes;
+    if(benSes){ sesiHazirla(); var o=s.play(); if(o&&o.catch) o.catch(function(h){ yaz("Gelen ses çalınamadı ("+(h&&h.name||h)+"). Pixel'de sayfaya bir kez dokunun."); }); }
+    if(benGor){ var v=E("benVideo").play(); if(v&&v.catch) v.catch(function(){}); }
+    yaz(benGor?(benSes?"Beni göster açıldı (görüntü + ses).":"Beni göster: ses kapalı, görüntü sürüyor."):(benSes?"Konuş açık (sadece ses).":"Beni göster / Konuş kapandı."));
+    if(neden==="bosta") gonder({t:"bosta",id:izleyen});
+    gelenYazisi(); bildir();
+  }
+  function gelenTemizle(){
+    E("benSes").srcObject=null; E("benVideo").srcObject=null;
+    try{ if(sesKaynak) sesKaynak.disconnect(); }catch(h){}
+    sesKaynak=null; sesOlcer=null;
+  }
+  function sesOlcerKur(track){
+    sesiHazirla(); if(!sesCtx) return;
+    try{
+      try{ if(sesKaynak) sesKaynak.disconnect(); }catch(h){}
+      sesKaynak=sesCtx.createMediaStreamSource(new MediaStream([track]));
+      sesOlcer=sesCtx.createAnalyser(); sesOlcer.fftSize=16384;
+      sesKaynak.connect(sesOlcer); sesVeri=new Float32Array(sesOlcer.fftSize);
+    }catch(h){ sesOlcer=null; yaz("Gelen ses ölçülemiyor; Konuş 3 dk sonra kapanabilir ("+(h&&h.message||h)+")."); }
+  }
+  function sesSeviyesi(){
+    if(!sesOlcer) return 0;
+    if(sesCtx&&sesCtx.state==="suspended") sesCtx.resume();
+    sesOlcer.getFloatTimeDomainData(sesVeri);
+    var t=0; for(var i=0;i<sesVeri.length;i++) t+=sesVeri[i]*sesVeri[i];
+    return Math.sqrt(t/sesVeri.length);
+  }
+  // Pixel kamerasında hareket: küçük gri resimde öncekiyle fark (genel parlaklık değişimi sayılmaz)
+  function hareketVarMi(){
+    var v=E("onizleme");
+    if(!akis||!gorAcik||v.readyState<2||!v.videoWidth) return false;
+    var g=hareketTuval.getContext("2d",{willReadFrequently:true}), d;
+    try{ g.drawImage(v,0,0,32,24); d=g.getImageData(0,0,32,24).data; }catch(h){ return false; }
+    var n=768, yeni=new Float32Array(n), ort=0;
+    for(var i=0;i<n;i++){ yeni[i]=d[i*4]*0.3+d[i*4+1]*0.59+d[i*4+2]*0.11; ort+=yeni[i]; }
+    ort/=n;
+    var eski=hareketKare, fark=0;
+    hareketKare={k:yeni,o:ort};
+    if(!eski) return false;
+    for(var j=0;j<n;j++){ if(Math.abs((yeni[j]-ort)-(eski.k[j]-eski.o))>25) fark++; }
+    return fark>=8;
+  }
+  setInterval(function(){
+    if(!benGor&&!benSes) return;
+    var simdi=Date.now();
+    if(benSes&&sesSeviyesi()>SES_ESIK){ benSonSes=simdi; benSonEtkinlik=simdi; }
+    if(benGor&&(++benSayac%4===0)&&hareketVarMi()) benSonEtkinlik=simdi;
+    if(benGor&&simdi-benSonEtkinlik>=BOSTA_SURE){ yaz("Beni göster 3 dk boşta kaldı (ses ve hareket yok), kapatıldı."); benAyarla(false,false,"bosta"); }
+    else if(!benGor&&benSes&&simdi-benSonSes>=BOSTA_SURE){ yaz("Konuş 3 dk sessiz kaldı, kapatıldı."); benAyarla(false,false,"bosta"); }
+  },250);
+
+  // ---------- boşta kapanma: kimse izlemiyorken açık kalanlar 3 dk sonra kapanır ----------
+  // Kamera (elle açılmış), takip, tanıma kutuları ve ışık. Pixel'e dokunmak süreyi baştan başlatır.
+  var bostaBas=0, sonDokunma=0;
+  document.addEventListener("pointerdown",function(){ sonDokunma=Date.now(); },true);
+  function bostaKapat(){
+    yaz("3 dk kimse izlemedi ve Pixel'e dokunulmadı: kamera, takip, kutular ve ışık kapatıldı.");
+    if(takipAcik) takipAyarla(false);
+    if(E("taniAcik").checked){ E("taniAcik").checked=false; yazLS("stand_kamTani","0"); kutuGorunurlugu(); }
+    kameraKapat(); taniDurum();
+  }
+  setInterval(function(){
+    var aktif=!pc&&!hazirlaniyor&&(!!akis||takipAcik);
+    if(!aktif){ bostaBas=0; E("dBostaSatir").className="gizli"; return; }
+    var simdi=Date.now();
+    if(!bostaBas) bostaBas=simdi;
+    var kalan=BOSTA_SURE-(simdi-Math.max(bostaBas,sonDokunma));
+    if(kalan<=0){ bostaBas=0; E("dBostaSatir").className="gizli"; bostaKapat(); return; }
+    var sn=Math.ceil(kalan/1000);
+    E("dBosta").textContent=Math.floor(sn/60)+":"+("0"+(sn%60)).slice(-2)+" sonra kapanacak (dokununca baştan)";
+    E("dBostaSatir").className="";
+  },1000);
 
   // ---------- sunucu ----------
   function sunucuyaBaglan(){
