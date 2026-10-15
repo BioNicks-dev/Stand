@@ -275,6 +275,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 21:30</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
 
@@ -1346,6 +1347,8 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
+  var SAYFA_SURUM="14 Eki 21:30";
+  var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grId="g"+benimKimlik;
   var grVideo=E("kVideo");
@@ -1391,7 +1394,7 @@
       var neden;
       if(grIkiSayfa) neden="Kamera sayfası iki yerde açık (Pixel'de iki sekme ya da başka bir cihaz). Birini kapatın.";
       else if(!grPkCevap) neden="Pixel, iPhone'un cevabını almadı ya da işleyemedi.";
-      else if(cift===0||cvp===0) neden="İki telefon birbirine ulaşamadı (ağ yolu kapalı).";
+      else if(cift===0||cvp===0) neden="İki telefon birbirine ulaşamadı (ağ yolu kapalı)."+(grTurnVar?" Aktarma da denendi; Pixel'de \"Aktarma\" satırına bakın.":" Pixel'de aktarma (TURN) bilgisi girilirse bu durumda görüntü sunucu üzerinden gelir.");
       else neden="Bağlantı kurulamadı.";
       yaz("Teşhis: yol denemesi "+cift+", gönderilen "+ist+", Pixel'den karşılık "+cvp+", Pixel cevabı aldı: "+(grPkCevap?"evet":"hayır/bilinmiyor")+", kamera sayfası sayısı: "+Object.keys(grSayfalar).length+".");
       yaz("Sonuç: "+neden);
@@ -1432,7 +1435,14 @@
     yaz("Evi izle: teklif geldi (kamera sayfası "+sk+"). Pixel adresleri: "+grAdresOzet(m.sdp));
     clearTimeout(grBekleme);
     if(grPc){ try{ grPc.close(); }catch(h){} }
-    var p=new RTCPeerConnection({iceServers:GR_BUZ});
+    var t=m.turn, buz=GR_BUZ;
+    grTurnVar=!!(t&&t.urls&&t.username&&t.credential);
+    if(grTurnVar) buz=GR_BUZ.concat([{urls:t.urls,username:t.username,credential:t.credential}]);
+    if(m.surum) grKamSurum=String(m.surum);
+    yaz("Evi izle: aktarma bilgisi "+(grTurnVar?"Pixel'den geldi.":"yok (Pixel'de girilmemiş).")+(m.surum?" Kamera sayfası: "+m.surum+".":""));
+    var p;
+    try{ p=new RTCPeerConnection({iceServers:buz}); }
+    catch(h){ yaz("Evi izle: aktarma bilgisi kullanılamadı, onsuz deneniyor."); grTurnVar=false; p=new RTCPeerConnection({iceServers:GR_BUZ}); }
     grPc=p;
     p.ondatachannel=function(e){ if(e.channel&&e.channel.label==="kutular") e.channel.onmessage=function(m){ if(p===grPc) grKutuGeldi(m.data); }; };
     p.ontrack=function(e){
@@ -1526,6 +1536,8 @@
     if(p) ayr.push("Pil: %"+p.y+(p.s?", şarjda":", şarjda değil"));
     if(grTur) ayr.push("Bağlantı: "+({"ev ağı":"ev ağı (doğrudan)","internet":"internet (doğrudan)","aktarma":"sunucu üzerinden aktarma"}[grTur]||grTur));
     if(grCozW) ayr.push("Görüntü: "+grCozW+"×"+grCozH);
+    var ks=(grYet&&grYet.surum)||grKamSurum;
+    ayr.push("Kamera sayfası: "+(ks||"eski sürüm (Pixel'de sayfayı yenileyin)")+" · Bu sayfa: "+SAYFA_SURUM);
     if(isi) ayr.push("Pixel: "+isi+(typeof ms==="number"?" · tanıma "+ms+" ms":""));
     var k=grPx.kal;
     function ke(o){ return !o?"-":(!o.d?"yön testi":(o.h?"hazır"+(o.i!==null?" %"+o.i:""):"öğreniyor "+o.n+"/3"+(o.i!==null?" %"+o.i:""))); }

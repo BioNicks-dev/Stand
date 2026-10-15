@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Stand kamerası <span class="not">· 14 Ekim 2026 · takip 12 · teşhis 1</span></h1>
+  <h1>Kamera <span class="not">· 14 Eki 21:30</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -102,6 +102,7 @@
       Sunucu: <b id="dSunucu" class="uyari">bağlanıyor</b><br>
       Kamera: <b id="dKamera" class="uyari">kapalı</b><br>
       İzleyen: <b id="dIzleyen">yok</b><br>
+      Aktarma: <b id="dAktarma">girilmedi</b><br>
       Tanıma: <b id="dTani">kapalı</b><br>
       Pixel: <b id="dIsi">rahat</b><br>
       Kalibrasyon: <b id="dKal">-</b> <a href="#" id="kalSifirla">sıfırla</a><br>
@@ -120,6 +121,15 @@
       <button id="arkaBtn">Arka kamera</button>
     </div>
     <p class="not">Bekleme modunda ekran siyah kalır, kamera kapalı bekler. Biri bağlanınca (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Çıkmak için siyah ekrana hızlıca iki kez dokunun.</p>
+    <div id="aktarmaKutu" class="durum">
+      <label for="tKul">Aktarma (TURN) kullanıcı adı</label>
+      <input id="tKul" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false">
+      <label for="tSif">Aktarma şifresi</label>
+      <input id="tSif" type="password" autocapitalize="none" autocomplete="off" autocorrect="off" spellcheck="false">
+      <label class="anahtar"><input type="checkbox" id="tGoster"> Şifreyi göster</label>
+      <button id="tDene">Kaydet ve aktarmayı dene</button>
+      <p class="not">Ev içinde iki telefon doğrudan bağlanamazsa görüntü bu sunucu üzerinden gelir; yine şifreli kalır. Bilgiler bu telefonda saklanır ve bağlanan telefona da iletilir.</p>
+    </div>
     <div class="satir">
       <button id="kayitKopyala">Kaydı kopyala</button>
       <button id="kayitTemizle">Temizle</button>
@@ -136,6 +146,8 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
+  var SURUM="14 Eki 21:30";                       // sürüm damgası (iPhone'a da gider)
+  var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000;
   function E(id){ return document.getElementById(id); }
   function oku(a){ try{ return localStorage.getItem(a)||""; }catch(h){ return ""; } }
@@ -184,6 +196,52 @@
 
   function konu(son){ return "comitok/"+kod+"/goruntu/"+son; }
   function gonder(m){ if(istemci&&istemci.connected) istemci.publish(konu("i"),JSON.stringify(m)); }
+
+  // ---------- aktarma (TURN) ----------
+  function turnBuz(){
+    var k=oku("stand_turnK"), s=oku("stand_turnS");
+    if(!k||!s) return null;
+    return {urls:["turn:"+TURN_ADRES+"?transport=udp","turn:"+TURN_ADRES+"?transport=tcp"],username:k,credential:s};
+  }
+  function buzListesi(){ var t=turnBuz(); return t?BUZ.concat([t]):BUZ; }
+  var aktarmaDenemesi=null;
+  function aktarmaDene(){
+    var t=turnBuz();
+    if(!t){ goster(E("dAktarma"),"girilmedi",""); return; }
+    if(aktarmaDenemesi){ try{ aktarmaDenemesi.close(); }catch(h){} }
+    goster(E("dAktarma"),"deneniyor…","uyari");
+    var p, bitti=false, hata="", zaman=null;
+    function son(iyi,m){
+      if(bitti) return; bitti=true; clearTimeout(zaman);
+      try{ p.close(); }catch(h){} if(aktarmaDenemesi===p) aktarmaDenemesi=null;
+      goster(E("dAktarma"),iyi?"çalışıyor ✓":"bağlanamadı ✗",iyi?"iyi":"kotu");
+      yaz("Aktarma denemesi: "+m);
+    }
+    try{ p=new RTCPeerConnection({iceServers:[t],iceTransportPolicy:"relay"}); }
+    catch(h){ goster(E("dAktarma"),"ayar hatalı ✗","kotu"); yaz("Aktarma denemesi: ayar hatalı ("+(h&&h.message||h)+")."); return; }
+    aktarmaDenemesi=p;
+    p.onicecandidate=function(e){
+      if(e.candidate&&/ typ relay/.test(e.candidate.candidate)) son(true,"sunucudan aktarma adresi alındı, çalışıyor.");
+      else if(!e.candidate) son(false,hata||"aktarma adresi alınamadı.");
+    };
+    p.onicecandidateerror=function(e){
+      if(e.errorCode===401) hata="sunucu kullanıcı adını veya şifreyi kabul etmedi. Ayarları kontrol edin.";
+      else if(!hata) hata="sunucuya ulaşılamadı (hata "+e.errorCode+(e.errorText?", "+e.errorText:"")+").";
+    };
+    try{ p.createDataChannel("deneme"); }catch(h){}
+    p.createOffer().then(function(o){ return p.setLocalDescription(o); })
+      .catch(function(h){ son(false,"deneme başlatılamadı ("+(h&&h.message||h)+")."); });
+    zaman=setTimeout(function(){ son(false,hata||"10 sn içinde sunucudan cevap gelmedi."); },10000);
+  }
+  E("tKul").value=oku("stand_turnK"); E("tSif").value=oku("stand_turnS");
+  E("tGoster").onchange=function(){ E("tSif").type=E("tGoster").checked?"text":"password"; };
+  E("tDene").onclick=function(){
+    yazLS("stand_turnK",E("tKul").value.trim()); yazLS("stand_turnS",E("tSif").value.trim());
+    E("tGoster").checked=false; E("tSif").type="password";
+    if(!turnBuz()){ goster(E("dAktarma"),"girilmedi",""); yaz("Aktarma bilgisi silindi (kutular boş). Sadece doğrudan bağlantı denenecek."); return; }
+    yaz("Aktarma bilgisi kaydedildi, deneniyor.");
+    aktarmaDene();
+  };
 
   // ---------- kurulum ----------
   function kurulumuGoster(){
@@ -324,7 +382,7 @@
     return {t:"yetenek", yon:yon,
       zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
       zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
-      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto, isi:isiDurum};
+      fener:!!c.torch, fenerAcik:fenerAcik, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto, isi:isiDurum, surum:SURUM};
   }
   function bildir(){
     if(!akis) return;
@@ -924,7 +982,9 @@
       .catch(function(h){ hazirlaniyor=false; izleyen=null; tYaz("Kamera açılamadı: "+(h&&(h.name||h.message)||h)); taniGonder(); gonder({t:"hazirDegil",id:id}); });
   }
   function teklifHazirla(id){
-    var p=new RTCPeerConnection({iceServers:BUZ});
+    var p;
+    try{ p=new RTCPeerConnection({iceServers:buzListesi()}); }
+    catch(h){ tYaz("Aktarma ayarı kullanılamadı, onsuz deneniyor ("+(h&&h.message||h)+")."); p=new RTCPeerConnection({iceServers:BUZ}); }
     pc=p;
     try{ kutuKanali=p.createDataChannel("kutular",{ordered:false,maxRetransmits:0}); }catch(h){ kutuKanali=null; }
     akis.getTracks().forEach(function(t){ var g=p.addTrack(t,akis); if(t.kind==="video") videoGonderen=g; });
@@ -949,8 +1009,9 @@
       .then(function(){ return toplamaBitsin(p); })
       .then(function(){
         if(p!==pc) return;
-        gonder({t:"teklif",id:id,sdp:p.localDescription.sdp,yon:yon,sayfa:sayfaKimlik});
-        tYaz("Teklif gönderildi. Pixel adresleri: "+adresOzet(p.localDescription.sdp));
+        var tb=turnBuz();
+        gonder({t:"teklif",id:id,sdp:p.localDescription.sdp,yon:yon,sayfa:sayfaKimlik,surum:SURUM,turn:tb});
+        tYaz("Teklif gönderildi. Pixel adresleri: "+adresOzet(p.localDescription.sdp)+(tb?"":" (aktarma bilgisi girilmemiş)"));
       })
       .catch(function(h){ tYaz("Teklif hazırlanamadı: "+(h&&h.message||h)); });
   }
@@ -1012,6 +1073,7 @@
   goster(E("dKamera"),"kapalı","");
   taniDurum();
   sunucuyaBaglan();
+  if(turnBuz()){ goster(E("dAktarma"),"kayıtlı","" ); setTimeout(aktarmaDene,1500); }   // her açılışta bir kez kendini dener
 })();
 </script>
 
