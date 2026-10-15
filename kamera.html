@@ -78,7 +78,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not">· 14 Eki 21:30</span></h1>
+  <h1>Kamera <span class="not">· 14 Eki 23:40</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -110,7 +110,7 @@
     </div>
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
     <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal</label>
-    <label class="anahtar"><input type="checkbox" id="taniAcik"> İnsan / kedi tanıma (kutuları göster)</label>
+    <label class="anahtar"><input type="checkbox" id="taniAcik"> Bu ekranda tanıma kutularını göster</label>
     <label class="anahtar"><input type="checkbox" id="takipKutu"> Takip: standı kendisi çevirsin</label>
     <div class="satir">
       <button id="zilDene">Zili dene</button>
@@ -146,7 +146,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="14 Eki 21:30";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="14 Eki 23:40";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000;
   function E(id){ return document.getElementById(id); }
@@ -810,7 +810,8 @@
 
   kalYazisi();
   E("taniAcik").checked=oku("stand_kamTani")==="1";
-  E("taniAcik").onchange=function(){ yazLS("stand_kamTani",E("taniAcik").checked?"1":"0"); taniDurum(); };
+  E("taniAcik").onchange=function(){ yazLS("stand_kamTani",E("taniAcik").checked?"1":"0"); kutuGorunurlugu(); taniDurum(); };
+  kutuGorunurlugu();
   function bulucuHazirla(){
     if(bulucu||bulucuYukleniyor) return;
     bulucuYukleniyor=true; goster(E("dTani"),"yükleniyor…","uyari"); yaz("Tanıma yükleniyor (ilk seferde biraz sürer).");
@@ -862,7 +863,6 @@
     var izinli=HEDEFLER[takipAyar.hedef]||HEDEFLER.herkes;
     var liste=((sonuc&&sonuc.detections)||[]).filter(function(d){
       var k=d.categories[0]; return izinli.indexOf(k.categoryName)>=0&&k.score>=(ESIK[k.categoryName]||0.4); });
-    if(!beklemede) taniCiz(v,liste);
     // en büyük olanı "hedef" say
     var hedef=null, enBuyuk=0;
     liste.forEach(function(d){ var b=d.boundingBox, a=b.width*b.height; if(a>enBuyuk){ enBuyuk=a; hedef=d; } });
@@ -890,6 +890,7 @@
       disariSayi=0; otoZoom(null,null,v,simdi);
       E("taniYazi").textContent="kimse yok"+(takipAcik?" · takip":"");
     }
+    if(!beklemede) taniCiz(v,liste,yuz);
     kutulariGonder(v,liste,yuz);
     isiOlc();
     goster(E("dTani"),"açık ("+taniSure+" ms)","iyi");
@@ -930,7 +931,7 @@
     if(d!==isiDurum){ isiDurum=d; yaz("Pixel: "+d+" (tanıma ~"+Math.round(ort)+" ms"+(sinirli?", görüntü kalitesi düşürülüyor":"")+(baski?", Chrome: "+baski:"")+")."); bildir(); }
     goster(E("dIsi"),d,d==="rahat"?"iyi":(d==="zorlanıyor"?"uyari":"kotu"));
   }
-  function taniCiz(v,liste){
+  function taniCiz(v,liste,yuz){
     var c=E("taniCizim"), w=c.clientWidth, h=c.clientHeight;
     if(c.width!==w) c.width=w; if(c.height!==h) c.height=h;
     var g=c.getContext("2d"); g.clearRect(0,0,w,h);
@@ -946,7 +947,10 @@
       g.strokeStyle=ad==="person"?"#57c48c":"#f0b44c"; g.lineWidth=3;
       g.strokeRect(ox+b.originX*o, oy+b.originY*o, b.width*o, b.height*o);
     });
+    if(yuz){ g.strokeStyle="#ffffff"; g.lineWidth=2; g.strokeRect(ox+yuz.originX*o, oy+yuz.originY*o, yuz.width*o, yuz.height*o); }
   }
+  // Pixel ekranındaki kutular sadece anahtara bağlı; takip açıkken tanıma arka planda çalışsa da çizilmez
+  function kutuGorunurlugu(){ var g=E("taniAcik").checked?"":"hidden"; E("taniCizim").style.visibility=g; E("taniYazi").style.visibility=g; }
 
   // ---------- görüntü bağlantısı ----------
   function toplamaBitsin(p){
@@ -960,11 +964,23 @@
   }
   function baglantiyiKapat(){
     clearTimeout(kopmaZamani);
+    var vardi=!!pc;
     if(pc){ try{ pc.close(); }catch(h){} pc=null; }
-    izleyen=null; goster(E("dIzleyen"),"yok","");
+    izleyen=null; buradaVar=false; goster(E("dIzleyen"),"yok","");
+    // izleyen gidince takip ve fener de kapanır (sayfa kapandı, arka plana geçti ya da bağlantı koptu)
+    if(vardi&&takipAcik) takipAyarla(false);
+    if(vardi&&fenerAcik&&!beklemede) fenerAyarla(false);   // bekleme modunda kamera zaten kapanıyor
     if(beklemede) kameraKapat();   // bekleme modunda görüşme bitince kamera kapanır
     if(beklemede) siyahYazisi();
   }
+  // "Buradayım" sinyali: stand sayfası Evi izle açık ve ekrandayken 3 sn'de bir gönderir.
+  // Bu izleyenden sinyal gelmeye başladıysa ve 10 sn kesilirse bağlantı kapatılır (Safari sayfayı dondurduysa da).
+  var buradaVar=false, sonBurada=0;
+  setInterval(function(){
+    if(pc&&izleyen&&buradaVar&&Date.now()-sonBurada>10000){
+      tYaz("İzleyenden 10 sn sinyal gelmedi (sayfa kapandı ya da arka planda), bağlantı kapatıldı."); taniGonder(); baglantiyiKapat();
+    }
+  },2000);
   function istekGeldi(id){
     if(hazirlaniyor){ tekSatirGonder(id,"İstek geldi ama önceki istek için kamera hâlâ hazırlanıyor, bu istek yok sayıldı."); return; }
     if(!akis&&!beklemede){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ama bekleme modu kapalı ve kamera açık değil."); return; }
@@ -1017,6 +1033,7 @@
   }
   function mesajGeldi(m){
     if(m.t==="istek") istekGeldi(m.id);
+    else if(m.t==="burada"){ if(m.id&&m.id===izleyen){ buradaVar=true; sonBurada=Date.now(); } }
     else if(m.t==="cevap"){
       if(!pc){ tekSatirGonder(m.id,"Cevap geldi ama Pixel'de açık bağlantı yok, yok sayıldı."); return; }
       if(m.id!==izleyen){ tekSatirGonder(m.id,"Cevap geldi ama Pixel şu an başka bir izleyene bağlanıyor, yok sayıldı."); return; }

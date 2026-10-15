@@ -275,7 +275,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 23:15</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 14 Eki 23:40</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
 
@@ -1475,7 +1475,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="14 Eki 23:15";
+  var SAYFA_SURUM="14 Eki 23:40";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grId="g"+benimKimlik;
@@ -1967,6 +1967,14 @@
   grVideo.addEventListener("resize",grZoomUygula);   // Pixel yan çevrilince görüntü boyutu değişir
 
   window.addEventListener("pagehide",function(){ if(grIstekte) grGonder({t:"bitir",id:grId}); });
+  // "Buradayım": Evi izle açık ve sayfa ekrandayken Pixel'e 3 sn'de bir sinyal. Kesilirse Pixel her şeyi kapatır.
+  setInterval(function(){ if(grAcik&&(grPc||grIstekte)&&grGorunur()) grGonder({t:"burada",id:grId}); },3000);
+  // Sayfa arka plana geçince (ana ekran, başka uygulama, kilit) görüntü kapanır; geri gelince yeniden bağlanır
+  document.addEventListener("visibilitychange",function(){
+    if(!grAcik) return;
+    if(!grGorunur()){ if(grPc||grIstekte){ yaz("Evi izle: sayfa arka plana geçti, görüntü kapatıldı."); grBagKapat(true); grOrta("Bağlanılıyor…"); } }
+    else if(!grPc&&!grIstekte&&!grDevralindi){ yaz("Evi izle: sayfa geri geldi, yeniden bağlanılıyor."); grBaglan(); }
+  });
 
   // ---------- başlangıç ----------
   // Yönetici: yönetici kodu girilmiş telefon ya da köprü modundaki telefon
