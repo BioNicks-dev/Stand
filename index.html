@@ -17,13 +17,13 @@
     padding-bottom:env(safe-area-inset-bottom,0px);
     --bg:#ecebe6; --panel:#f7f6f2; --ink:#1d2321; --ink-soft:#5d6764;
     --line:#cfcdc4; --line-strong:#a9a79d;
-    --live:#1f6f4a; --warn:#9a5b18; --stop:#8e2f2f; --radius:10px;
+    --live:#1f6f4a; --warn:#9a5b18; --stop:#8e2f2f; --amber:#c2610c; --radius:10px;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       --bg:#14191a; --panel:#1c2224; --ink:#e9eae6; --ink-soft:#9aa5a3;
       --line:#2c3437; --line-strong:#43504f;
-      --live:#57c48c; --warn:#d99a4e; --stop:#e08585;
+      --live:#57c48c; --warn:#d99a4e; --stop:#e08585; --amber:#f59e0b;
     }
   }
   *,*::before,*::after{box-sizing:inherit}
@@ -59,7 +59,8 @@
   .btKutu>div+div::before{content:"";position:absolute;left:-4px;top:7px;bottom:7px;border-left:1px solid var(--line)}
   #izinKutu.dokunulur{border-color:var(--line-strong)}
   #izinKutu.dokunulur span::after{content:" · dokun";}
-  .iyi{color:var(--live)} .uyari{color:var(--warn)} .kotu{color:var(--stop)} .soluk{color:var(--ink-soft)}
+  .iyi{color:var(--live)} .uyari{color:var(--warn)} .kotu{color:var(--stop)} .soluk{color:var(--ink-soft)} .amber{color:var(--amber)}
+  #pixelKutu.dokunulur{border-color:var(--amber);cursor:pointer}
 
   #pad{position:relative;width:100%;aspect-ratio:1;max-width:290px;margin:4px auto 12px;
     border:1px solid var(--line-strong);border-radius:50%;background:var(--panel);
@@ -338,15 +339,16 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 16 Eki · Oda 2.1</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 17 Eki 00:40</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
   <div class="panel odaPanel gizle" id="odaPanel"><span id="odaYazi"></span><button class="kucuk gizle" id="odaBtn"></button></div>
 
   <div class="gostergeler">
-    <div class="gosterge"><span>Stand</span><b id="gStand" class="soluk">bağlı değil</b></div>
+    <div class="gosterge"><span>Stand</span><b id="gStand" class="soluk">bilinmiyor</b></div>
     <div class="gosterge" id="izinKutu" role="button" tabindex="0" aria-label="Uzaktan kontrol iznini aç veya kapat"><span>İzin</span><b id="gIzin" class="soluk">kapalı</b></div>
-    <div class="gosterge"><span>Uzak bağlantı</span><b id="gUzak" class="soluk">bağlı değil</b></div>
+    <div class="gosterge" id="pixelKutu" role="button" tabindex="0" aria-label="Pixel durumu. Turuncuyken dokununca Pixel bekleme moduna geçer."><span id="pixelBaslik">Pixel</span><b id="gPixel" class="soluk">bilinmiyor</b></div>
+    <div class="gosterge"><span>Uzak bağlantı</span><b id="gUzak" class="soluk">kapalı</b></div>
     <div class="gosterge"><span>Sunucu</span><b id="gSunucu" class="soluk">çevrimdışı</b></div>
     <div class="gosterge btKutu gizle" id="btKutu" role="button" tabindex="0" aria-label="Bluetooth durumu. Dokununca Bluetooth kartını yeniden başlatmayı sorar.">
       <div><span>Bluetooth · iPhone</span><b id="gIphone" class="soluk">bilinmiyor</b></div>
@@ -847,7 +849,7 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
-      if(rol==="uzak") istemci.subscribe("comitok/"+kod+"/goruntu/p");
+      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); }
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -879,6 +881,7 @@
     istemci.on("message",function(konu,veri){
       if(konu.slice(-10)==="/goruntu/i"){ grMesaj(veri.toString()); return; }
       if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
+      if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-4)==="/var" && rol==="uzak"){ odaMesaj(m); return; }
@@ -917,6 +920,29 @@
     istemci.publish("comitok/"+kod+"/durum",metin,{retain:true});
   }
 
+  // ---------- Pixel kutusu (17 Eki): Pixel'in durumu; turuncuyken dokununca bekleme moduna geçer ----------
+  var pixelDurum=null, pixelDurumGeldi=0, PIXEL_ESKI=150000;
+  function pixelKutusu(){
+    var d=pixelDurum, yazi="bilinmiyor", sinif="soluk", dokun=false;
+    if(d){
+      var eski=d.d!=="kapali"&&(!d.z||Date.now()-d.z>PIXEL_ESKI)&&Date.now()-pixelDurumGeldi>PIXEL_ESKI;
+      if(d.d==="kapali"||eski){ yazi="kapalı"; sinif="kotu"; }
+      else if(d.d==="hazir"){ yazi="hazır"; sinif="iyi"; }
+      else if(d.d==="izleniyor"){ yazi="izleniyor"+((d.kimler&&d.kimler.length)?": "+d.kimler.join(", "):""); sinif="iyi"; }
+      else if(d.d==="takip"){ yazi="takip açık"; sinif="amber"; dokun=true; }
+      else if(d.d==="kamera"){ yazi="kamera açık"; sinif="amber"; dokun=true; }
+      else if(d.d==="ekran"){ yazi="ekran açık"; sinif="amber"; dokun=true; }
+    }
+    goster("gPixel",yazi,sinif);
+    E("pixelBaslik").textContent=dokun?"Pixel · dokun":"Pixel";
+    E("pixelKutu").classList.toggle("dokunulur",dokun);
+  }
+  E("pixelKutu").onclick=function(){
+    if(!E("pixelKutu").classList.contains("dokunulur")) return;
+    if(!grGonder({t:"dinlen"})){ yaz("Sunucuya bağlı değil, Pixel'e gönderilemedi."); return; }
+    yaz("Pixel bekleme moduna geçiriliyor.");
+    goster("gPixel","kapatılıyor…","soluk"); E("pixelKutu").classList.remove("dokunulur"); E("pixelBaslik").textContent="Pixel";
+  };
   // ---------- oda: kim burada, kontrol kimde (16 Eki · Oda 1) ----------
   // Her uzak sayfa 3 sn'de bir /var konusuna kendini bildirir: adı, yönetici mi, sayfa önde mi, Evi izle açık mı.
   // Kural kartta değil, sayfalarda: yönetici sayfası açıksa stand kontrolü onda; "Ver" ile ortak olur (son dokunan kazanır).
@@ -1046,7 +1072,7 @@
         else if(odaOrtak()) kont="kontrol ortak";
         else { kont="kontrol onda"; btn=odaIste?"İstendi…":"Kontrol iste"; }
       }
-      yazi="Burada: "+adlar+" · "+kont;
+      yazi="Kontrol: "+({"kontrol sende":"sende","kontrol ortak":"ortak (son dokunan kazanır)","kontrol onda":"yöneticide"}[kont]||kont);
       kisa=kisaAd+" · "+kont+(btn?" · "+(btn==="Kontrolü geri al"?"geri al":(odaIste?"istendi…":"iste")):"");
     }
     E("odaPanel").classList.toggle("gizle",!yazi);
@@ -1285,13 +1311,13 @@
         if(simdi-uzaklar[id].zaman<VARLIK_SURE) aktifler.push(uzaklar[id].cihaz);
         else { yaz("Uzaktan ayrıldı: "+uzaklar[id].cihaz); delete uzaklar[id]; }
       });
-      goster("gUzak",aktifler.length?aktifler.join(", "):"bağlı değil",aktifler.length?"iyi":"soluk");
+      goster("gUzak",aktifler.length?aktifler.join(", "):"kapalı",aktifler.length?"iyi":"soluk");
       padEl.classList.toggle("pasif",!standBagli);
       E("btKutu").classList.add("gizle");
     } else {
       var taze=sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE;
       if(!taze){
-        goster("gUzak","bağlı değil","kotu");
+        goster("gUzak","kapalı","kotu");
         goster("gStand","bilinmiyor","soluk");
         goster("gIzin","bilinmiyor","soluk");
       } else {
@@ -1301,6 +1327,7 @@
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
       padEl.classList.toggle("pasif",!(taze&&sonDurum.stand));
+      pixelKutusu();
       E("sinirNot").classList.toggle("gizle",!(taze&&sonDurum.sinirde));
       var net=(sonDurum&&sonDurum.net)||null;
       E("surumAd").textContent=sonDurum?("BT "+(sonDurum.surum||"eski")+" · NET "+(net&&net.surum||"eski")):"—";
@@ -1313,7 +1340,7 @@
         goster("gIphone","bilinmiyor","soluk");
         goster("gKumanda","bilinmiyor","soluk");
       } else {
-        goster("gIphone",sonDurum.iphone?"bağlı":"bağlı değil",sonDurum.iphone?"iyi":"kotu");
+        goster("gIphone",sonDurum.iphone?"bağlı":"kapalı",sonDurum.iphone?"iyi":"kotu");
         goster("gKumanda",sonDurum.kumanda?"bağlı":"kapalı",sonDurum.kumanda?"iyi":"kotu");
       }
       var kIzin=!!(taze&&sonDurum.kameraIzin);
@@ -1876,7 +1903,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="16 Eki · Oda 2.1";
+  var SAYFA_SURUM="17 Eki 00:40";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)

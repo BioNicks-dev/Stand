@@ -86,7 +86,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not">· 16 Eki · Oda 2</span></h1>
+  <h1>Kamera <span class="not">· 17 Eki 00:40</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -158,7 +158,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="16 Eki · Oda 2";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="17 Eki 00:40";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000;
   function E(id){ return document.getElementById(id); }
@@ -1128,7 +1128,37 @@
     var z=izleyenler[id]; if(!z||!z.pc) return;
     benAyarla(id,m.gor,m.ses);
   }
+  // ---------- Pixel durumu: stand sayfasındaki "Pixel" kutusu için (17 Eki) ----------
+  // hazır (bekleme modu), izleniyor (adlarla), takip açık, kamera açık, ekran açık. Sayfa kapanınca sunucu "kapalı" yayınlar.
+  var pixelDurumSon="", pixelDurumZaman=0;
+  function pixelDurumu(){
+    var ids=Object.keys(izleyenler);
+    if(ids.length) return {d:"izleniyor",kimler:ids.map(function(i){ return izleyenler[i].ad; })};
+    if(takipAcik) return {d:"takip"};
+    if(akis||kameraSoz) return {d:"kamera"};
+    if(beklemede) return {d:"hazir"};
+    return {d:"ekran"};
+  }
+  function pixelDurumYayinla(){
+    if(!istemci||!istemci.connected) return;
+    var m=pixelDurumu(), metin=JSON.stringify(m);
+    if(metin===pixelDurumSon&&Date.now()-pixelDurumZaman<60000) return;
+    pixelDurumSon=metin; pixelDurumZaman=Date.now();
+    m.z=Date.now();
+    istemci.publish(konu("d"),JSON.stringify(m),{retain:true});
+  }
+  setInterval(pixelDurumYayinla,2000);
+  window.addEventListener("pagehide",function(){ if(istemci&&istemci.connected) istemci.publish(konu("d"),JSON.stringify({d:"kapali",z:Date.now()}),{retain:true}); });
+  // Stand sayfasındaki amber Pixel kutusuna dokununca: kimse izlemiyorsa takip kapanır, bekleme moduna geçilir
+  function dinlen(){
+    if(izleyenSayisi()) return;
+    yaz("Stand sayfasından istendi: bekleme moduna geçiliyor.");
+    if(takipAcik) takipAyarla(false);
+    if(!beklemede) beklemeBaslat(); else kameraKapat();
+    pixelDurumYayinla();
+  }
   function mesajGeldi(m){
+    if(m.t==="dinlen"){ dinlen(); return; }
     if(m.t==="istek") istekGeldi(m.id,m.ad);
     else if(m.t==="burada"){ var zb=m.id&&izleyenler[m.id]; if(zb){ zb.buradaVar=true; zb.sonBurada=Date.now(); } }
     else if(m.t==="cevap"){
@@ -1281,12 +1311,14 @@
     if(typeof mqtt==="undefined"){ goster(E("dSunucu"),"kütüphane yüklenemedi","kotu"); return; }
     istemci=mqtt.connect(SUNUCU_ADRES,{
       clientId:"comitok_kamera_"+Math.random().toString(16).slice(2,10),
+      will:{topic:konu("d"),payload:JSON.stringify({d:"kapali"}),qos:0,retain:true},
       username:SUNUCU_KULLANICI, password:ss, reconnectPeriod:5000, connectTimeout:10000
     });
     istemci.on("connect",function(){
       goster(E("dSunucu"),"bağlı","iyi");
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe(konu("k"));
+      pixelDurumSon=""; pixelDurumYayinla();
       if(akis||beklemede) gonder({t:"hazir"});
     });
     istemci.on("reconnect",function(){ goster(E("dSunucu"),"yeniden bağlanıyor","uyari"); });
