@@ -119,7 +119,7 @@
       <span id="dOzellik" class="not"></span>
     </div>
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
-    <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal</label>
+    <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal (5 dk içinde tekrar çalmaz)</label>
     <label class="anahtar"><input type="checkbox" id="taniAcik"> Bu ekranda tanıma kutularını göster</label>
     <label class="anahtar"><input type="checkbox" id="takipKutu"> Takip: standı kendisi çevirsin</label>
     <div class="satir">
@@ -158,9 +158,9 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="17 Eki 00:40";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="17 Eki 20:00";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
-  var ZIL_SURE=3000;
+  var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   function E(id){ return document.getElementById(id); }
   function oku(a){ try{ return localStorage.getItem(a)||""; }catch(h){ return ""; } }
   function yazLS(a,v){ try{ localStorage.setItem(a,v); }catch(h){} }
@@ -1010,6 +1010,7 @@
   }
   function baglantiyiKapat(id){
     var z=izleyenler[id]; if(!z) return;
+    zilSonGorulen[z.ad]=Date.now();   // aynı kişi 5 dk içinde dönerse zil çalmaz
     clearTimeout(z.kopma);
     if(z.pc){ try{ z.pc.close(); }catch(h){} }
     delete izleyenler[id];
@@ -1036,12 +1037,22 @@
       }
     });
   },2000);
-  function kameraHazirla(){
-    if(akis) return Promise.resolve();
-    if(kameraSoz) return kameraSoz;
-    var zilVar=beklemede&&E("zilAcik").checked;
-    if(zilVar){ zilCal(ZIL_SURE); yaz("Zil çalıyor."); }
-    var s=new Promise(function(r){ setTimeout(r,zilVar?ZIL_SURE:0); }).then(kameraAc);
+  // Zil (bekleme modunda, ayar açıksa) her yeni kişide çalar; şu durumlarda çalmaz:
+  // son 5 dk içinde zaten çaldıysa, ya da aynı kişi (aynı ad) son 5 dk içinde bağlıydıysa / hâlâ bağlıysa.
+  var zilSon=0, zilSonGorulen={};
+  function zilGerekli(ad){
+    if(!beklemede||!E("zilAcik").checked) return false;
+    var n=Date.now();
+    if(n-zilSon<ZIL_ARA) return false;
+    if(n-(zilSonGorulen[ad]||0)<ZIL_ARA) return false;
+    return !Object.keys(izleyenler).some(function(i){ return izleyenler[i].ad===ad; });
+  }
+  function kameraHazirla(zilVar){
+    if(zilVar){ zilSon=Date.now(); zilCal(ZIL_SURE); yaz("Zil çalıyor."); }
+    var bekle=new Promise(function(r){ setTimeout(r,zilVar?ZIL_SURE:0); });
+    if(akis) return bekle;
+    if(kameraSoz) return zilVar?Promise.all([kameraSoz,bekle]):kameraSoz;
+    var s=bekle.then(kameraAc);
     kameraSoz=s;
     s.then(function(){ if(kameraSoz===s) kameraSoz=null; },function(){ if(kameraSoz===s) kameraSoz=null; });
     return s;
@@ -1051,6 +1062,8 @@
     ad=String(ad||("izleyen "+String(id).slice(-4))).slice(0,20);
     if(!akis&&!beklemede&&!kameraSoz){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ("+ad+") ama bekleme modu kapalı ve kamera açık değil."); return; }
     if(izleyenler[id]){ tYaz(ad+" yeniden bağlanıyor, eski bağlantısı kapatılıyor."); baglantiyiKapat(id); }
+    var zilVar=zilGerekli(ad);
+    if(!zilVar&&beklemede&&E("zilAcik").checked) yaz("Zil çalmadı ("+ad+": son 5 dk içinde çaldı ya da bu kişi zaten bağlıydı).");
     if(izleyenSayisi()>=EN_COK_IZLEYEN){
       var kimler=Object.keys(izleyenler).map(function(i){ return izleyenler[i].ad; });
       gonder({t:"dolu",id:id,kimler:kimler});
@@ -1063,7 +1076,7 @@
     tYaz("İzleme isteği geldi ("+ad+", izleyen "+String(id).slice(-4)+", bu sayfa "+sayfaKimlik+"). Diğer izleyen: "+(izleyenSayisi()-1)+".");
     izleyenYazisi();
     if(beklemede) siyahYazisi();
-    kameraHazirla()
+    kameraHazirla(zilVar)
       .then(function(){
         if(izleyenler[id]!==z){ tYaz(ad+" bu arada vazgeçti, teklif hazırlanmadı."); return; }
         tYaz("Kamera hazır."); teklifHazirla(id);
