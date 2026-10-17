@@ -52,9 +52,10 @@
   #siyahYazi{position:absolute;left:20px;top:20px;color:#3a3a3a;font-size:15px;white-space:nowrap}
   #siyahYazi.izleniyor{color:#8a8a8a;font-size:22px}
   /* Beni göster: iPhone'dan gelen görüntü tam ekran; ekran ışığı: bembeyaz ekran (ikisi de dokunuşları geçirir) */
-  #benKutu{position:fixed;inset:0;background:#000;z-index:1001;display:none;pointer-events:none}
-  #benKutu video{width:100%;height:100%;max-height:none;border-radius:0;object-fit:cover;display:block}
-  body.beni #benKutu{display:block}
+  #benKutu{position:fixed;inset:0;background:#000;z-index:1001;display:none;pointer-events:none;flex-direction:row;gap:4px}
+  #benKutu video{flex:1 1 0;min-width:0;min-height:0;width:100%;height:100%;max-height:none;border-radius:0;object-fit:cover;display:block}
+  body.beni #benKutu{display:flex}
+  @media (orientation:portrait){ #benKutu{flex-direction:column} }
   #isik{position:fixed;inset:0;background:#fff;z-index:1001;display:none;pointer-events:none}
   body.isik:not(.beni) #isik{display:block}
   body.beni.isik #benKutu{border:7vmin solid #fff}
@@ -85,7 +86,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not">· 16 Eki · Oda 1</span></h1>
+  <h1>Kamera <span class="not">· 16 Eki · Oda 2</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -150,15 +151,14 @@
 </div>
 
 <div id="siyah" class="gizli"><div id="siyahYazi"></div></div>
-<div id="benKutu"><video id="benVideo" autoplay playsinline muted></video></div>
+<div id="benKutu"></div>
 <div id="isik"></div>
-<audio id="benSes" autoplay></audio>
 
 <script>
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="16 Eki · Oda 1";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="16 Eki · Oda 2";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000;
   function E(id){ return document.getElementById(id); }
@@ -985,7 +985,6 @@
   var EN_COK_IZLEYEN=3;
   var izleyenler={};      // id -> {pc, ad, gonderen, kanal, mik, buradaVar, sonBurada, kopma, gelenSes, gelenVideo}
   var kameraSoz=null;     // kamera açılırken bekleyen istekler aynı sözü bekler
-  var benKimden=null;     // Pixel ekranında görünen izleyen (Beni göster / Konuş)
   function izleyenSayisi(){ return Object.keys(izleyenler).length; }
   function bagliMi(z){ return !!(z&&z.pc&&z.pc.connectionState==="connected"); }
   function bagliAdlar(){ return Object.keys(izleyenler).filter(function(id){ return bagliMi(izleyenler[id]); }).map(function(id){ return izleyenler[id].ad; }); }
@@ -1014,8 +1013,8 @@
     clearTimeout(z.kopma);
     if(z.pc){ try{ z.pc.close(); }catch(h){} }
     delete izleyenler[id];
-    if(benKimden===id){ benAyarla(false,false); benKimden=null; gelenTemizle(); }
-    mikHesapla();
+    gelenTemizle(z);
+    mikHesapla(); gelenEkran(); gelenYazisi();
     izleyenYazisi();
     // son izleyen gidince takip ve fener de kapanır (sayfa kapandı, arka plana geçti ya da bağlantı koptu)
     if(!izleyenSayisi()){
@@ -1089,7 +1088,7 @@
       if(!bu()||!e.track) return;
       if(e.track.kind==="audio") z.gelenSes=e.track;
       else if(e.track.kind==="video") z.gelenVideo=e.track;
-      if(benKimden===id) gelenBagla(z);
+      if(z.gor||z.ses){ gelenSesKur(z); gelenEkran(); }
     };
     p.oniceconnectionstatechange=function(){ if(bu()) tYaz(z.ad+": yol durumu: "+(DURUM_TR[p.iceConnectionState]||p.iceConnectionState)); };
     p.onconnectionstatechange=function(){
@@ -1122,27 +1121,12 @@
     var ist=Object.keys(izleyenler).some(function(i){ return izleyenler[i].mik; });
     if(ist!==mikAcik&&akis) mikAyarla(ist); else bildir();
   }
-  // Beni göster: Pixel ekranında aynı anda bir kişi görünür, en son açan
-  function gelenBagla(z){
-    E("benSes").srcObject=z.gelenSes?new MediaStream([z.gelenSes]):null;
-    E("benVideo").srcObject=z.gelenVideo?new MediaStream([z.gelenVideo]):null;
-    if(z.gelenSes) sesOlcerKur(z.gelenSes);
-    if(benSes){ var o=E("benSes").play(); if(o&&o.catch) o.catch(function(){}); }
-    if(benGor){ var v=E("benVideo").play(); if(v&&v.catch) v.catch(function(){}); }
-  }
+  // Beni göster / Konuş: her izleyen kendi durumunu söyler (16 Eki · Oda 2: herkes aynı anda görünebilir)
   function benGeldi(m){
     var id=m.id;
     if(!id){ var ids=Object.keys(izleyenler); if(ids.length!==1) return; id=ids[0]; }   // eski sayfa
     var z=izleyenler[id]; if(!z||!z.pc) return;
-    if(m.gor||m.ses){
-      if(benKimden!==id){
-        var eski=benKimden&&izleyenler[benKimden];
-        if(eski){ gonder({t:"bosta",id:benKimden,neden:"baskasi",kim:z.ad}); yaz("Beni göster: artık "+z.ad+" görünüyor ("+eski.ad+" için kapandı)."); }
-        if(benGor||benSes) benAyarla(false,false);
-        benKimden=id; gelenBagla(z);
-      }
-      benAyarla(m.gor,m.ses);
-    } else if(benKimden===id){ benAyarla(false,false); benKimden=null; }
+    benAyarla(id,m.gor,m.ses);
   }
   function mesajGeldi(m){
     if(m.t==="istek") istekGeldi(m.id,m.ad);
@@ -1172,52 +1156,75 @@
     else if(m.t==="sor"){ gonder({t:(akis||beklemede)?"hazir":"hazirDegil"}); }
   }
 
-  // ---------- Beni göster / Konuş: iPhone'un görüntüsü ve sesi bu ekranda ----------
-  // 3 dk kuralı: Beni göster açıkken 3 dk ne iPhone'dan ses ne Pixel kamerasında hareket olursa kapanır.
-  // Sadece Konuş açıkken 3 dk iPhone'dan ses gelmezse kapanır. Kapanınca iPhone'a "bosta" gider.
+  // ---------- Beni göster / Konuş: izleyenlerin görüntüsü ve sesi bu ekranda (16 Eki · Oda 2) ----------
+  // Her izleyen ayrı: Beni göster açık olanlar ekranda yan yana (Pixel dikeyse üst üste) görünür, Konuş açık olanlar duyulur.
+  // 3 dk kuralı her kişi için ayrı: Beni göster açıkken 3 dk ne o kişiden ses ne Pixel kamerasında hareket olursa kapanır.
+  // Sadece Konuş açıkken 3 dk o kişiden ses gelmezse kapanır. Kapanınca o kişiye "bosta" gider.
   var BOSTA_SURE=180000, SES_ESIK=0.02;
-  var benGor=false, benSes=false, benSonEtkinlik=0, benSonSes=0, benSayac=0;
-  var sesOlcer=null, sesKaynak=null, sesVeri=null, hareketKare=null;
+  var benGor=false, benSes=false, benSayac=0, hareketKare=null;   // herhangi biri görünüyor / konuşuyor mu
   var hareketTuval=document.createElement("canvas"); hareketTuval.width=32; hareketTuval.height=24;
+  function gelenIdler(){ return Object.keys(izleyenler).filter(function(id){ var z=izleyenler[id]; return z.gor||z.ses; }); }
   function gelenYazisi(){
-    var m=benGor?(benSes?"görüntü + ses":"görüntü (ses kapalı)"):(benSes?"ses":"yok");
-    goster(E("dGelen"),m,(benGor||benSes)?"iyi":"");
+    var l=gelenIdler().map(function(id){ var z=izleyenler[id]; return z.ad+" ("+(z.gor?(z.ses?"görüntü + ses":"görüntü"):"ses")+")"; });
+    goster(E("dGelen"),l.length?l.join(", "):"yok",l.length?"iyi":"");
   }
-  function benAyarla(gor,ses,neden){
-    gor=!!gor; ses=!!ses;
-    if(gor===benGor&&ses===benSes) return;
-    var simdi=Date.now();
-    if(gor&&!benGor){ benSonEtkinlik=simdi; hareketKare=null; }
-    if(ses&&!benSes){ benSonSes=simdi; if(!gor) benSonEtkinlik=simdi; }
-    benGor=gor; benSes=ses;
+  function gelenEkran(){
+    var kutu=E("benKutu");
+    var gorenler=Object.keys(izleyenler).filter(function(id){ return izleyenler[id].gor; });
+    Array.prototype.slice.call(kutu.querySelectorAll("video")).forEach(function(v){
+      if(gorenler.indexOf(v.getAttribute("data-id"))<0){ v.srcObject=null; v.parentNode.removeChild(v); }
+    });
+    gorenler.forEach(function(id){
+      var z=izleyenler[id], v=null;
+      Array.prototype.slice.call(kutu.querySelectorAll("video")).forEach(function(x){ if(x.getAttribute("data-id")===id) v=x; });
+      if(!v){ v=document.createElement("video"); v.autoplay=true; v.playsInline=true; v.muted=true; v.setAttribute("data-id",id); kutu.appendChild(v); }
+      if(z.gelenVideo&&(!v.srcObject||v.srcObject.getVideoTracks()[0]!==z.gelenVideo)) v.srcObject=new MediaStream([z.gelenVideo]);
+      var o=v.play(); if(o&&o.catch) o.catch(function(){});
+    });
+    benGor=gorenler.length>0;
+    benSes=Object.keys(izleyenler).some(function(id){ return izleyenler[id].ses; });
     document.body.classList.toggle("beni",benGor);
-    var s=E("benSes"); s.muted=!benSes;
-    if(benSes){ sesiHazirla(); var o=s.play(); if(o&&o.catch) o.catch(function(h){ yaz("Gelen ses çalınamadı ("+(h&&h.name||h)+"). Pixel'de sayfaya bir kez dokunun."); }); }
-    if(benGor){ var v=E("benVideo").play(); if(v&&v.catch) v.catch(function(){}); }
-    yaz(benGor?(benSes?"Beni göster açıldı (görüntü + ses).":"Beni göster: ses kapalı, görüntü sürüyor."):(benSes?"Konuş açık (sadece ses).":"Beni göster / Konuş kapandı."));
-    if(neden==="bosta"){ gonder({t:"bosta",id:benKimden}); benKimden=null; }
+    document.body.classList.toggle("benIki",gorenler.length>1);
+  }
+  function gelenSesKur(z){
+    if(!z.sesEl){ z.sesEl=document.createElement("audio"); z.sesEl.autoplay=true; document.body.appendChild(z.sesEl); }
+    if(z.gelenSes&&(!z.sesEl.srcObject||z.sesEl.srcObject.getAudioTracks()[0]!==z.gelenSes)){ z.sesEl.srcObject=new MediaStream([z.gelenSes]); olcerKur(z); }
+    z.sesEl.muted=!z.ses;
+    if(z.ses){ sesiHazirla(); var o=z.sesEl.play(); if(o&&o.catch) o.catch(function(h){ yaz("Gelen ses çalınamadı ("+(h&&h.name||h)+"). Pixel'de sayfaya bir kez dokunun."); }); }
+  }
+  function benAyarla(id,gor,ses,neden){
+    var z=izleyenler[id]; if(!z) return;
+    gor=!!gor; ses=!!ses;
+    if(gor===!!z.gor&&ses===!!z.ses) return;
+    var simdi=Date.now();
+    if(gor&&!z.gor){ z.sonEtkinlik=simdi; hareketKare=null; }
+    if(ses&&!z.ses){ z.sonSes=simdi; if(!gor) z.sonEtkinlik=simdi; }
+    z.gor=gor; z.ses=ses;
+    gelenSesKur(z); gelenEkran();
+    yaz(z.ad+": "+(gor?(ses?"Beni göster açıldı (görüntü + ses).":"Beni göster açık, sesi kapalı."):(ses?"Konuş açık (sadece ses).":"Beni göster / Konuş kapandı.")));
+    if(neden==="bosta") gonder({t:"bosta",id:id});
     gelenYazisi(); bildir();
   }
-  function gelenTemizle(){
-    E("benSes").srcObject=null; E("benVideo").srcObject=null;
-    try{ if(sesKaynak) sesKaynak.disconnect(); }catch(h){}
-    sesKaynak=null; sesOlcer=null;
+  function gelenTemizle(z){
+    if(z.sesEl){ z.sesEl.srcObject=null; if(z.sesEl.parentNode) z.sesEl.parentNode.removeChild(z.sesEl); z.sesEl=null; }
+    try{ if(z.olcKaynak) z.olcKaynak.disconnect(); }catch(h){}
+    z.olcKaynak=null; z.olcer=null;
   }
-  function sesOlcerKur(track){
-    sesiHazirla(); if(!sesCtx) return;
+  function olcerKur(z){
+    sesiHazirla(); if(!sesCtx||!z.gelenSes) return;
     try{
-      try{ if(sesKaynak) sesKaynak.disconnect(); }catch(h){}
-      sesKaynak=sesCtx.createMediaStreamSource(new MediaStream([track]));
-      sesOlcer=sesCtx.createAnalyser(); sesOlcer.fftSize=16384;
-      sesKaynak.connect(sesOlcer); sesVeri=new Float32Array(sesOlcer.fftSize);
-    }catch(h){ sesOlcer=null; yaz("Gelen ses ölçülemiyor; Konuş 3 dk sonra kapanabilir ("+(h&&h.message||h)+")."); }
+      try{ if(z.olcKaynak) z.olcKaynak.disconnect(); }catch(h){}
+      z.olcKaynak=sesCtx.createMediaStreamSource(new MediaStream([z.gelenSes]));
+      z.olcer=sesCtx.createAnalyser(); z.olcer.fftSize=16384;
+      z.olcKaynak.connect(z.olcer); z.olcVeri=new Float32Array(z.olcer.fftSize);
+    }catch(h){ z.olcer=null; yaz("Gelen ses ölçülemiyor; Konuş 3 dk sonra kapanabilir ("+(h&&h.message||h)+")."); }
   }
-  function sesSeviyesi(){
-    if(!sesOlcer) return 0;
+  function sesSeviyesi(z){
+    if(!z.olcer) return 0;
     if(sesCtx&&sesCtx.state==="suspended") sesCtx.resume();
-    sesOlcer.getFloatTimeDomainData(sesVeri);
-    var t=0; for(var i=0;i<sesVeri.length;i++) t+=sesVeri[i]*sesVeri[i];
-    return Math.sqrt(t/sesVeri.length);
+    z.olcer.getFloatTimeDomainData(z.olcVeri);
+    var t=0; for(var i=0;i<z.olcVeri.length;i++) t+=z.olcVeri[i]*z.olcVeri[i];
+    return Math.sqrt(t/z.olcVeri.length);
   }
   // Pixel kamerasında hareket: küçük gri resimde öncekiyle fark (genel parlaklık değişimi sayılmaz)
   function hareketVarMi(){
@@ -1235,12 +1242,16 @@
     return fark>=8;
   }
   setInterval(function(){
-    if(!benGor&&!benSes) return;
+    var ids=gelenIdler(); if(!ids.length) return;
     var simdi=Date.now();
-    if(benSes&&sesSeviyesi()>SES_ESIK){ benSonSes=simdi; benSonEtkinlik=simdi; }
-    if(benGor&&(++benSayac%4===0)&&hareketVarMi()) benSonEtkinlik=simdi;
-    if(benGor&&simdi-benSonEtkinlik>=BOSTA_SURE){ yaz("Beni göster 3 dk boşta kaldı (ses ve hareket yok), kapatıldı."); benAyarla(false,false,"bosta"); }
-    else if(!benGor&&benSes&&simdi-benSonSes>=BOSTA_SURE){ yaz("Konuş 3 dk sessiz kaldı, kapatıldı."); benAyarla(false,false,"bosta"); }
+    var hareket=benGor&&(++benSayac%4===0)&&hareketVarMi();
+    ids.forEach(function(id){
+      var z=izleyenler[id];
+      if(z.ses&&sesSeviyesi(z)>SES_ESIK){ z.sonSes=simdi; z.sonEtkinlik=simdi; }
+      if(z.gor&&hareket) z.sonEtkinlik=simdi;
+      if(z.gor&&simdi-z.sonEtkinlik>=BOSTA_SURE){ yaz(z.ad+": Beni göster 3 dk boşta kaldı (ses ve hareket yok), kapatıldı."); benAyarla(id,false,false,"bosta"); }
+      else if(!z.gor&&z.ses&&simdi-z.sonSes>=BOSTA_SURE){ yaz(z.ad+": Konuş 3 dk sessiz kaldı, kapatıldı."); benAyarla(id,false,false,"bosta"); }
+    });
   },250);
 
   // ---------- boşta kapanma: kimse izlemiyorken açık kalanlar 3 dk sonra kapanır ----------

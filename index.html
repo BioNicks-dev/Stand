@@ -133,6 +133,16 @@
   body.buyukDuzen #kOda{top:60px;left:auto;right:12px;transform:none;max-width:62%}
   body.yatayDuzen.buyukDuzen #kOda{top:16px;right:calc(66px + env(safe-area-inset-right,0px));max-width:45%}
   .kontrolYok{opacity:.4}
+  /* öbür kişinin kutusu (toplantı) */
+  #kKisiYuva{position:absolute;right:8px;top:56px;display:flex;flex-direction:column;gap:6px;z-index:4}
+  #kKisiYuva:empty{display:none}
+  .kKisi{position:relative;width:86px;height:116px;min-height:0;padding:0;border-radius:10px;overflow:hidden;background:#000;border:2px solid rgba(255,255,255,.7)}
+  .kKisi video{width:100%;height:100%;object-fit:cover;display:block}
+  .kKisi span{position:absolute;left:0;right:0;bottom:0;padding:2px 4px;font-size:11px;color:#fff;background:rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #kKisiBuyuk{position:absolute;inset:0;z-index:2;background:#000}
+  #kKisiBuyuk video{width:100%;height:100%;object-fit:contain;display:block}
+  body.buyukDuzen #kKisiYuva{top:100px;right:12px}
+  body.yatayDuzen.buyukDuzen #kKisiYuva{top:56px;right:calc(66px + env(safe-area-inset-right,0px))}
   body.kameraModu #odaPanel{display:none !important}
   .aramaUst{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
   .aramaUst .ikon{min-height:38px;min-width:38px;font-size:17px;padding:4px}
@@ -294,6 +304,9 @@
     <button class="kYuvarlak kAyar" id="kAyarBtn" aria-label="Ayarlar">⚙</button>
     <button class="kYuvarlak kKapat" id="kKapatBtn" aria-label="Kamerayı kapat">✕</button>
     <button id="kOda" type="button" class="gizle" aria-label="Kim burada, kontrol kimde"></button>
+    <div id="kKisiBuyuk" class="gizle"><video autoplay playsinline muted></video></div>
+    <div id="kKisiYuva"></div>
+    <div id="kKisiSesler" style="display:none"></div>
     <div id="kPadYuva"></div>
     <div id="kZoomGosterge"></div>
     <div id="kAltYuva"></div>
@@ -321,7 +334,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 16 Eki · Oda 1</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 16 Eki · Oda 2</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
   <div class="panel odaPanel gizle" id="odaPanel"><span id="odaYazi"></span><button class="kucuk gizle" id="odaBtn"></button></div>
@@ -830,6 +843,7 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
+      if(rol==="uzak") istemci.subscribe("comitok/"+kod+"/goruntu/p");
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -860,6 +874,7 @@
     });
     istemci.on("message",function(konu,veri){
       if(konu.slice(-10)==="/goruntu/i"){ grMesaj(veri.toString()); return; }
+      if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-4)==="/var" && rol==="uzak"){ odaMesaj(m); return; }
@@ -947,12 +962,12 @@
     var m={id:benimKimlik,cihaz:benimCihaz,ad:benimAdim(),on:odaOnde()};
     if(yk){ m.y=1; m.ver=odaVer; m.verZ=odaVerZ; if(odaSonRed) m.red=odaSonRed; if(odaYeni()) m.yeni=1; }
     else { if(Date.now()-sonKontrol<ODA_KULLANIM) m.kul=1; if(odaIste) m.iste=odaIste; }
-    if(grAcik&&grPc&&grPc.connectionState==="connected") m.iz=1;
+    if(grAcik&&grPc&&grPc.connectionState==="connected"){ m.iz=1; if(grBeni) m.bg=1; if(grKonus) m.bs=1; }
     istemci.publish("comitok/"+kod+"/var",JSON.stringify(m));
   }
   function odaMesaj(m){
     if(!m||!m.id||m.id===benimKimlik) return;
-    var k={ad:String(m.ad||m.cihaz||"?").slice(0,20),y:!!m.y,on:m.on!==false,iz:!!m.iz,kul:!!m.kul,
+    var k={id:m.id,bg:!!m.bg,bs:!!m.bs,ad:String(m.ad||m.cihaz||"?").slice(0,20),y:!!m.y,on:m.on!==false,iz:!!m.iz,kul:!!m.kul,
       ver:!!m.ver,verZ:Number(m.verZ)||0,iste:String(m.iste||""),red:String(m.red||""),yeni:!!m.yeni,zaman:Date.now()};
     var eski=odaKisiler[m.id];
     odaKisiler[m.id]=k;
@@ -1007,6 +1022,7 @@
       odaKontrolVardi=var_;
     }
     kontrolGoster();
+    kisiEsitle();
   }
   function kontrolGoster(){
     var var_=kontrolBende();
@@ -1072,6 +1088,156 @@
     varligimiBildir(); odaGuncelle();
   });
   E("adInput").addEventListener("change",function(){ varligimiBildir(); yaz("Adın: "+benimAdim()+"."); });
+
+  // ---------- 2. aşama: izleyenler arasında doğrudan bağlantı (16 Eki · Oda 2) ----------
+  // İki kişi aynı anda Evi izle'deyse telefonları birbirine ayrıca bağlanır (Pixel'in yükü artmaz).
+  // Beni göster / Konuş açıkken görüntü ve ses hem Pixel'e hem öbür kişiye gider.
+  // Tanışma mesajları sunucudan: comitok/<oda>/goruntu/p. Kimliği küçük olan teklif eder (ikisi aynı anda etmesin).
+  var kisiler={}, kisiSonDeneme={}, kisiBuyukId=null, grTurnBilgi=null;
+  function kisiBuz(){ return grTurnBilgi?GR_BUZ.concat([grTurnBilgi]):GR_BUZ; }
+  function kisiGonder(m){ if(istemci&&istemci.connected&&kod){ m.kimden=benimKimlik; istemci.publish("comitok/"+kod+"/goruntu/p",JSON.stringify(m)); } }
+  function benIzliyor(){ return rol==="uzak"&&grAcik&&!!grPc&&grPc.connectionState==="connected"&&grGorunur(); }
+  function kisiGonderen(x,tur){
+    var s=null;
+    try{ x.pc.getTransceivers().forEach(function(t){ if(!s&&t.receiver&&t.receiver.track&&t.receiver.track.kind===tur) s=t.sender; }); }catch(h){}
+    return s;
+  }
+  function kisiYerelUygula(x){
+    if(!x||!x.pc) return;
+    var y=grYerel||{ses:null,gor:null};
+    var gs=kisiGonderen(x,"audio"), gv=kisiGonderen(x,"video");
+    if(gs) gs.replaceTrack(y.ses||null).catch(function(){});
+    if(gv){
+      gv.replaceTrack(y.gor||null).catch(function(){});
+      if(y.gor){ try{ var pr=gv.getParameters(); if(pr.encodings&&pr.encodings[0]){ pr.encodings[0].maxBitrate=500000; gv.setParameters(pr).catch(function(){}); } }catch(h){} }
+    }
+  }
+  function kisiYeni(id,ad){
+    var p;
+    try{ p=new RTCPeerConnection({iceServers:kisiBuz()}); }catch(h){ p=new RTCPeerConnection({iceServers:GR_BUZ}); }
+    var x={pc:p,ad:ad||"?",ses:null,video:null,zaman:Date.now(),bagli:false};
+    kisiler[id]=x;
+    p.ontrack=function(e){
+      if(kisiler[id]!==x||!e.track) return;
+      if(e.track.kind==="audio") x.ses=e.track; else if(e.track.kind==="video") x.video=e.track;
+      kisiGoster();
+    };
+    p.onconnectionstatechange=function(){
+      if(kisiler[id]!==x) return;
+      var s=p.connectionState;
+      if(s==="connected"&&!x.bagli){ x.bagli=true; yaz("Toplantı: "+x.ad+" ile doğrudan bağlantı kuruldu."); kisiYerelUygula(x); kisiGoster(); }
+      else if(s==="failed"){ yaz("Toplantı: "+x.ad+" ile bağlantı kurulamadı."); kisiKapat(id,false); }
+    };
+    return x;
+  }
+  function kisiBaslat(id,ad){
+    kisiSonDeneme[id]=Date.now();
+    var x=kisiYeni(id,ad), p=x.pc;
+    p.addTransceiver("audio",{direction:"sendrecv"}); p.addTransceiver("video",{direction:"sendrecv"});
+    kisiYerelUygula(x);
+    yaz("Toplantı: "+x.ad+" ile bağlantı kuruluyor.");
+    p.createOffer().then(function(o){ return p.setLocalDescription(o); })
+      .then(function(){ return grToplama(p); })
+      .then(function(){ if(kisiler[id]===x) kisiGonder({t:"kteklif",kime:id,ad:benimAdim(),sdp:p.localDescription.sdp,turn:grTurnBilgi}); })
+      .catch(function(h){ yaz("Toplantı: teklif hazırlanamadı ("+(h&&h.message||h)+")."); kisiKapat(id,false); });
+  }
+  function kisiKapat(id,haberVer){
+    var x=kisiler[id]; if(!x) return;
+    delete kisiler[id];
+    try{ x.pc.close(); }catch(h){}
+    if(haberVer) kisiGonder({t:"kbitir",kime:id});
+    if(kisiBuyukId===id) kisiBuyukId=null;
+    kisiGoster();
+  }
+  function kisiHepsiniKapat(){ Object.keys(kisiler).forEach(function(id){ kisiKapat(id,true); }); }
+  function kisiMesaj(metin){
+    var m; try{ m=JSON.parse(metin); }catch(h){ return; }
+    if(!m||m.kime!==benimKimlik||!m.kimden) return;
+    var id=m.kimden;
+    if(m.t==="kteklif"){
+      if(!benIzliyor()) return;
+      if(kisiler[id]) kisiKapat(id,false);
+      var t=m.turn;
+      if(!grTurnBilgi&&t&&t.urls&&t.username&&t.credential) grTurnBilgi={urls:t.urls,username:t.username,credential:t.credential};
+      var x=kisiYeni(id,m.ad), p=x.pc;
+      p.setRemoteDescription({type:"offer",sdp:m.sdp})
+        .then(function(){ try{ p.getTransceivers().forEach(function(tr){ tr.direction="sendrecv"; }); }catch(h){} kisiYerelUygula(x); return p.createAnswer(); })
+        .then(function(c){ return p.setLocalDescription(c); })
+        .then(function(){ return grToplama(p); })
+        .then(function(){ if(kisiler[id]===x) kisiGonder({t:"kcevap",kime:id,sdp:p.localDescription.sdp}); })
+        .catch(function(h){ yaz("Toplantı: cevap hazırlanamadı ("+(h&&h.message||h)+")."); kisiKapat(id,false); });
+    } else if(m.t==="kcevap"){
+      var y=kisiler[id];
+      if(y&&y.pc.signalingState==="have-local-offer") y.pc.setRemoteDescription({type:"answer",sdp:m.sdp}).catch(function(h){ yaz("Toplantı: cevap işlenemedi ("+(h&&h.message||h)+")."); });
+    } else if(m.t==="kbitir"){ kisiKapat(id,false); }
+  }
+  // Kimle bağlı olunmalı: ikimiz de Evi izle'de ve bağlıysak. Oda yazısıyla birlikte 2 sn'de bir bakılır.
+  function kisiEsitle(){
+    var hedef={}, n=Date.now();
+    if(benIzliyor()) odaDigerleri().forEach(function(k){ if(k.iz) hedef[k.id]=k; });
+    Object.keys(kisiler).forEach(function(id){
+      var x=kisiler[id];
+      if(!hedef[id]) kisiKapat(id,false);
+      else if(!x.bagli&&n-x.zaman>30000){ yaz("Toplantı: "+x.ad+" ile 30 sn'de bağlantı kurulamadı, tekrar denenecek."); kisiKapat(id,false); }
+    });
+    Object.keys(hedef).forEach(function(id){
+      var k=hedef[id];
+      if(kisiler[id]){ kisiler[id].ad=k.ad; return; }
+      if(benimKimlik<id&&n-(kisiSonDeneme[id]||0)>10000) kisiBaslat(id,k.ad);
+    });
+    kisiGoster();
+  }
+  // Öbür kişinin kutusu: Beni göster açıksa görüntüsü küçük kutuda; dokununca büyük ekranla yer değiştirir.
+  function kisiGoster(){
+    var yuva=E("kKisiYuva"), sesler=E("kKisiSesler");
+    var goren=[];
+    Object.keys(kisiler).forEach(function(id){
+      var x=kisiler[id], k=odaKisiler[id];
+      if(x.bagli&&x.video&&k&&k.bg) goren.push(id);
+      // ses: her zaman çalar (Konuş kapalıyken karşıdan sessizlik gelir)
+      var a=null;
+      Array.prototype.slice.call(sesler.children).forEach(function(el){ if(el.getAttribute("data-id")===id) a=el; });
+      if(x.bagli&&x.ses){
+        if(!a){ a=document.createElement("audio"); a.autoplay=true; a.setAttribute("data-id",id); sesler.appendChild(a); }
+        if(!a.srcObject||a.srcObject.getAudioTracks()[0]!==x.ses){ a.srcObject=new MediaStream([x.ses]); }
+        if(a.paused){ var o=a.play(); if(o&&o.catch) o.catch(function(){}); }
+      }
+    });
+    Array.prototype.slice.call(sesler.children).forEach(function(el){ var id=el.getAttribute("data-id"); if(!kisiler[id]||!kisiler[id].bagli){ el.srcObject=null; sesler.removeChild(el); } });
+    if(kisiBuyukId&&goren.indexOf(kisiBuyukId)<0) kisiBuyukId=null;
+    // küçük kutular: büyükteki kişi yerine "Ev" kutusu
+    var kutular=goren.map(function(id){ return id===kisiBuyukId?"ev":id; });
+    Array.prototype.slice.call(yuva.children).forEach(function(b){ if(kutular.indexOf(b.getAttribute("data-id"))<0) yuva.removeChild(b); });
+    kutular.forEach(function(id){
+      var b=null;
+      Array.prototype.slice.call(yuva.children).forEach(function(el){ if(el.getAttribute("data-id")===id) b=el; });
+      if(!b){
+        b=document.createElement("button"); b.type="button"; b.className="kKisi"; b.setAttribute("data-id",id);
+        var v=document.createElement("video"); v.autoplay=true; v.muted=true; v.setAttribute("playsinline",""); b.appendChild(v);
+        var s=document.createElement("span"); b.appendChild(s);
+        b.onclick=function(e){ e.stopPropagation(); kisiBuyukId=(id==="ev")?null:id; kisiGoster(); };
+        yuva.appendChild(b);
+      }
+      var vid=b.querySelector("video"), akim;
+      if(id==="ev") akim=grVideo.srcObject;
+      else akim=kisiler[id]&&kisiler[id].video?new MediaStream([kisiler[id].video]):null;
+      var eskiT=vid.srcObject&&vid.srcObject.getVideoTracks()[0], yeniT=akim&&akim.getVideoTracks()[0];
+      if(eskiT!==yeniT) vid.srcObject=akim;
+      var o=vid.play(); if(o&&o.catch) o.catch(function(){});
+      b.querySelector("span").textContent=id==="ev"?"Ev":kisiler[id].ad;
+      b.setAttribute("aria-label",id==="ev"?"Ev görüntüsünü büyüt":kisiler[id].ad+" görüntüsünü büyüt");
+    });
+    var bv=E("kKisiBuyuk"), bvid=bv.querySelector("video");
+    if(kisiBuyukId){
+      var t=kisiler[kisiBuyukId].video;
+      if(!bvid.srcObject||bvid.srcObject.getVideoTracks()[0]!==t) bvid.srcObject=new MediaStream([t]);
+      bv.classList.remove("gizle"); var o2=bvid.play(); if(o2&&o2.catch) o2.catch(function(){});
+    } else { bv.classList.add("gizle"); bvid.srcObject=null; }
+  }
+  // iPhone sesi bazen ilk dokunuşu bekler: her dokunuşta duran sesleri yeniden başlat
+  document.addEventListener("pointerdown",function(){
+    Array.prototype.slice.call(E("kKisiSesler").children).forEach(function(a){ if(a.paused){ var o=a.play(); if(o&&o.catch) o.catch(function(){}); } });
+  },true);
 
   // ---------- kartların kaydı (yönetici, Ayarlar açıkken) ----------
   // İnternet kartı iki kartın son satırlarını tutar; sayfa 3 sn'de bir "şu numaradan sonrasını" ister.
@@ -1698,7 +1864,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="16 Eki · Oda 1";
+  var SAYFA_SURUM="16 Eki · Oda 2";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
@@ -1726,6 +1892,7 @@
     E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar"); E("kAyrinti").classList.add("gizli"); E("kTakipBtn").classList.remove("ogreniyor");
     grDugmeler(false);
     grBeni=false; grKonus=false; grYerelDurdur(); grBenDugmeler();
+    kisiHepsiniKapat();
     varligimiBildir();
   }
   var grDevralindi=false;
@@ -1790,6 +1957,7 @@
     clearTimeout(grBekleme);
     if(grPc){ try{ grPc.close(); }catch(h){} }
     var t=m.turn, buz=GR_BUZ;
+    if(t&&t.urls&&t.username&&t.credential) grTurnBilgi={urls:t.urls,username:t.username,credential:t.credential};
     grTurnVar=!!(t&&t.urls&&t.username&&t.credential);
     if(grTurnVar) buz=GR_BUZ.concat([{urls:t.urls,username:t.username,credential:t.credential}]);
     if(m.surum) grKamSurum=String(m.surum);
@@ -2100,6 +2268,7 @@
   function grYerelDurdur(){
     if(grYerel){ ["ses","gor"].forEach(function(k){ if(grYerel[k]){ try{ grYerel[k].stop(); }catch(h){} } }); grYerel=null; }
     var v=E("kBenVideo"); v.srcObject=null; v.classList.add("gizle");
+    Object.keys(kisiler).forEach(function(id){ kisiYerelUygula(kisiler[id]); });
   }
   function grBenDugmeler(){
     var hazir=!!(grYet&&grYet.benVar&&grPc&&grPc.connectionState==="connected");
@@ -2129,6 +2298,8 @@
       if(grYerel.gor){ if(!v.srcObject||v.srcObject.getVideoTracks()[0]!==grYerel.gor) v.srcObject=new MediaStream([grYerel.gor]); v.classList.remove("gizle"); v.play().catch(function(){}); }
       else { v.srcObject=null; v.classList.add("gizle"); }
       grGonder({t:"ben",id:grId,gor:grBeni,ses:grKonus});
+      Object.keys(kisiler).forEach(function(id){ kisiYerelUygula(kisiler[id]); });
+      varligimiBildir();
       yaz("Evi izle: "+(grBeni?(grKonus?"Beni göster açık (görüntü + ses).":"Beni göster açık, sesin kapalı."):(grKonus?"Konuş açık.":"Beni göster / Konuş kapalı.")));
       // iPhone kamera/mikrofon açınca diğer sesleri durdurabiliyor: Evi dinle ve saat kumandası sürsün
       grVideo.play().catch(function(){});
@@ -2216,7 +2387,7 @@
   function grGoruntuParmaklari(t){ var l=[]; for(var i=0;i<t.length;i++){ if(!grKontrolMu(t[i])) l.push(t[i]); } return l; }
   E("kEkran").addEventListener("touchstart",function(e){
     var p=grGoruntuParmaklari(e.touches);
-    if(!grPc){ grPinch=null; grTekParmak=null; return; }
+    if(!grPc||kisiBuyukId){ grPinch=null; grTekParmak=null; return; }
     if(p.length>=2){
       var o=grOrtaNokta(p);
       grPinch={d:grMesafe(p),z:grZ,a:grKonumdanCerceve(o.x,o.y,grZ,grC)};
@@ -2268,7 +2439,8 @@
   document.addEventListener("gesturestart",function(e){ if(grAcik) e.preventDefault(); });
   // tek dokunuş: bağlantı yoksa bağlan. Çift dokunuş: yakınsa 1×'e dön, değilse doldur / tamamını göster
   E("kEkran").addEventListener("pointerup",function(e){
-    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva")) return;
+    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva,#kKisiYuva")) return;
+    if(kisiBuyukId) return;
     if(grHareketVardi){ if(!grPinch&&!grTekParmak) grHareketVardi=false; return; }
     if(!grPc&&!grIstekte){ grBaglan(); return; }
     var simdi=Date.now();
