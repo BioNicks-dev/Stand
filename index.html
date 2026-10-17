@@ -137,6 +137,8 @@
   /* öbür kişinin kutusu (toplantı) */
   #kKisiYuva{position:absolute;right:8px;top:56px;display:flex;flex-direction:column;gap:6px;z-index:4}
   #kKisiYuva:empty{display:none}
+  #kKisiYuva{transition:left .25s,top .25s}
+  #kKisiYuva.suruk{transition:none;opacity:.85}
   .kKisi{position:relative;width:86px;height:116px;min-height:0;padding:0;border-radius:10px;overflow:hidden;background:#000;border:2px solid rgba(255,255,255,.7)}
   .kKisi{touch-action:none;-webkit-touch-callout:none}
   .kKisi video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
@@ -211,7 +213,11 @@
   body.buyukDuzen #kBilgi{top:60px;left:12px;bottom:auto}
   /* Beni göster / Konuş: sağ altta iki yuvarlak düğme, açıkken üstünde kendi küçük görüntün */
   #kBenYuva{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:5}
-  #kBenVideo{width:72px;height:96px;object-fit:cover;border-radius:10px;border:2px solid #7fe0aa;transform:scaleX(-1);background:#000}
+  #kBenYuva #kBenKutu{position:relative;width:72px;height:96px;min-height:0;padding:0;border-radius:10px;overflow:hidden;border:2px solid #7fe0aa;background:#000;touch-action:none;-webkit-touch-callout:none}
+  #kBenVideo{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;pointer-events:none}
+  #kBenKutu.ev #kBenVideo{transform:none}
+  #kBenKutu span{position:absolute;left:0;right:0;bottom:0;padding:2px 4px;font-size:11px;color:#fff;background:rgba(0,0,0,.5);pointer-events:none}
+  #kKisiBuyuk.ayna video{transform:scaleX(-1)}
   .kBenDugmeler{display:flex;gap:8px}
   #kBenYuva button{width:52px;height:52px;min-height:0;padding:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:23px}
   #kBenYuva button.acik{border-color:#7fe0aa;background:rgba(30,110,70,.75)}
@@ -253,6 +259,12 @@
   body.yatayDuzen.buyukDuzen #kAltYuva .izgara3{display:flex;gap:6px}
   body.yatayDuzen.buyukDuzen #kAltYuva button{min-height:38px;padding:4px 12px;font-size:13px;background:rgba(0,0,0,.45);color:#fff;border-color:rgba(255,255,255,.35)}
   body.yatayDuzen.buyukDuzen #kAltYuva #durBtn{width:auto;color:#ffb0b0;border-color:rgba(255,140,140,.6)}
+  /* hareketsizlikte sadece görüntü: kontroller yavaşça kaybolur; görüntü ve kutular kalır */
+  #kEkran .kYuvarlak,#kEkran .kDugmeler,#kPadYuva,#kOda,#kBilgi,.kBenDugmeler,#kAltYuva{transition:opacity .25s}
+  body.sadeGoruntu #kEkran .kYuvarlak,body.sadeGoruntu #kEkran .kDugmeler,body.sadeGoruntu #kPadYuva,body.sadeGoruntu #kOda,
+  body.sadeGoruntu #kBilgi,body.sadeGoruntu .kBenDugmeler,body.sadeGoruntu #kAltYuva{opacity:0 !important;transition:opacity 1s;pointer-events:none !important}
+  body.gzKilit #kEkran .kYuvarlak,body.gzKilit #kEkran .kDugmeler,body.gzKilit #kPadYuva,body.gzKilit #kOda,
+  body.gzKilit #kBilgi,body.gzKilit .kBenDugmeler,body.gzKilit #kAltYuva{pointer-events:none !important}
 </style>
 </head>
 <body>
@@ -316,7 +328,7 @@
     <div id="kZoomGosterge"></div>
     <div id="kAltYuva"></div>
     <div id="kBenYuva">
-      <video id="kBenVideo" class="gizle" autoplay playsinline muted></video>
+      <button id="kBenKutu" type="button" class="gizle" aria-label="Kendi görüntünü büyüt"><video id="kBenVideo" autoplay playsinline muted></video><span id="kBenAd" class="gizle">Ev</span></button>
       <div class="kBenDugmeler">
         <button id="kBeniBtn" type="button" aria-label="Beni göster: görüntün ve sesin evdeki ekrana gider" disabled>📺</button>
         <button id="kKonusBtn" type="button" aria-label="Konuş: sesin evde duyulur" disabled>🎙</button>
@@ -339,7 +351,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 17 Eki 00:40</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 17 Eki 15:00</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
   <div class="panel odaPanel gizle" id="odaPanel"><span id="odaYazi"></span><button class="kucuk gizle" id="odaBtn"></button></div>
@@ -467,6 +479,7 @@
       <label>Sayfadaki yön tuşları: yatay ters (ev kamerasını etkilemez)<input type="checkbox" id="tersX"></label>
       <label>Sayfadaki yön tuşları: dikey ters (ev kamerasını etkilemez)<input type="checkbox" id="tersY"></label>
       <label>Ev kamerası düzeni<select id="kamDuzen"><option value="buyuk">Büyük (kontroller görüntüde)</option><option value="klasik">Klasik</option></select></label>
+      <label>Ev kamerası: 8 sn dokunulmazsa sadece görüntü kalsın (Büyük düzende)<input type="checkbox" id="sadeGoruntu" checked></label>
       <label>Ev kamerası takibi: kimi<select id="takipHedef"><option value="herkes">Herkes (en büyük olan)</option><option value="insan">Sadece insan</option><option value="kedi">Sadece kedi</option></select></label>
       <label>Ev kamerası takipte otomatik zoom<input type="checkbox" id="takipZoom"></label>
       <label>Ev kamerasında tanıma kutularını göster<input type="checkbox" id="kutuGoster" checked></label>
@@ -1234,7 +1247,8 @@
       }
     });
     Array.prototype.slice.call(sesler.children).forEach(function(el){ var id=el.getAttribute("data-id"); if(!kisiler[id]||!kisiler[id].bagli){ el.srcObject=null; sesler.removeChild(el); } });
-    if(kisiBuyukId&&goren.indexOf(kisiBuyukId)<0) kisiBuyukId=null;
+    if(kisiBuyukId==="ben"){ if(!(grYerel&&grYerel.gor)) kisiBuyukId=null; }
+    else if(kisiBuyukId&&goren.indexOf(kisiBuyukId)<0) kisiBuyukId=null;
     // küçük kutular: büyükteki kişi yerine "Ev" kutusu
     var kutular=goren.map(function(id){ return id===kisiBuyukId?"ev":id; });
     Array.prototype.slice.call(yuva.children).forEach(function(b){ if(kutular.indexOf(b.getAttribute("data-id"))<0) yuva.removeChild(b); });
@@ -1258,20 +1272,146 @@
       b.setAttribute("aria-label",id==="ev"?"Ev görüntüsünü büyüt":kisiler[id].ad+" görüntüsünü büyüt");
     });
     var bv=E("kKisiBuyuk"), bvid=bv.querySelector("video");
+    bv.classList.toggle("ayna",kisiBuyukId==="ben");
     if(kisiBuyukId){
-      var t=kisiler[kisiBuyukId].video;
+      var t=kisiBuyukId==="ben"?grYerel.gor:kisiler[kisiBuyukId].video;
       if(!bvid.srcObject||bvid.srcObject.getVideoTracks()[0]!==t) bvid.srcObject=new MediaStream([t]);
       bv.classList.remove("gizle"); var o2=bvid.play(); if(o2&&o2.catch) o2.catch(function(){});
     } else { bv.classList.add("gizle"); bvid.srcObject=null; }
+    benKutuGuncelle();
+    kutuYerlestir();
+  }
+  // Kendi küçük görüntün: büyükteyken yerinde "Ev" görünür
+  function benKutuGuncelle(){
+    var kutu=E("kBenKutu"), v=E("kBenVideo"), gor=grYerel&&grYerel.gor;
+    if(!gor){ if(v.srcObject) v.srcObject=null; kutu.classList.add("gizle"); kutu.classList.remove("ev"); return; }
+    var ev=kisiBuyukId==="ben";
+    var istenen=ev?(grVideo.srcObject&&grVideo.srcObject.getVideoTracks()[0]):gor;
+    var simdiki=v.srcObject&&v.srcObject.getVideoTracks()[0];
+    if(simdiki!==istenen) v.srcObject=istenen?new MediaStream([istenen]):null;
+    kutu.classList.remove("gizle"); kutu.classList.toggle("ev",ev); E("kBenAd").classList.toggle("gizle",!ev);
+    kutu.setAttribute("aria-label",ev?"Ev görüntüsünü büyüt":"Kendi görüntünü büyüt");
+    var o=v.play(); if(o&&o.catch) o.catch(function(){});
   }
   // Kutuya dokunuş: iPhone'da touchend'de hemen işlenir ve varsayılanı engellenir (çift dokunuşta sayfa büyümesin)
   function kisiDokunus(el,is){
     var sonDokunus=0;
-    el.addEventListener("touchend",function(e){ e.preventDefault(); e.stopPropagation(); sonDokunus=Date.now(); is(); },{passive:false});
-    el.addEventListener("click",function(e){ e.stopPropagation(); if(Date.now()-sonDokunus<700) return; is(); });
+    el.addEventListener("touchend",function(e){ e.preventDefault(); e.stopPropagation(); sonDokunus=Date.now(); if(Date.now()-kutuSurukSon<600) return; is(); },{passive:false});
+    el.addEventListener("click",function(e){ e.stopPropagation(); if(Date.now()-sonDokunus<700||Date.now()-kutuSurukSon<600) return; is(); });
   }
   // büyük ekrandaki kişiye dokununca da ev görüntüsüne dönülür
   kisiDokunus(E("kKisiBuyuk"),function(){ kisiBuyukId=null; kisiGoster(); });
+  kisiDokunus(E("kBenKutu"),function(){ kisiBuyukId=(kisiBuyukId==="ben")?null:"ben"; kisiGoster(); });
+
+  // ---------- kişi kutularını taşıma: sürükle, bırakınca en yakın köşeye otursun ----------
+  // Köşe bu telefonda saklanır, dik ve yatay ayrı. Köşe düğmelerin hemen içinde: hiçbir şeyin üstüne binmez.
+  var kutuSuruk=null, kutuSurukSon=0;
+  function kutuKoseAnahtar(){ return "stand_kutuKose_"+(document.body.classList.contains("yatayDuzen")?"yatay":"dik"); }
+  function kutuKose(){ var k=null; try{ k=localStorage.getItem(kutuKoseAnahtar()); }catch(h){} return /^(sol|sag)(Ust|Alt)$/.test(k||"")?k:"sagUst"; }
+  function kutuEngeller(){
+    var ekran=E("kEkran"), er=ekran.getBoundingClientRect(), l=[];
+    ["kAyarBtn","kKapatBtn","kDugmeler","kOda","kBilgi","kPadYuva","kBenYuva","kAltYuva"].forEach(function(id){
+      var el=E(id); if(!el||!ekran.contains(el)) return;
+      var r=el.getBoundingClientRect(); if(r.width<1||r.height<1) return;
+      l.push({x:r.left-er.left,y:r.top-er.top,r:r.right-er.left,b:r.bottom-er.top});
+    });
+    return l;
+  }
+  function kutuHesap(kose,w,h,W,H,eng){
+    var sol=kose.indexOf("sol")===0, ust=/Ust$/.test(kose), P=8;
+    var ay=E("kAyarBtn").getBoundingClientRect(), ka=E("kKapatBtn").getBoundingClientRect(), er=E("kEkran").getBoundingClientRect();
+    var solKenar=ay.width?ay.left-er.left:12, sagKenar=ka.width?ka.right-er.left:W-12;
+    var x=sol?solKenar:sagKenar-w, y=ust?P:H-P-6-h;
+    for(var i=0;i<12;i++){
+      var c=null;
+      eng.forEach(function(o){ if(!c&&x<o.r+6&&x+w>o.x-6&&y<o.b+6&&y+h>o.y-6) c=o; });
+      if(!c) return {x:x,y:y,ok:true};
+      var ny=ust?c.b+8:c.y-8-h;
+      var sinirda=ust?(ny+h<=Math.min(H-P,H*0.75)):(ny>=Math.max(P,H*0.25));   // köşesinden çok uzaklaşmasın
+      if(sinirda) y=ny; else x=sol?c.r+8:c.x-8-w;
+      if(x<0||x+w>W) break;
+    }
+    return {x:Math.max(0,Math.min(W-w,x)),y:Math.max(0,Math.min(H-h,y)),ok:false};
+  }
+  function kutuYerlestir(){
+    var yuva=E("kKisiYuva"), ekran=E("kEkran");
+    if(kutuSuruk||!grAcik||!yuva.children.length) return;
+    var W=ekran.clientWidth, H=ekran.clientHeight, eng=kutuEngeller(), kose=kutuKose();
+    yuva.style.flexDirection="column";
+    var s=kutuHesap(kose,yuva.offsetWidth,yuva.offsetHeight,W,H,eng);
+    if(!s.ok&&yuva.children.length>1){   // iki kişi alt alta sığmıyorsa yan yana
+      yuva.style.flexDirection="row";
+      var s2=kutuHesap(kose,yuva.offsetWidth,yuva.offsetHeight,W,H,eng);
+      if(s2.ok) s=s2; else yuva.style.flexDirection="column";
+    }
+    yuva.style.right="auto"; yuva.style.bottom="auto";
+    yuva.style.left=Math.round(s.x)+"px"; yuva.style.top=Math.round(s.y)+"px";
+  }
+  E("kKisiYuva").addEventListener("pointerdown",function(e){
+    if(e.isPrimary===false) return;
+    var yuva=E("kKisiYuva");
+    kutuSuruk={id:e.pointerId,x0:e.clientX,y0:e.clientY,l:yuva.offsetLeft,t:yuva.offsetTop,oynadi:false};
+  });
+  window.addEventListener("pointermove",function(e){
+    var s=kutuSuruk; if(!s||e.pointerId!==s.id) return;
+    var dx=e.clientX-s.x0, dy=e.clientY-s.y0, yuva=E("kKisiYuva"), ekran=E("kEkran");
+    if(!s.oynadi&&Math.abs(dx)+Math.abs(dy)<14) return;
+    s.oynadi=true; yuva.classList.add("suruk");
+    yuva.style.left=Math.max(0,Math.min(ekran.clientWidth-yuva.offsetWidth,s.l+dx))+"px";
+    yuva.style.top=Math.max(0,Math.min(ekran.clientHeight-yuva.offsetHeight,s.t+dy))+"px";
+  });
+  function kutuSurukBitti(e){
+    var s=kutuSuruk; if(!s||e.pointerId!==s.id) return;
+    kutuSuruk=null;
+    var yuva=E("kKisiYuva"), ekran=E("kEkran");
+    if(!s.oynadi) return;
+    kutuSurukSon=Date.now(); yuva.classList.remove("suruk");
+    var cx=yuva.offsetLeft+yuva.offsetWidth/2, cy=yuva.offsetTop+yuva.offsetHeight/2;
+    var kose=(cx<ekran.clientWidth/2?"sol":"sag")+(cy<ekran.clientHeight/2?"Ust":"Alt");
+    try{ localStorage.setItem(kutuKoseAnahtar(),kose); }catch(h){}
+    kutuYerlestir();
+  }
+  window.addEventListener("pointerup",kutuSurukBitti);
+  window.addEventListener("pointercancel",kutuSurukBitti);
+  // düğmelerin yeri değişebilir (kim-burada yazısı uzar, kendi görüntün açılır): saniyede bir yerini düzelt
+  setInterval(kutuYerlestir,1000);
+
+  // ---------- hareketsizlikte sadece görüntü ----------
+  // Büyük düzende 8 sn dokunulmazsa düğmeler, joystick ve yazılar yavaşça kaybolur; görüntü ve kutular kalır.
+  // Gizliyken kaybolan bir şeyin yerine dokunmak sadece geri getirir (düğmeye basılmaz).
+  var gzSon=Date.now(), gzUyanPid=null, gzKilitTik=null;
+  function gzGizli(){ return document.body.classList.contains("sadeGoruntu"); }
+  function gzGoster(){ document.body.classList.remove("sadeGoruntu"); }
+  function gzEngel(){
+    if(!grPc||grPc.connectionState!=="connected") return true;                       // görüntü yokken
+    if(aktif||grPinch||grTekParmak||kutuSuruk) return true;                          // joystick, zoom, taşıma sürerken
+    var o=E("kOrta"); if(!o.classList.contains("gizle")&&o.textContent) return true;  // ortada uyarı yazısı
+    if(!E("sinirNot").classList.contains("gizle")) return true;                        // dönüş sınırı uyarısı
+    if(!E("kAyrinti").classList.contains("gizli")) return true;                        // ayrıntı kutusu açık
+    if(!E("ayarlar").classList.contains("gizle")) return true;                         // ayarlar açık
+    return false;
+  }
+  function gzKontrol(){
+    var etkin=grAcik&&document.body.classList.contains("buyukDuzen")&&E("sadeGoruntu").checked;
+    if(!etkin||gzEngel()){ gzSon=Date.now(); if(gzGizli()) gzGoster(); return; }
+    if(!gzGizli()&&Date.now()-gzSon>=8000) document.body.classList.add("sadeGoruntu");
+  }
+  setInterval(gzKontrol,400);
+  function gzDokunus(e){
+    gzSon=Date.now();
+    if(!gzGizli()) return;
+    gzGoster();
+    document.body.classList.add("gzKilit"); clearTimeout(gzKilitTik);   // parmak kalkana kadar düğmeler basılmaz
+    if(e.type==="pointerdown") gzUyanPid=e.pointerId;
+  }
+  function gzBirak(e){
+    if(e.type==="pointerup"||e.type==="pointercancel") setTimeout(function(){ if(gzUyanPid===e.pointerId) gzUyanPid=null; },0);
+    if(!document.body.classList.contains("gzKilit")) return;
+    clearTimeout(gzKilitTik); gzKilitTik=setTimeout(function(){ document.body.classList.remove("gzKilit"); },350);
+  }
+  document.addEventListener("pointerdown",gzDokunus,true);
+  document.addEventListener("touchstart",gzDokunus,{capture:true,passive:true});
+  ["pointerup","pointercancel","touchend","touchcancel"].forEach(function(t){ document.addEventListener(t,gzBirak,true); });
   // iPhone sesi bazen ilk dokunuşu bekler: her dokunuşta duran sesleri yeniden başlat
   document.addEventListener("pointerdown",function(){
     Array.prototype.slice.call(E("kKisiSesler").children).forEach(function(a){ if(a.paused){ var o=a.play(); if(o&&o.catch) o.catch(function(){}); } });
@@ -1889,7 +2029,7 @@
   E("saatAcik").addEventListener("change",function(){ if(E("saatAcik").checked){ saatBaslat(); yaz("Saat kumandası açıldı."); } else { saatKapat(); yaz("Saat kumandası kapandı."); } });
 
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim","saatAcik","adInput"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim","saatAcik","adInput","sadeGoruntu"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
@@ -1903,7 +2043,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="17 Eki 00:40";
+  var SAYFA_SURUM="17 Eki 15:00";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
@@ -2224,6 +2364,9 @@
       if(dur.parentNode!==E("ana")) E("ana").insertBefore(dur,E("altDugmeler"));
     }
     grZoomUygula();
+    if(!b) gzGoster();
+    gzSon=Date.now();
+    kutuYerlestir();
   }
   if(grYatayMedya){ if(grYatayMedya.addEventListener) grYatayMedya.addEventListener("change",duzenUygula); else if(grYatayMedya.addListener) grYatayMedya.addListener(duzenUygula); }
   E("kamDuzen").addEventListener("change",duzenUygula);
@@ -2306,8 +2449,8 @@
   }
   function grYerelDurdur(){
     if(grYerel){ ["ses","gor"].forEach(function(k){ if(grYerel[k]){ try{ grYerel[k].stop(); }catch(h){} } }); grYerel=null; }
-    var v=E("kBenVideo"); v.srcObject=null; v.classList.add("gizle");
     Object.keys(kisiler).forEach(function(id){ kisiYerelUygula(kisiler[id]); });
+    kisiGoster();
   }
   function grBenDugmeler(){
     var hazir=!!(grYet&&grYet.benVar&&grPc&&grPc.connectionState==="connected");
@@ -2333,9 +2476,7 @@
         gv.replaceTrack(grYerel.gor).catch(function(){});
         if(grYerel.gor){ try{ var pr=gv.getParameters(); if(pr.encodings&&pr.encodings[0]){ pr.encodings[0].maxBitrate=700000; gv.setParameters(pr).catch(function(){}); } }catch(h){} }
       }
-      var v=E("kBenVideo");
-      if(grYerel.gor){ if(!v.srcObject||v.srcObject.getVideoTracks()[0]!==grYerel.gor) v.srcObject=new MediaStream([grYerel.gor]); v.classList.remove("gizle"); v.play().catch(function(){}); }
-      else { v.srcObject=null; v.classList.add("gizle"); }
+      kisiGoster();
       grGonder({t:"ben",id:grId,gor:grBeni,ses:grKonus});
       Object.keys(kisiler).forEach(function(id){ kisiYerelUygula(kisiler[id]); });
       varligimiBildir();
@@ -2478,6 +2619,7 @@
   document.addEventListener("gesturestart",function(e){ if(grAcik) e.preventDefault(); });
   // tek dokunuş: bağlantı yoksa bağlan. Çift dokunuş: yakınsa 1×'e dön, değilse doldur / tamamını göster
   E("kEkran").addEventListener("pointerup",function(e){
+    if(gzUyanPid!==null&&e.pointerId===gzUyanPid) return;   // gizli kontrolleri geri getiren dokunuş
     if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva,#kKisiYuva")) return;
     if(kisiBuyukId) return;
     if(grHareketVardi){ if(!grPinch&&!grTekParmak) grHareketVardi=false; return; }
