@@ -121,6 +121,20 @@
     border-bottom:2px solid var(--live);box-shadow:0 8px 24px rgba(0,0,0,.28);
     padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 14px}
   #kontrolKutu .ic{max-width:480px;margin:0 auto}
+  /* gizlilik: biri bağlanmak istiyor (yönetici) */
+  #gkKutu{position:fixed;left:0;right:0;top:0;z-index:51;background:var(--panel);
+    border-bottom:2px solid var(--stop);box-shadow:0 8px 24px rgba(0,0,0,.28);
+    padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 14px}
+  #gkKutu .ic{max-width:480px;margin:0 auto}
+  #gkYazi{font-size:19px;font-weight:600;margin:0 0 4px;overflow-wrap:anywhere}
+  #gkKutu .not{margin:0 0 12px}
+  #gkKutu .izgara2 button{font-weight:600}
+  #gkEngelleBtn{background:var(--stop);border-color:var(--stop);color:var(--bg)}
+  #gkBildiri{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 10px);transform:translateX(-50%);z-index:52;
+    max-width:90%;padding:9px 16px;border-radius:18px;background:rgba(0,0,0,.8);color:#fff;font-size:15px;font-weight:500;
+    box-shadow:0 6px 18px rgba(0,0,0,.3);pointer-events:none;text-align:center}
+  input[type=time]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:6px 8px}
+  #gkKonu{overflow-wrap:anywhere;word-break:break-all;text-align:right;max-width:62%}
   #kontrolYazi{font-size:19px;font-weight:600;margin:0 0 12px;overflow-wrap:anywhere}
   #kontrolKutu .izgara2 button{font-weight:600}
   #kontrolVerBtn{background:var(--live);border-color:var(--live);color:var(--bg)}
@@ -283,6 +297,19 @@
   </div>
 </div>
 
+<!-- ============ GİZLİLİK: biri bağlanmak istiyor (sadece yönetici) ============ -->
+<div id="gkKutu" class="gizle" role="alertdialog" aria-labelledby="gkYazi">
+  <div class="ic">
+    <div id="gkYazi">—</div>
+    <p class="not" id="gkKalan"></p>
+    <div class="izgara2">
+      <button id="gkEngelleBtn">Engelle</button>
+      <button id="gkIzinBtn">İzin ver</button>
+    </div>
+  </div>
+</div>
+<div id="gkBildiri" class="gizle"></div>
+
 <!-- ============ KONTROL İSTEĞİ (sadece yönetici) ============ -->
 <div id="kontrolKutu" class="gizle" role="alertdialog" aria-labelledby="kontrolYazi">
   <div class="ic">
@@ -351,7 +378,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 17 Eki 15:00</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 17 Eki 18:00</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
   <div class="panel odaPanel gizle" id="odaPanel"><span id="odaYazi"></span><button class="kucuk gizle" id="odaBtn"></button></div>
@@ -582,6 +609,28 @@
       <div class="satir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
       <pre id="kayit"></pre>
     </div>
+    </div>
+
+    <div class="sadeceYonetici">
+      <h2>Gizlilik</h2>
+      <div class="panel">
+        <p class="not" style="margin:0 0 6px">Başkası Evi izle'ye bağlanırken aşağıdaki durumlarda telefonuna ntfy bildirimi gelir. 15 sn içinde engellemezsen bağlanır.</p>
+        <label style="border-top:none">Gizlilik kuralı<input type="checkbox" id="gkAcik"></label>
+        <label>Evdeyken sor (XR karta bağlıysa)<input type="checkbox" id="gkEvde"></label>
+        <label>Hafta içi bu saatlerde sor<input type="checkbox" id="gkHi"></label>
+        <div class="satir"><span>Başlangıç</span><input type="time" id="gkBas"></div>
+        <div class="satir"><span>Bitiş (ertesi sabah olabilir)</span><input type="time" id="gkBit"></div>
+        <label>Hafta sonu tüm gün sor<input type="checkbox" id="gkHs"></label>
+        <label>Stand sayfam açıkken sormadan bağlansın<input type="checkbox" id="gkSayfa"></label>
+        <label>İzin süresi (kopup dönerse yeniden sorulmaz)<select id="gkSure"><option value="5">5 dk</option><option value="15">15 dk</option><option value="30">30 dk</option><option value="60">60 dk</option></select></label>
+        <div class="satir"><span>Bildirim konusu</span><b id="gkKonu" class="secilir">yok</b></div>
+        <div class="izgara3" style="margin-top:6px">
+          <button class="kucuk" id="gkOlusturBtn">Oluştur</button>
+          <button class="kucuk" id="gkKopyalaBtn">Kopyala</button>
+          <button class="kucuk" id="gkDenemeBtn">Deneme</button>
+        </div>
+        <p class="not" id="gkDurum"></p>
+      </div>
     </div>
 
     <h2>Bağlantı</h2>
@@ -862,7 +911,7 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
-      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); }
+      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/gizlilik"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -897,6 +946,7 @@
       if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
+      if(konu.slice(-9)==="/gizlilik"){ gkAyarGeldi(m); return; }
       if(konu.slice(-4)==="/var" && rol==="uzak"){ odaMesaj(m); return; }
       if(konu.slice(-4)==="/var" && rol==="evde"){
         var yeni=!uzaklar[m.id];
@@ -1003,19 +1053,21 @@
   function varligimiBildir(){
     if(!istemci||!istemci.connected||rol!=="uzak") return;
     var m={id:benimKimlik,cihaz:benimCihaz,ad:benimAdim(),on:odaOnde()};
-    if(yk){ m.y=1; m.ver=odaVer; m.verZ=odaVerZ; if(odaSonRed) m.red=odaSonRed; if(odaYeni()) m.yeni=1; }
-    else { if(Date.now()-sonKontrol<ODA_KULLANIM) m.kul=1; if(odaIste) m.iste=odaIste; }
+    if(yk){ m.y=1; m.ver=odaVer; m.verZ=odaVerZ; if(odaSonRed) m.red=odaSonRed; if(odaYeni()) m.yeni=1; if(gkCevap.red) m.gkRed=gkCevap.red; if(gkCevap.ok) m.gkOk=gkCevap.ok; }
+    else { if(Date.now()-sonKontrol<ODA_KULLANIM) m.kul=1; if(odaIste) m.iste=odaIste; if(gkBekleyen) m.gk=gkBekleyen.id; }
     if(grAcik&&grPc&&grPc.connectionState==="connected"){ m.iz=1; if(grBeni) m.bg=1; if(grKonus) m.bs=1; }
     istemci.publish("comitok/"+kod+"/var",JSON.stringify(m));
   }
   function odaMesaj(m){
     if(!m||!m.id||m.id===benimKimlik) return;
     var k={id:m.id,bg:!!m.bg,bs:!!m.bs,ad:String(m.ad||m.cihaz||"?").slice(0,20),y:!!m.y,on:m.on!==false,iz:!!m.iz,kul:!!m.kul,
-      ver:!!m.ver,verZ:Number(m.verZ)||0,iste:String(m.iste||""),red:String(m.red||""),yeni:!!m.yeni,zaman:Date.now()};
+      ver:!!m.ver,verZ:Number(m.verZ)||0,iste:String(m.iste||""),red:String(m.red||""),yeni:!!m.yeni,zaman:Date.now(),
+      gk:String(m.gk||""),gkRed:String(m.gkRed||""),gkOk:String(m.gkOk||"")};
     var eski=odaKisiler[m.id];
     odaKisiler[m.id]=k;
     if(yk&&k.y&&k.verZ>odaVerZ){ odaVer=k.ver; odaVerZ=k.verZ; }   // yöneticinin diğer cihazındaki karar
     if(!eski||!eski.on&&k.on) yaz("Odada: "+k.ad+(k.y?" (yönetici)":"")+".");
+    gkOdaMesaj(k,eski);
     odaGuncelle();
   }
   function odaGuncelle(){
@@ -1066,6 +1118,7 @@
     }
     kontrolGoster();
     kisiEsitle();
+    gkGuncelle();
   }
   function kontrolGoster(){
     var var_=kontrolBende();
@@ -1131,6 +1184,247 @@
     varligimiBildir(); odaGuncelle();
   });
   E("adInput").addEventListener("change",function(){ varligimiBildir(); yaz("Adın: "+benimAdim()+"."); });
+
+  // ---------- gizlilik kuralı (17 Eki) ----------
+  // Yönetici olmayan biri Evi izle'ye bağlanırken: yönetici evdeyse (XR karta bağlı) VEYA saat aralığındaysa
+  // yöneticinin telefonuna ntfy bildirimi gider, 15 sn beklenir; engellenmezse bağlanır.
+  // Kural bağlanan kişinin sayfasında uygulanır (kilit değil, haber verme kuralı). Ayarlar sunucuda saklanır (comitok/<oda>/gizlilik).
+  var GK_VARSAYILAN={acik:true,evde:true,hi:true,bas:"19:00",bit:"09:00",hs:true,sayfa:true,sure:15,konu:""};
+  var GK_BEKLE=15000, GK_RED=120000;
+  var gkAyar=null, gkHazir=false;          // sunucudaki ayar; geldi mi (ya da 3 sn geçti mi)
+  var gkBekleyen=null;                     // standart: bekleyen istek {id,bas,tik,es}
+  var gkElleBekle=false, gkElleZaman=0;    // standart: engellendikten sonra yeni istek sadece elle
+  var gkCevap={red:"",ok:""};              // yönetici: verdiği son cevaplar
+  var gkKutuK=null, gkGorulen={};          // yönetici: kutudaki kişi, isteklerin ilk görüldüğü an
+  function gkA(){ var a={}; Object.keys(GK_VARSAYILAN).forEach(function(k){ a[k]=(gkAyar&&gkAyar[k]!==undefined)?gkAyar[k]:GK_VARSAYILAN[k]; }); return a; }
+  function gkDak(t){ var p=String(t||"").split(":"); return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0); }
+  // Aralık gece yarısını geçebilir: akşam kısmı Pazar-Cuma, sabah kısmı Pazartesi-Cumartesi
+  // (Cuma gecesi Cumartesi sabahına kadar sürer; Pazar gecesi Pazartesi sabahına kadar).
+  function gkSaatte(d,a){
+    var g=d.getDay(), dk=d.getHours()*60+d.getMinutes();
+    if(a.hs&&(g===0||g===6)) return true;
+    if(!a.hi) return false;
+    var b=gkDak(a.bas), e=gkDak(a.bit);
+    if(b===e) return false;
+    if(b<e) return g>=1&&g<=5&&dk>=b&&dk<e;
+    if(dk>=b) return g<=5;
+    if(dk<e) return g>=1;
+    return false;
+  }
+  function gkKosul(){
+    var a=gkA(), l=[];
+    if(a.evde&&sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE&&sonDurum.iphone) l.push("evdesin (XR bağlı)");
+    if(gkSaatte(new Date(),a)) l.push("saat aralığında");
+    return l;
+  }
+  function gkSorulmali(){
+    var a=gkA();
+    if(yk||rol!=="uzak"||!a.acik||!a.konu) return false;
+    var yon=odaDigerleri().filter(function(k){ return k.y; });
+    if(yon.some(function(k){ return k.iz; })) return false;   // yönetici Evi izle'de: zaten görür
+    if(a.sayfa&&yon.length) return false;                     // yöneticinin stand sayfası açık
+    return gkKosul().length>0;
+  }
+  function gkZaman(ad){ try{ return Number(localStorage.getItem("stand_gk"+ad))||0; }catch(h){ return 0; } }
+  function gkZamanYaz(ad,v){ try{ localStorage.setItem("stand_gk"+ad,String(v)); }catch(h){} }
+  // grBaglan'dan önce: true dönerse şimdilik bağlanılmaz
+  function gkKapi(){
+    if(yk||rol!=="uzak") return false;
+    var n=Date.now();
+    if(gkBekleyen){ grOrta("Bağlanılıyor…"); return true; }
+    var red=gkZaman("Red");
+    if(n<red){ grOrta("Şu an bağlanılamıyor. "+Math.ceil((red-n)/60000)+" dk sonra tekrar deneyebilirsin.",true); return true; }
+    if(n<gkZaman("Izin")) return false;
+    if(!gkSorulmali()) return false;
+    if(gkElleBekle&&n-gkElleZaman>1500){ grOrta("Bağlanmak için dokun.",true); return true; }
+    gkBaslat(); return true;
+  }
+  function gkNtfy(govde){
+    return fetch("https://ntfy.sh/",{method:"POST",body:JSON.stringify(govde)})
+      .then(function(r){ if(!r.ok) throw new Error("ntfy "+r.status); return r; });
+  }
+  function gkBaslat(){
+    var a=gkA(), n=Date.now(), id=Math.random().toString(36).slice(2,10);
+    gkElleBekle=false;
+    gkBekleyen={id:id,bas:n};
+    grOrta("Bağlanılıyor…");
+    yaz("Gizlilik: yöneticiye bildirim gönderiliyor, 15 sn bekleniyor ("+gkKosul().join(", ")+").");
+    varligimiBildir();
+    try{
+      gkNtfy({topic:a.konu,title:benimAdim()+" bağlanıyor",message:"Evi izle'ye bağlanmak istiyor. 15 sn içinde engellemezsen bağlanır.",
+        priority:4,tags:["eyes"],click:location.origin+location.pathname,
+        actions:[{action:"http",label:"Engelle",url:"https://ntfy.sh/"+a.konu+"-cevap",method:"POST",body:"engelle "+id,clear:true}]})
+        .catch(function(h){ yaz("Gizlilik: bildirim gönderilemedi ("+((h&&h.message)||h)+"). Yine 15 sn beklenir."); });
+    }catch(h){ yaz("Gizlilik: bildirim gönderilemedi."); }
+    // bildirimdeki "Engelle" düğmesi ntfy'de <konu>-cevap konusuna yazar; onu dinle
+    try{
+      var es=new EventSource("https://ntfy.sh/"+encodeURIComponent(a.konu)+"-cevap/sse?since="+Math.floor(n/1000-5));
+      es.onmessage=function(e){
+        try{ var d=JSON.parse(e.data); if(d.event==="message"&&String(d.message||"").trim()==="engelle "+id) gkSonuc("red","bildirimden"); }catch(h){}
+      };
+      gkBekleyen.es=es;
+    }catch(h){}
+    gkBekleyen.tik=setTimeout(function(){ gkSonuc("ok","15 sn doldu"); },GK_BEKLE);
+  }
+  function gkBitir(){
+    var b=gkBekleyen; if(!b) return;
+    clearTimeout(b.tik); if(b.es){ try{ b.es.close(); }catch(h){} }
+    gkBekleyen=null; varligimiBildir();
+  }
+  function gkSonuc(t,neden){
+    if(!gkBekleyen) return;
+    gkBitir();
+    if(t==="red"){
+      gkZamanYaz("Red",Date.now()+GK_RED); gkZamanYaz("Izin",0); gkElleBekle=true;
+      yaz("Gizlilik: yönetici engelledi ("+neden+").");
+      if(grAcik) grOrta("Şu an bağlanılamıyor. 2 dk sonra tekrar deneyebilirsin.",true);
+      return;
+    }
+    gkZamanYaz("Izin",Date.now()+gkA().sure*60000);
+    yaz("Gizlilik: izin ("+neden+"), bağlanılıyor.");
+    if(grAcik&&grGorunur()) grBaglan();
+  }
+  function gkIptal(){ if(gkBekleyen){ gkBitir(); yaz("Gizlilik: Evi izle kapatıldı, bekleme iptal."); } }
+  // yöneticiye kısa haber: sayfanın üstünde yazı + "ding"
+  var gkBildiriTik=null;
+  function gkBildiri(t,sure){
+    var el=E("gkBildiri"); el.textContent=t; el.classList.remove("gizle");
+    clearTimeout(gkBildiriTik); gkBildiriTik=setTimeout(function(){ el.classList.add("gizle"); },sure||5000);
+  }
+  function gkDing(){
+    try{
+      var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return;
+      if(!zilCtx) zilCtx=new Ctx();
+      if(zilCtx.state==="suspended") zilCtx.resume();
+      var t=zilCtx.currentTime+0.03;
+      [[880,0],[1320,0.16]].forEach(function(p){
+        var o=zilCtx.createOscillator(), g=zilCtx.createGain();
+        o.frequency.value=p[0];
+        g.gain.setValueAtTime(0,t+p[1]); g.gain.linearRampToValueAtTime(0.25,t+p[1]+0.01);
+        g.gain.exponentialRampToValueAtTime(0.001,t+p[1]+0.5);
+        o.connect(g); g.connect(zilCtx.destination); o.start(t+p[1]); o.stop(t+p[1]+0.55);
+      });
+    }catch(h){}
+  }
+  function gkOdaMesaj(k,eski){
+    if(rol!=="uzak") return;
+    if(!yk){
+      // standart: yöneticinin sayfadan verdiği cevap
+      if(gkBekleyen&&k.y){
+        if(k.gkRed===gkBekleyen.id) gkSonuc("red","sayfadan");
+        else if(k.gkOk===gkBekleyen.id) gkSonuc("ok","yönetici izin verdi");
+      }
+      return;
+    }
+    // yönetici: biri sormadan (ya da izinle) Evi izle'ye bağlandıysa haber ver
+    if(!k.y&&k.iz&&!(eski&&eski.iz)&&gkA().acik&&odaOnde()){
+      gkDing(); gkBildiri(k.ad+" Evi izle'ye bağlandı");
+      yaz("Gizlilik: "+k.ad+" Evi izle'ye bağlandı.");
+    }
+  }
+  // yönetici: bekleyen istek kutusu + ayar durumu; standart: izni bağlıyken tazele
+  function gkGuncelle(){
+    if(rol!=="uzak") return;
+    if(!yk){ if(benIzliyor()) gkZamanYaz("Izin",Date.now()+gkA().sure*60000); return; }
+    var yon=odaYoneticiler(), k=null;
+    odaStandartlar().forEach(function(x){
+      if(k||!x.gk||x.gk===gkCevap.red||x.gk===gkCevap.ok) return;
+      if(yon.some(function(y){ return y.gkRed===x.gk||y.gkOk===x.gk; })) return;   // diğer cihazdan cevaplandı
+      k=x;
+    });
+    if(k&&!gkGorulen[k.gk]){
+      gkGorulen[k.gk]=Date.now();
+      yaz("Gizlilik: "+k.ad+" bağlanmak istiyor.");
+      if(odaOnde()) gkDing();
+    }
+    gkKutuK=k;
+    E("gkKutu").classList.toggle("gizle",!k);
+    gkKutuYaz();
+    gkDurumYaz();
+  }
+  function gkKutuYaz(){
+    var k=gkKutuK; if(!k) return;
+    var kalan=Math.max(0,Math.ceil((GK_BEKLE-(Date.now()-(gkGorulen[k.gk]||Date.now())))/1000));
+    E("gkYazi").textContent=k.ad+" Evi izle'ye bağlanmak istiyor";
+    E("gkKalan").textContent=kalan>0?"Engellemezsen "+kalan+" sn sonra bağlanır.":"Bağlanıyor…";
+  }
+  setInterval(function(){ if(gkKutuK) gkKutuYaz(); },1000);
+  E("gkEngelleBtn").onclick=function(){
+    if(!gkKutuK) return;
+    gkCevap.red=gkKutuK.gk; varligimiBildir();
+    yaz("Gizlilik: "+gkKutuK.ad+" engellendi."); gkBildiri(gkKutuK.ad+" engellendi",3000);
+    gkKutuK=null; E("gkKutu").classList.add("gizle");
+  };
+  E("gkIzinBtn").onclick=function(){
+    if(!gkKutuK) return;
+    gkCevap.ok=gkKutuK.gk; varligimiBildir();
+    yaz("Gizlilik: "+gkKutuK.ad+" için izin verildi.");
+    gkKutuK=null; E("gkKutu").classList.add("gizle");
+  };
+  // ---- ayarlar (yönetici) ----
+  function gkAyarGeldi(m){
+    if(!m||typeof m!=="object") return;
+    gkAyar=m; gkHazir=true;
+    gkArayuz(); gkDurumYaz();
+  }
+  var GK_ALANLAR=["gkAcik","gkEvde","gkHi","gkBas","gkBit","gkHs","gkSayfa","gkSure","gkOlusturBtn","gkKopyalaBtn","gkDenemeBtn"];
+  function gkArayuz(){
+    var a=gkA();
+    E("gkAcik").checked=!!a.acik; E("gkEvde").checked=!!a.evde; E("gkHi").checked=!!a.hi;
+    E("gkBas").value=a.bas; E("gkBit").value=a.bit; E("gkHs").checked=!!a.hs; E("gkSayfa").checked=!!a.sayfa;
+    E("gkSure").value=String(a.sure);
+    E("gkKonu").textContent=a.konu||"yok";
+    GK_ALANLAR.forEach(function(id){ E(id).disabled=!gkHazir; });
+    E("gkKopyalaBtn").disabled=!gkHazir||!a.konu; E("gkDenemeBtn").disabled=!gkHazir||!a.konu;
+    E("gkBas").disabled=E("gkBit").disabled=!gkHazir||!a.hi;
+  }
+  function gkDurumYaz(){
+    if(!yk) return;
+    var a=gkA(), t;
+    if(!gkHazir) t="Ayar sunucudan bekleniyor…";
+    else if(!a.acik) t="Kural kapalı: herkes hemen bağlanır.";
+    else if(!a.konu) t="Kural çalışmıyor: önce \"Oluştur\"a bas, sonra ntfy uygulamasında bu konuya abone ol.";
+    else {
+      var k=gkKosul();
+      t=k.length?"Şu an sorulur ("+k.join(", ")+")."+(a.sayfa?" Bu sayfa açıkken sormadan bağlanır.":"")
+               :"Şu an sorulmaz (evde değilsin, saat aralık dışında).";
+    }
+    E("gkDurum").textContent=t;
+  }
+  function gkAyarYayinla(konu){
+    if(!istemci||!istemci.connected){ yaz("Sunucuya bağlı değil, gizlilik ayarı kaydedilemedi."); gkArayuz(); return false; }
+    var a={acik:E("gkAcik").checked,evde:E("gkEvde").checked,hi:E("gkHi").checked,
+      bas:E("gkBas").value||GK_VARSAYILAN.bas,bit:E("gkBit").value||GK_VARSAYILAN.bit,hs:E("gkHs").checked,
+      sayfa:E("gkSayfa").checked,sure:Number(E("gkSure").value)||15,konu:konu!==undefined?konu:gkA().konu,z:Date.now()};
+    gkAyar=a;
+    istemci.publish("comitok/"+kod+"/gizlilik",JSON.stringify(a),{retain:true});
+    yaz("Gizlilik ayarı kaydedildi.");
+    gkArayuz(); gkDurumYaz();
+    return true;
+  }
+  ["gkAcik","gkEvde","gkHi","gkBas","gkBit","gkHs","gkSayfa","gkSure"].forEach(function(id){
+    E(id).addEventListener("change",function(){ gkAyarYayinla(); });
+  });
+  E("gkOlusturBtn").onclick=function(){
+    if(gkA().konu&&!confirm("Yeni konu oluşturulursa ntfy uygulamasında yeni konuya tekrar abone olman gerekir. Devam edilsin mi?")) return;
+    var b=new Uint8Array(16), harf="abcdefghijklmnopqrstuvwxyz0123456789", k="stand-";
+    (window.crypto||window.msCrypto).getRandomValues(b);
+    for(var i=0;i<b.length;i++) k+=harf[b[i]%harf.length];
+    if(gkAyarYayinla(k)){ yaz("Gizlilik: yeni bildirim konusu: "+k); gkBildiri("Konu oluşturuldu. Kopyala ve ntfy'de abone ol.",4000); }
+  };
+  E("gkKopyalaBtn").onclick=function(){
+    var k=gkA().konu; if(!k) return;
+    var ok=function(){ gkBildiri("Kopyalandı",2000); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(k).then(ok,function(){ gkBildiri("Kopyalanamadı: konuyu basılı tutup seç",3500); });
+    else gkBildiri("Kopyalanamadı: konuyu basılı tutup seç",3500);
+  };
+  E("gkDenemeBtn").onclick=function(){
+    var k=gkA().konu; if(!k) return;
+    gkNtfy({topic:k,title:"Deneme",message:"Gizlilik bildirimleri bu telefona geliyor.",tags:["white_check_mark"]})
+      .then(function(){ gkBildiri("Deneme bildirimi gönderildi",2500); yaz("Gizlilik: deneme bildirimi gönderildi."); },
+            function(h){ gkBildiri("Gönderilemedi",2500); yaz("Gizlilik: deneme bildirimi gönderilemedi ("+((h&&h.message)||h)+")."); });
+  };
+  gkArayuz();
 
   // ---------- 2. aşama: izleyenler arasında doğrudan bağlantı (16 Eki · Oda 2) ----------
   // İki kişi aynı anda Evi izle'deyse telefonları birbirine ayrıca bağlanır (Pixel'in yükü artmaz).
@@ -2043,7 +2337,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="17 Eki 15:00";
+  var SAYFA_SURUM="17 Eki 18:00";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
@@ -2109,6 +2403,7 @@
   }
   function grGorunur(){ return document.visibilityState!=="hidden"; }
   function grBaglan(){
+    if(gkKapi()) return;   // gizlilik kuralı: bildirim gitti, bekleniyor (ya da engellendi)
     grDevralindi=false;
     grBagKapat(true);
     grSayfalar={}; grTeklifSayfa=null; grPkCevap=false; grIkiSayfa=false; clearTimeout(grTaniTik);
@@ -2371,7 +2666,7 @@
   if(grYatayMedya){ if(grYatayMedya.addEventListener) grYatayMedya.addEventListener("change",duzenUygula); else if(grYatayMedya.addListener) grYatayMedya.addListener(duzenUygula); }
   E("kamDuzen").addEventListener("change",duzenUygula);
   function kameraModuAc(){
-    grAcik=true;
+    grAcik=true; gkElleZaman=Date.now();
     if(sonDurum||rol==="evde") oturumBas={d:netDonus,t:netTilt};   // her Evi izle açılışı yeni oturum
     document.body.classList.add("kameraModu");
     E("kameraAlan").classList.remove("gizle");
@@ -2382,6 +2677,7 @@
     grBaglan();
   }
   function kameraModuKapat(){
+    gkIptal();
     grBagKapat(true);
     grAcik=false;
     document.body.classList.remove("kameraModu");
@@ -2623,7 +2919,7 @@
     if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva,#kKisiYuva")) return;
     if(kisiBuyukId) return;
     if(grHareketVardi){ if(!grPinch&&!grTekParmak) grHareketVardi=false; return; }
-    if(!grPc&&!grIstekte){ grBaglan(); return; }
+    if(!grPc&&!grIstekte){ gkElleZaman=Date.now(); grBaglan(); return; }
     var simdi=Date.now();
     if(simdi-grDokunSon<350){
       grDokunSon=0;
