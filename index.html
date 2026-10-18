@@ -162,6 +162,11 @@
   #gsAcBtn{background:var(--live);border-color:var(--live);color:var(--bg)}
   #gsRedBtn{background:var(--stop);border-color:var(--stop);color:var(--bg)}
   #gsSecListe{display:grid;gap:8px;margin:8px 0}
+  #gsBilgi{position:fixed;left:0;right:0;top:0;z-index:53;background:var(--panel);border-bottom:2px solid var(--line-strong);
+    box-shadow:0 8px 24px rgba(0,0,0,.28);padding:calc(env(safe-area-inset-top,0px) + 12px) 14px 14px}
+  #gsBilgi .ic{max-width:480px;margin:0 auto}
+  #gsBilgiAd{font-size:19px;font-weight:600;margin:0 0 2px}
+  #gsSusBtn{margin-top:8px}
   #gsSecListe button{font-weight:600}
   #kOrta{z-index:3;text-shadow:0 1px 3px #000}
   .kBenDugmeler{flex-wrap:wrap;justify-content:flex-end;max-width:112px}
@@ -347,6 +352,17 @@
       <button id="gsRedBtn">Reddet</button>
       <button id="gsAcBtn">Aç</button>
     </div>
+    <button class="genis kucuk" id="gsSusBtn">🔕 Sustur (arama açık kalır)</button>
+  </div>
+</div>
+<div id="gsBilgi" class="gizle" role="dialog" aria-labelledby="gsBilgiAd">
+  <div class="ic">
+    <div id="gsBilgiAd">—</div>
+    <p class="not" id="gsBilgiNot"></p>
+    <div class="izgara2">
+      <button id="gsBilgiKapat">Kapat</button>
+      <button id="gsGeriAraBtn" class="vurgu">📞 Geri ara</button>
+    </div>
   </div>
 </div>
 <div id="gsSec" class="gizle" role="dialog" aria-label="Kimi arayacaksın">
@@ -430,7 +446,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 17 Eki 23:50</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 18 Eki 05:00</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -557,7 +573,8 @@
 
     <h2>Kullanım</h2>
     <div class="panel">
-      <label style="border-top:none">Adın (diğer telefonlarda ve Pixel'de görünür)<input type="text" id="adInput" maxlength="16" placeholder="ör. Seda" autocomplete="off" autocapitalize="words" spellcheck="false"></label>
+      <label style="border-top:none">Adın (diğer telefonlarda ve Pixel'de görünür)<input type="text" id="adInput" maxlength="16" placeholder="ör. Ayşe" autocomplete="off" autocapitalize="words" spellcheck="false"></label>
+      <label>Sayfası kapalı olanı kestirmeyle ara ("Stand Ara")<input type="checkbox" id="gsKestirme" checked></label>
       <label>Sayfadaki yön tuşları: yatay ters (ev kamerasını etkilemez)<input type="checkbox" id="tersX"></label>
       <label>Sayfadaki yön tuşları: dikey ters (ev kamerasını etkilemez)<input type="checkbox" id="tersY"></label>
       <label>Ev kamerası düzeni<select id="kamDuzen"><option value="buyuk">Büyük (kontroller görüntüde)</option><option value="klasik">Klasik</option></select></label>
@@ -968,7 +985,7 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
-      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/gizlilik"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
+      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/gizlilik"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -1003,6 +1020,7 @@
       if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       if(konu.slice(-6)==="/arama"){ gsMesaj(veri.toString()); return; }
+      if(konu.indexOf("/rehber/")>0){ rehberGeldi(konu.split("/").pop(),veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-9)==="/gizlilik"){ gkAyarGeldi(m); return; }
       if(konu.slice(-4)==="/var" && rol==="uzak"){ odaMesaj(m); return; }
@@ -1067,7 +1085,7 @@
   // ---------- oda: kim burada, kontrol kimde (16 Eki · Oda 1) ----------
   // Her uzak sayfa 3 sn'de bir /var konusuna kendini bildirir: adı, yönetici mi, sayfa önde mi, Evi izle açık mı.
   // Kural kartta değil, sayfalarda: yönetici sayfası açıksa stand kontrolü onda; "Ver" ile ortak olur (son dokunan kazanır).
-  // Yönetici sayfayı açtığında Seda o sırada standı kullanıyorsa kontrol ortak başlar (Seda'nınki elinden alınmaz).
+  // Yönetici sayfayı açtığında standart kullanıcı o sırada standı kullanıyorsa kontrol ortak başlar (onunki elinden alınmaz).
   var ODA_SURE=9000, ODA_ILK=4000, ODA_KULLANIM=60000, ODA_ISTEK_SURE=60000;
   var odaKisiler={};                    // diğer sayfalar: id -> {ad,y,on,iz,kul,ver,verZ,iste,red,yeni,zaman}
   var odaVer=false, odaVerZ=0;          // yönetici: kontrol ortak mı (en yeni karar geçerli)
@@ -1142,7 +1160,7 @@
       var kp=benKontrolPasif();
       if(odaKpOnce&&!kp){ odaGorunurBas=n; odaKararBekliyor=true; varligimiBildir(); }   // Evi izle'ye bağlandı: kontrol bana geçer
       odaKpOnce=kp;
-      // sayfayı açtıktan 4 sn sonra karar: Seda o sırada kullanıyorsa kontrol ortak başlar
+      // sayfayı açtıktan 4 sn sonra karar: standart kullanıcı o sırada kullanıyorsa kontrol ortak başlar
       if(odaKararBekliyor&&!odaYeni()){
         odaKararBekliyor=false;
         var kul=std.filter(function(k){ return k.kul; });
@@ -2434,7 +2452,7 @@
   E("saatAcik").addEventListener("change",function(){ if(E("saatAcik").checked){ saatBaslat(); yaz("Saat kumandası açıldı."); } else { saatKapat(); yaz("Saat kumandası kapandı."); } });
 
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim","saatAcik","adInput","sadeGoruntu","kontrolIzle"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim","saatAcik","adInput","sadeGoruntu","kontrolIzle","gsKestirme"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
@@ -2448,7 +2466,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="17 Eki 23:50";
+  var SAYFA_SURUM="18 Eki 05:00";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
@@ -2957,7 +2975,36 @@
   // Ev eklenince stand kontrol kuralları eskisi gibi. Arama mesajları: comitok/<oda>/arama
   //   ara{id,kime,ad,ev} (çalarken 3 sn'de bir), ac{id}, red{id}, iptal{id}, mesgul{id}
   // "ac" tek mesaj: ileride saat ya da kart da aynı mesajla aramayı açabilir.
-  var GS_CALMA=45000, GS_KOPUK=40000;
+  // Parça B (18 Eki): sayfası kapalı olanı "Stand Ara" kestirmesiyle (iMessage) arama. Mesajdaki Aç/Reddet bağlantıları
+  // bu sayfayı ?ara= / ?red= ile açar. Aranan telefondaki "Stand Gelen Arama" kestirmesi zili çalar ve her turda
+  // ntfy.sh/stz-<id> konusuna bakar; "bitti" görünce susar. Sen evdeysen (XR karta bağlı) Pixel de çalar (pc:1).
+  var GS_CALMA=60000, GS_KOPUK=40000, GS_GELEN_BEKLE=15000;
+  var GS_ADRES=location.origin+location.pathname, GS_KESTIRME="Stand Ara";
+  var gsRehber={}, gsPixelCal=false, gsLinkten=false, gsAcSon=0, gsNtfySon=0, gsPixelBeniBekle=0, gsLink=null;
+  // kalıcı cihaz kimliği (rehber kaydı için; sayfa kimliği her açılışta değişir)
+  var gsCihaz=""; try{ gsCihaz=localStorage.getItem("stand_cihaz")||""; if(!/^[a-z0-9]{8}$/.test(gsCihaz)){ gsCihaz=Math.random().toString(36).slice(2,10).padEnd(8,"0"); localStorage.setItem("stand_cihaz",gsCihaz); } }catch(h){ gsCihaz=benimKimlik; }
+  function rehberYayinla(){
+    if(rol!=="uzak"||!istemci||!istemci.connected||!kod) return;
+    istemci.publish("comitok/"+kod+"/rehber/"+gsCihaz,JSON.stringify({ad:benimAdim(),y:yk?1:0,z:Date.now()}),{retain:true});
+  }
+  function rehberGeldi(anahtar,metin){
+    var m; try{ m=JSON.parse(metin); }catch(h){ delete gsRehber[anahtar]; return; }
+    if(!m||!m.ad||anahtar===gsCihaz){ delete gsRehber[anahtar]; return; }
+    gsRehber[anahtar]={ad:String(m.ad).slice(0,16),y:!!m.y,z:Number(m.z)||0};
+  }
+  E("adInput").addEventListener("change",function(){ rehberYayinla(); });
+  function gsZilDurdur(id,neden){   // aranan telefondaki kestirme zilini susturur
+    if(!/^\w{3,24}$/.test(id||"")) return;
+    try{ fetch("https://ntfy.sh/stz-"+id,{method:"POST",body:"bitti "+(neden||"")}).catch(function(){}); }catch(h){}
+  }
+  // sekme: kestirmeden dönüşte Safari sayfayı yeni sekmede açarsa eski sekme sessizce devre dışı kalır
+  var gsSekme=Math.random().toString(36).slice(2,10); try{ localStorage.setItem("stand_sekme",gsSekme); }catch(h){}
+  function gsSekmeEski(){ try{ var v=localStorage.getItem("stand_sekme"); return !!v&&v!==gsSekme; }catch(h){ return false; } }
+  // bağlantıyla gelindiyse (?ara= ?red= ?devam=) hatırla, adresten sil
+  (function(){
+    var q=new URLSearchParams(location.search), l={ara:q.get("ara"),red:q.get("red"),k:q.get("k"),devam:q.get("devam"),kh:q.get("kh")};
+    if(l.ara||l.red||l.devam){ gsLink=l; try{ history.replaceState(null,"",location.pathname); }catch(h){} }
+  })();
   var gsAktif=false, gsId="", gsDurum="", gsHedefAd="", gsBasZaman=0, gsAraSon=0;
   var gsKam=true, gsMik=true, gsEv=false, gsEvZ=0, gsEvOnce=false, gsEvDeneme=0;
   var gsKatVardi=false, gsBosBas=0, gsGorunurBas=0, gsOtoBen=false, gsOrtaSon="", gsOncedenIzliyordum=false;
@@ -3003,14 +3050,17 @@
   }
   // aranabilecek kişiler: sayfası açık, bu telefondan farklı adda, zaten bağlı olmayan
   function gsAranabilir(){
-    var adlar=[];
-    odaDigerleri().forEach(function(k){
-      if(gsAdEsit(k.ad,benimAdim())) return;
-      if(kisiler[k.id]&&kisiler[k.id].bagli) return;
-      if(adlar.some(function(a){ return gsAdEsit(a,k.ad); })) return;
-      adlar.push(k.ad);
-    });
-    return adlar;
+    var l=[], n=Date.now();
+    var ekle=function(ad,acik,y){
+      if(!ad||gsAdEsit(ad,benimAdim())) return;
+      var v=l.filter(function(x){ return gsAdEsit(x.ad,ad); })[0];
+      if(v){ v.acik=v.acik||acik; v.y=v.y||y; return; }
+      l.push({ad:ad,acik:acik,y:y});
+    };
+    odaDigerleri().forEach(function(k){ if(!(kisiler[k.id]&&kisiler[k.id].bagli)) ekle(k.ad,true,!!k.y); });
+    Object.keys(gsRehber).forEach(function(a){ var r=gsRehber[a]; if(n-r.z<60*86400000) ekle(r.ad,false,r.y); });
+    // zaten bağlı olduğum kişiyi listeleme
+    return l.filter(function(x){ return !Object.keys(kisiler).some(function(id){ return kisiler[id].bagli&&gsAdEsit(kisiler[id].ad,x.ad); }); });
   }
   // ---- arayan taraf ----
   function gsAraDugmesi(){
@@ -3020,28 +3070,47 @@
     var l=gsAranabilir();
     if(!l.length){
       var ayniAd=odaDigerleri().some(function(k){ return gsAdEsit(k.ad,benimAdim()); });
-      gsHaber(ayniAd?"Öbür telefonla adınız aynı. Ayarlar > Kullanım > Adın":"Şu an stand sayfası açık kimse yok",4000);
-      yaz("Görüşme: aranacak kimse yok (aranacak kişinin stand sayfası açık olmalı).");
+      gsHaber(ayniAd?"Öbür telefonla adınız aynı. Ayarlar > Kullanım > Adın":"Aranacak kimse bulunamadı",4000);
+      yaz("Görüşme: aranacak kimse yok (öbür telefon stand sayfasını en az bir kez açmış olmalı).");
       return;
     }
-    if(l.length===1){ gsAra(l[0]); return; }
+    if(l.length===1){ gsAra(l[0].ad); return; }
     var liste=E("gsSecListe"); liste.textContent="";
-    l.forEach(function(ad){
-      var b=document.createElement("button"); b.className="genis"; b.textContent="📞 "+ad;
+    l.forEach(function(x){
+      var ad=x.ad, b=document.createElement("button"); b.className="genis"; b.textContent="📞 "+ad+(x.acik?" · sayfası açık":"");
       b.onclick=function(){ E("gsSec").classList.add("gizle"); gsAra(ad); };
       liste.appendChild(b);
     });
     E("gsSec").classList.remove("gizle");
   }
   function gsAra(ad){
-    var id="c"+Math.random().toString(36).slice(2,10);
+    var id="c"+Math.random().toString(36).slice(2,10).replace(/[^a-z0-9]/g,"");
+    var x=gsAranabilir().filter(function(v){ return gsAdEsit(v.ad,ad); })[0]||{ad:ad,acik:false,y:false};
     gsHedefAd=ad;
+    // aranan yönetici ve evde (XR karta bağlı) ise Pixel de çalar
+    gsPixelCal=!!(x.y&&sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE&&sonDurum.iphone);
     gsOncedenIzliyordum=grAcik&&gsPixelModu();
     gsBasla(id,gsOncedenIzliyordum,"caliyor");
+    try{ localStorage.setItem("stand_gsGiden",JSON.stringify({id:id,ad:ad,bas:gsBasZaman,ev:gsOncedenIzliyordum,pc:gsPixelCal})); }catch(h){}
     if(gsOncedenIzliyordum) grKisaYazi(ad+" aranıyor…",3000);
     gsAraSon=0; gsGuncelle();
     gsCalmaBasla();
-    yaz("Görüşme: "+ad+" aranıyor.");
+    yaz("Görüşme: "+ad+" aranıyor"+(x.acik?" (sayfası açık).":".")+(gsPixelCal?" Pixel de çalacak.":""));
+    if(!x.acik){
+      if(E("gsKestirme").checked) setTimeout(function(){ if(gsAktif&&gsId===id) gsKestirmeAc(id); },500);
+      else gsHaber(ad+" sayfasını açarsa zil çalar (kestirmeyle arama kapalı)",4500);
+    }
+  }
+  // "Stand Ara" kestirmesi mesajı iMessage ile gönderir; bitince Safari sayfayı ?devam= ile geri açar
+  function gsKestirmeMesaji(id){
+    var k=encodeURIComponent(benimAdim());
+    return "📞 Stand · "+benimAdim()+" arıyor (görüntülü)\nAç: "+GS_ADRES+"?ara="+id+"&k="+k+"\nReddet: "+GS_ADRES+"?red="+id+"&k="+k+"\nZ: "+id;
+  }
+  function gsKestirmeAc(id){
+    var geri=GS_ADRES+"?devam="+id;
+    yaz("Görüşme: \""+GS_KESTIRME+"\" kestirmesi açılıyor (mesaj gidecek).");
+    location.href="shortcuts://x-callback-url/run-shortcut?name="+encodeURIComponent(GS_KESTIRME)+"&input=text&text="+encodeURIComponent(gsKestirmeMesaji(id))
+      +"&x-success="+encodeURIComponent(geri)+"&x-cancel="+encodeURIComponent(geri)+"&x-error="+encodeURIComponent(geri+"&kh=1");
   }
   // çalma sesi (arayan duyar): 1 sn ton, 3 sn sessizlik
   function gsCalmaBasla(){
@@ -3067,9 +3136,11 @@
     E("gsGelenAd").textContent="📞 "+g.ad+" arıyor";
     E("gsGelenNot").textContent="Görüntülü görüşme"+(g.ev?" · Ev de görüşmede":"");
     E("gsAcBtn").disabled=false; E("gsRedBtn").disabled=false;
+    E("gsSusBtn").classList.toggle("gizle",!!g.sus);
     E("gsGelen").classList.remove("gizle");
-    zilBasla();
+    if(!g.sus) zilBasla();
   }
+  E("gsSusBtn").onclick=function(){ if(!gsGelen) return; gsGelen.sus=true; if(!aramaGorunur) zilDur(); E("gsSusBtn").classList.add("gizle"); };
   function gsGelenKapat(){
     if(!gsGelen) return;
     gsGelen=null; E("gsGelen").classList.add("gizle");
@@ -3101,18 +3172,23 @@
     var ad=String(m.ad||"?").slice(0,20);
     if(m.t==="ara"){
       if(!gsAdEsit(m.kime,benimAdim())) return;
-      if(gsAktif&&gsId===m.id) return;
+      if(gsAktif&&gsId===m.id){   // bağlantıyla girdim, arayan "açtı"yı kaçırmış olabilir
+        if(Date.now()-gsAcSon>3000){ gsAcSon=Date.now(); gsYayin({t:"ac",id:m.id}); }
+        return;
+      }
       if(gsAktif){ gsYayin({t:"mesgul",id:m.id}); return; }
       if(gsReddedilen[m.id]) return;
-      var yeni=!gsGelen||gsGelen.id!==m.id;
-      gsGelen={id:m.id,kimden:m.kimden,ad:ad,ev:!!m.ev,son:Date.now()};
+      if(gsLink&&(gsLink.ara===m.id||gsLink.red===m.id)) return;   // bu aramayı zaten mesajdaki bağlantıyla açıyorum/reddediyorum
+      var yeni=!gsGelen||gsGelen.id!==m.id, sus=!yeni&&gsGelen.sus;
+      gsGelen={id:m.id,kimden:m.kimden,ad:ad,ev:!!m.ev,son:Date.now(),sus:sus};
       if(yeni){ yaz("Görüşme: "+ad+" arıyor."); gsGelenGoster(); }
-      else { E("gsGelenNot").textContent="Görüntülü görüşme"+(m.ev?" · Ev de görüşmede":""); if(!zilCalisiyor) zilBasla(); }
+      else { E("gsGelenNot").textContent="Görüntülü görüşme"+(m.ev?" · Ev de görüşmede":""); if(!zilCalisiyor&&!sus) zilBasla(); }
     } else if(m.t==="iptal"){
       if(gsGelen&&gsGelen.id===m.id){ gsGelenKapat(); gsHaber("Cevapsız arama: "+ad,5000); yaz("Görüşme: cevapsız arama ("+ad+")."); }
     } else if(m.t==="ac"){
       if(gsGelen&&gsGelen.id===m.id) gsGelenKapat();   // başka cihazımdan açıldı
-      if(gsAktif&&gsId===m.id&&gsDurum==="caliyor"){ gsDurum="baglaniyor"; gsBosBas=0; gsCalmaDur(); yaz("Görüşme: "+ad+" açtı."); gsArayuz(); }
+      if(m.pixel){ gsPixelActi(m.id); return; }
+      if(gsAktif&&gsId===m.id&&gsDurum==="caliyor"){ gsAcildi(ad+" açtı"); }
     } else if(m.t==="red"){
       if(gsGelen&&gsGelen.id===m.id) gsGelenKapat();
       if(gsAktif&&gsId===m.id&&gsDurum==="caliyor") gsBitir(ad+" reddetti");
@@ -3120,6 +3196,82 @@
       if(gsAktif&&gsId===m.id&&gsDurum==="caliyor") gsBitir(ad+" şu an başka bir görüşmede");
     }
   }
+  // arayan: karşı taraf açtı
+  function gsAcildi(yazi){
+    if(!(gsAktif&&gsDurum==="caliyor")) return;
+    gsDurum="baglaniyor"; gsBosBas=0; gsCalmaDur();
+    gsZilDurdur(gsId,"ac");
+    if(yazi) yaz("Görüşme: "+yazi+".");
+    gsArayuz();
+  }
+  // arayan: evdeki kişi Pixel'den açtı -> Evi izle + Beni göster + Evi dinle (karşılıklı görüşme Pixel ekranında)
+  function gsPixelActi(id){
+    if(!(gsAktif&&gsId===id&&gsDurum==="caliyor")) return;
+    var ad=gsHedefAd;
+    gsDurum="baglaniyor"; gsZilDurdur(id,"pixel");
+    gsBitir("",true);
+    gkIzinYaz();   // evdeki kişi açtı: gizlilik sorusu gerekmez
+    gsPixelBeniBekle=Date.now();
+    yaz("Görüşme: "+ad+" Pixel'den açtı; Evi izle + Beni göster açılıyor.");
+    gsHaber(ad+" Pixel'den açtı",4000);
+    if(grAcik){ duzenUygula(); gsArayuz(); kisiGoster(); if(!grPc&&!grIstekte) grBaglan(); }
+    else kameraModuAc();
+  }
+  function gsNtfyBak(id){
+    try{
+      fetch("https://ntfy.sh/stz-"+id+"/raw?poll=1&since=2m").then(function(r){ return r.ok?r.text():""; }).then(function(t){
+        if(!(gsAktif&&gsId===id&&gsDurum==="caliyor")||!t) return;
+        if(/bitti red/.test(t)) gsBitir(gsHedefAd+" reddetti");
+        else if(/bitti pixel/.test(t)) gsPixelActi(id);
+        else if(/bitti ac/.test(t)) gsAcildi(gsHedefAd+" açtı (mesajdan)");
+      }).catch(function(){});
+    }catch(h){}
+  }
+  // ?ara= (Aç), ?red= (Reddet), ?devam= (kestirmeden dönüş)
+  function gsLinkIsle(){
+    var l=gsLink; gsLink=null;
+    var gecerli=function(v){ return /^\w{3,24}$/.test(v||""); };
+    var kim=String(l.k||"").slice(0,16);
+    if(l.devam&&gecerli(l.devam)){
+      var g=null; try{ g=JSON.parse(localStorage.getItem("stand_gsGiden")||"null"); }catch(h){}
+      if(l.kh) gsHaber("\""+GS_KESTIRME+"\" kestirmesi çalışmadı. Kurulu mu, adı doğru mu?",6000);
+      if(g&&g.id===l.devam&&Date.now()-g.bas<GS_CALMA&&!gsAktif){
+        gsHedefAd=g.ad; gsPixelCal=!!g.pc; gsOncedenIzliyordum=false;
+        gsBasla(g.id,!!g.ev,"caliyor"); gsBasZaman=g.bas;
+        gsAraSon=0; gsCalmaBasla();
+        yaz("Görüşme: kestirmeden dönüldü, "+g.ad+" aranıyor.");
+      }
+      return;
+    }
+    if(l.ara&&gecerli(l.ara)){
+      if(gsGelen&&gsGelen.id===l.ara) gsGelenKapat();
+      if(gsAktif) return;
+      gsZilDurdur(l.ara,"ac");
+      gsYayin({t:"ac",id:l.ara}); gsAcSon=Date.now();
+      gsHedefAd=kim||"?"; gsOncedenIzliyordum=false; gsLinkten=true;
+      gsBasla(l.ara,false,"baglaniyor");
+      gsEv=false; gsEvZ=0; gsEvOnce=false;   // Ev kararı arayanınki
+      varligimiBildir();
+      yaz("Görüşme: mesajdaki bağlantıyla açıldı"+(kim?" ("+kim+")":"")+".");
+      return;
+    }
+    if(l.red&&gecerli(l.red)){
+      gsReddedilen[l.red]=1; if(gsGelen&&gsGelen.id===l.red) gsGelenKapat();
+      gsZilDurdur(l.red,"red");
+      var say=0, gonder=function(){ gsYayin({t:"red",id:l.red}); if(++say<3) setTimeout(gonder,2500); };
+      gonder();
+      yaz("Görüşme: arama reddedildi"+(kim?" ("+kim+")":"")+".");
+      gsBilgiGoster("Arama reddedildi",kim?kim+" bunu görecek.":"",kim);
+    }
+  }
+  function gsBilgiGoster(baslik,not,geriAd){
+    E("gsBilgiAd").textContent=baslik; E("gsBilgiNot").textContent=not||"";
+    E("gsGeriAraBtn").classList.toggle("gizle",!geriAd);
+    E("gsGeriAraBtn").textContent="📞 "+(geriAd||"")+" geri ara";
+    E("gsGeriAraBtn").onclick=function(){ E("gsBilgi").classList.add("gizle"); if(geriAd) gsAra(geriAd); };
+    E("gsBilgi").classList.remove("gizle");
+  }
+  E("gsBilgiKapat").onclick=function(){ E("gsBilgi").classList.add("gizle"); };
   // ---- görüşme başlar / biter ----
   function gsBasla(id,ev,durum){
     gsAktif=true; gsId=id; gsDurum=durum; gsBasZaman=Date.now(); gsGorunurBas=Date.now();
@@ -3132,7 +3284,9 @@
   }
   function gsBitir(neden,sessiz){
     if(!gsAktif) return;
-    if(gsDurum==="caliyor") gsYayin({t:"iptal",id:gsId});
+    if(gsDurum==="caliyor"){ gsYayin({t:"iptal",id:gsId}); gsZilDurdur(gsId,"iptal"); }
+    try{ localStorage.removeItem("stand_gsGiden"); }catch(h){}
+    gsLinkten=false;
     gsAktif=false; gsId=""; gsDurum=""; gsCalmaDur();
     kisiHepsiniKapat();
     if(gsOtoBen&&kisiBuyukId==="ben"){ kisiBuyukId=null; gsOtoBen=false; }
@@ -3148,15 +3302,33 @@
   // saniyede bir: çalma, kopma, Ev ekle/çıkar eşitleme, ortadaki yazı
   function gsGuncelle(){
     var n=Date.now();
-    if(gsGelen&&n-gsGelen.son>8000){ gsGelenKapat(); }   // arayan vazgeçti / sayfası kapandı
+    if(gsGelen&&n-gsGelen.son>GS_GELEN_BEKLE){ gsGelenKapat(); }   // arayan vazgeçti / sayfası kapandı
+    if(gsLink&&istemci&&istemci.connected&&rol==="uzak"&&kod) gsLinkIsle();
+    if(gsPixelBeniBekle){   // Pixel'den açıldı: bağlanınca Beni göster + Evi dinle
+      if(n-gsPixelBeniBekle>30000) gsPixelBeniBekle=0;
+      else if(grPc&&grPc.connectionState==="connected"&&grYet&&grYet.benVar&&!grBenMesgul){
+        gsPixelBeniBekle=0;
+        if(!grBeni){ grBeni=true; grKonus=true; grBenUygula(); }
+        evDinleAyarla(true,"Karşılıklı görüşme\nPixel'den açıldı");
+      }
+    }
     if(!gsAktif) return;
     var bagli=istemci&&istemci.connected;
     if(gsDurum==="caliyor"){
       if(n-gsBasZaman>GS_CALMA){ gsBitir("Cevap yok"); return; }
-      if(n-gsAraSon>3000&&bagli&&grGorunur()){ gsAraSon=n; gsYayin({t:"ara",id:gsId,kime:gsHedefAd,ev:gsEvEtkin()}); }
+      if(n-gsAraSon>3000&&bagli&&grGorunur()){ gsAraSon=n; gsYayin({t:"ara",id:gsId,kime:gsHedefAd,ev:gsEvEtkin(),pc:gsPixelCal?1:0}); }
+      // mesajla aranan "Aç/Reddet"e bastıysa ntfy'den de öğrenilir (sayfamız o sırada kestirmedeydiyse MQTT mesajı kaçmış olabilir)
+      if(n-gsNtfySon>4000&&grGorunur()){ gsNtfySon=n; gsNtfyBak(gsId); }
+    }
+    // bağlantıyla girdim ama 20 sn'de arayan görünmedi (arama çoktan bitmiş): "Bu arama bitti · geri ara"
+    if(gsLinkten&&!gsKatVardi&&gsDurum!=="gorusme"&&bagli&&grGorunur()&&n-gsBasZaman>20000&&!gsKatilimcilar().length){
+      var kim=gsHedefAd; gsLinkten=false;
+      gsBitir("",true); if(grAcik) kameraModuKapat();
+      gsBilgiGoster("Bu arama bitti",(kim&&kim!=="?"?kim+" seni aramıştı.":"Arama sona ermiş."),kim&&kim!=="?"?kim:"");
+      return;
     }
     var kat=gsKatilimcilar();
-    if(kat.length){ gsKatVardi=true; gsBosBas=0; if(gsDurum==="caliyor"){ gsDurum="baglaniyor"; gsCalmaDur(); } }
+    if(kat.length){ gsKatVardi=true; gsBosBas=0; if(gsDurum==="caliyor") gsAcildi(""); }
     else if(gsDurum!=="caliyor"&&bagli&&grGorunur()&&n-gsGorunurBas>8000){
       if(!gsBosBas) gsBosBas=n;
       else if(n-gsBosBas>(gsKatVardi?2500:20000)){ gsBitir(gsKatVardi?"Görüşme bitti":"Görüşme kurulamadı"); return; }
@@ -3230,9 +3402,18 @@
     gsEv=!gsEvEtkin(); gsEvZ=Date.now();
     varligimiBildir(); gsGuncelle();
   };
-  window.addEventListener("pagehide",function(e){ if(gsAktif&&!e.persisted) gsBitir("",true); });
+  // sayfa kapanırken görüşmeden çık; ama çalarken değil: "Stand Ara" kestirmesinden dönüşte sayfa yeniden yüklenir,
+  // arama ?devam= ile sürer (iptal edilirse karşı tarafın zili de susardı)
+  window.addEventListener("pagehide",function(e){ if(gsAktif&&!e.persisted&&gsDurum!=="caliyor") gsBitir("",true); });
   document.addEventListener("visibilitychange",function(){
-    if(document.visibilityState==="visible"&&gsGelen) zilBasla();
+    if(document.visibilityState!=="visible") return;
+    if(gsSekmeEski()){
+      // aynı telefonda sayfa yeni bir sekmede açılmış: bu sekme sessizce çekilir (iki sekme aynı görüşmeye karışmasın)
+      gsAktif=false; try{ if(istemci) istemci.end(true); }catch(h){}
+      document.body.innerHTML='<div style="padding:30px 20px;font:18px system-ui;text-align:center">Stand sayfası başka bir sekmede açık.<br><br><button onclick="location.reload()" style="font:inherit;padding:12px 20px">Bu sekmeyi kullan</button></div>';
+      return;
+    }
+    if(gsGelen&&!gsGelen.sus) zilBasla();
   });
 
   // ---------- akıllı zoom: iki parmakla, parmakların arasındaki noktaya ----------
