@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arama zili denemesi</title>
+<style>
+  :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+    --bg:#ecebe6;--panel:#f7f6f2;--ink:#1d2321;--ink-soft:#5d6764;--line:#cfcdc4;--line-strong:#a9a79d;--live:#1f6f4a;--stop:#8e2f2f}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14191a;--panel:#1c2224;--ink:#e9eae6;--ink-soft:#9aa5a3;--line:#2c3437;--line-strong:#43504f;--live:#57c48c;--stop:#e08585}}
+  :root[data-theme="dark"]{--bg:#14191a;--panel:#1c2224;--ink:#e9eae6;--ink-soft:#9aa5a3;--line:#2c3437;--line-strong:#43504f;--live:#57c48c;--stop:#e08585}
+  *,*::before,*::after{box-sizing:inherit}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.45}
+  .wrap{max-width:480px;margin:0 auto;padding:14px}
+  h1{font-size:19px;margin:0 0 4px} h2{font-size:15px;margin:16px 0 6px}
+  .not{font-size:13px;color:var(--ink-soft);margin:4px 0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0}
+  button{font:inherit;font-weight:600;width:100%;min-height:48px;margin:6px 0;border-radius:10px;border:1px solid var(--line-strong);background:var(--panel);color:var(--ink)}
+  button.ana{background:var(--live);border-color:var(--live);color:var(--bg)}
+  button.dur{background:var(--stop);border-color:var(--stop);color:var(--bg)}
+  input{font:inherit;width:100%;padding:10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--ink)}
+  #kod{font-size:34px;font-weight:700;letter-spacing:.12em;text-align:center;margin:4px 0;font-variant-numeric:tabular-nums}
+  pre{white-space:pre-wrap;word-break:break-all;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0;-webkit-user-select:text;user-select:text}
+  #sonuc{font-size:15px;font-weight:600;min-height:1.4em}
+  .iyi{color:var(--live)} .kotu{color:var(--stop)}
+  #acildi{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Arama zili denemesi</h1>
+  <p class="not">Sürüm: 18 Eki 04:10 · Stand sayfasını etkilemez.</p>
+
+  <div class="panel" id="acildi">
+    <div id="acYazi" style="font-size:18px;font-weight:700">✓ "Aç" bağlantısı çalıştı</div>
+    <p class="not">Gerçek sistemde burada görüşme açılacak. Zile "dur" sinyali gönderildi; birkaç saniye içinde susmalı.</p>
+  </div>
+
+  <h2>1. Deneme kodu</h2>
+  <div class="panel">
+    <div id="kod">—</div>
+    <button id="yeniBtn">Yeni kod</button>
+    <label class="not" for="adInput">Arayan adı (mesajda ve bildirimde görünür)</label>
+    <input id="adInput" maxlength="16" autocomplete="off">
+  </div>
+
+  <h2>2. Mesaj</h2>
+  <div class="panel">
+    <pre id="mesaj"></pre>
+    <button class="ana" id="kopyalaBtn">Mesajı kopyala</button>
+    <button id="gonderBtn">Kestirmeyle gönder (Stand Ara)</button>
+    <p class="not">"Kopyala"dan sonra Kestirmeler'de "Stand Zil"i elle çalıştırırsan mesajı panodan okur. "Kestirmeyle gönder", "Stand Ara" kestirmesini çalıştırıp mesajı iMessage ile gönderir.</p>
+  </div>
+
+  <h2>3. Zili durdur</h2>
+  <div class="panel">
+    <label class="not" for="durKod">Kod (başka telefondan durduracaksan XR'daki kodu yaz)</label>
+    <input id="durKod" autocomplete="off" autocapitalize="off" spellcheck="false" style="font-size:22px;letter-spacing:.1em;text-align:center">
+    <button class="dur" id="durBtn">Zili durdur</button>
+    <div id="sonuc"></div>
+  </div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var E=function(id){ return document.getElementById(id); };
+  var ADRES=location.origin+location.pathname;
+  function oku(a){ try{ return localStorage.getItem(a)||""; }catch(h){ return ""; } }
+  function yaz(a,v){ try{ localStorage.setItem(a,v); }catch(h){} }
+  function yeniKod(){
+    var h="abcdefghjkmnpqrstuvwxyz23456789", b=new Uint8Array(6), k="";
+    crypto.getRandomValues(b); for(var i=0;i<6;i++) k+=h[b[i]%h.length];
+    return k;
+  }
+  var kod=oku("aramaTest_kod")||yeniKod();
+  E("adInput").value=oku("aramaTest_ad")||oku("stand_adInput")||"Berat";
+  function mesaj(){
+    var ad=(E("adInput").value||"Berat").trim();
+    return "📞 Stand · "+ad+" arıyor\nAç: "+ADRES+"?ac="+kod+"\nZ: "+kod;
+  }
+  function ciz(){ yaz("aramaTest_kod",kod); E("kod").textContent=kod; E("mesaj").textContent=mesaj(); E("durKod").value=kod; }
+  function sonuc(t,iyi){ var s=E("sonuc"); s.textContent=t; s.className=iyi?"iyi":"kotu"; }
+  function durdur(k){
+    k=String(k||"").trim().toLowerCase();
+    if(!/^[a-z0-9]{3,12}$/.test(k)){ sonuc("Kod hatalı.",false); return Promise.resolve(false); }
+    sonuc("Gönderiliyor…",true);
+    return fetch("https://ntfy.sh/stz-"+k,{method:"POST",body:"bitti"})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); sonuc("✓ Dur sinyali gönderildi ("+k+"). Zil birkaç saniye içinde susmalı.",true); return true; })
+      .catch(function(h){ sonuc("Gönderilemedi: "+((h&&h.message)||h),false); return false; });
+  }
+  E("yeniBtn").onclick=function(){ kod=yeniKod(); ciz(); sonuc("",true); };
+  E("adInput").addEventListener("input",function(){ yaz("aramaTest_ad",E("adInput").value); ciz(); });
+  E("kopyalaBtn").onclick=function(){
+    var m=mesaj(), b=E("kopyalaBtn");
+    var bitti=function(){ b.textContent="✓ Kopyalandı"; setTimeout(function(){ b.textContent="Mesajı kopyala"; },1800); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(m).then(bitti,function(){ alert("Kopyalanamadı. Mesajı basılı tutup kopyala."); });
+    else alert("Kopyalanamadı. Mesajı basılı tutup kopyala.");
+  };
+  E("gonderBtn").onclick=function(){
+    location.href="shortcuts://run-shortcut?name="+encodeURIComponent("Stand Ara")+"&input=text&text="+encodeURIComponent(mesaj());
+  };
+  E("durBtn").onclick=function(){ durdur(E("durKod").value); };
+  // "Aç" bağlantısıyla gelindiyse: zili durdur
+  var q=new URLSearchParams(location.search), ac=q.get("ac");
+  if(ac){
+    E("acildi").style.display="block";
+    durdur(ac).then(function(ok){ if(!ok) E("acYazi").textContent="Bağlantı açıldı ama dur sinyali gönderilemedi"; });
+  }
+  ciz();
+})();
+</script>
+</body>
+</html>
