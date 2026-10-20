@@ -59,31 +59,6 @@
   #isik{position:fixed;inset:0;background:#fff;z-index:1001;display:none;pointer-events:none}
   body.isik:not(.beni) #isik{display:block}
   body.beni.isik #benKutu{border:7vmin solid #fff}
-  /* görüşme ekranı (17 Eki 23:50): biri Beni göster açınca Pixel WhatsApp gibi: karşı taraf büyük, köşede kendin, dokununca düğmeler */
-  #gorKatman{position:fixed;inset:0;z-index:1002;display:none;touch-action:manipulation}
-  body.beni #gorKatman{display:block}
-  #benOz{position:absolute;right:3vw;top:calc(env(safe-area-inset-top,0px) + 3vw);width:27vw;height:36vw;max-height:none;
-    border-radius:10px;border:2px solid rgba(255,255,255,.75);object-fit:cover;background:#111;transform:scaleX(-1);pointer-events:none}
-  body.arkaKam #benOz{transform:none}
-  #gorDugmeler{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 6vh);display:flex;justify-content:center;gap:5vw;
-    opacity:0;transition:opacity .3s;pointer-events:none}
-  #gorKatman.acik #gorDugmeler{opacity:1;pointer-events:auto}
-  #gorDugmeler button{width:17vw;height:17vw;max-width:84px;max-height:84px;min-height:0;padding:0;border-radius:50%;
-    background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.45);color:#fff;font-size:7vw}
-  #gorDugmeler button.kapali{background:rgba(150,30,30,.75);border-color:#ff9a9a}
-  #gorDugmeler button.acik{background:rgba(30,110,70,.75);border-color:#7fe0aa}
-  #gorDugmeler #gKapat{background:rgba(170,35,35,.85)}
-  #gorYazi{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 6vh + 19vw);text-align:center;color:#fff;font-size:4.2vw;
-    text-shadow:0 1px 3px #000;opacity:0;transition:opacity .3s;pointer-events:none}
-  #gorKatman.acik #gorYazi{opacity:1}
-  /* gelen arama (18 Eki): evdeki yönetici aranınca Pixel de çalar */
-  #pxArama{position:fixed;inset:0;z-index:1005;background:#0b1210;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:6vw}
-  #pxArama.gizli{display:none}
-  #pxAramaAd{font-size:9vw;font-weight:700;line-height:1.15;overflow-wrap:anywhere}
-  #pxAramaNot{font-size:4.6vw;opacity:.75;margin:2vh 0 7vh}
-  #pxArama .dg{display:flex;gap:8vw;justify-content:center}
-  #pxArama .dg button{width:30vw;height:30vw;max-width:170px;max-height:170px;border-radius:50%;border:0;font-size:6vw;font-weight:700;color:#fff}
-  #pxRed{background:#b23a3a} #pxAc{background:#1f8a57}
   /* görüntü + tanıma kutuları */
   #goruntuKutu{position:relative}
   #taniCizim{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
@@ -111,7 +86,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not">· 18 Eki 05:00</span></h1>
+  <h1>Kamera <span class="not">· 17 Eki 00:40</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -147,8 +122,6 @@
     <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal (5 dk içinde tekrar çalmaz)</label>
     <label class="anahtar"><input type="checkbox" id="taniAcik"> Bu ekranda tanıma kutularını göster</label>
     <label class="anahtar"><input type="checkbox" id="takipKutu"> Takip: standı kendisi çevirsin</label>
-    <label class="anahtar" style="justify-content:space-between">Evin sesi (uzaktakine giden)
-      <select id="mikGucSec" style="font:inherit;padding:6px;border-radius:8px"><option value="1">Normal</option><option value="2">Yüksek</option><option value="3">Çok yüksek</option></select></label>
     <div class="satir">
       <button id="zilDene">Zili dene</button>
       <button id="baslat">Kamerayı elle aç</button>
@@ -179,30 +152,13 @@
 
 <div id="siyah" class="gizli"><div id="siyahYazi"></div></div>
 <div id="benKutu"></div>
-<div id="pxArama" class="gizli" role="alertdialog" aria-labelledby="pxAramaAd">
-  <div>
-    <div id="pxAramaAd">📞</div>
-    <div id="pxAramaNot">Görüntülü görüşme</div>
-    <div class="dg"><button id="pxRed" type="button">Reddet</button><button id="pxAc" type="button">Aç</button></div>
-  </div>
-</div>
-<div id="gorKatman">
-  <video id="benOz" autoplay playsinline muted></video>
-  <div id="gorYazi"></div>
-  <div id="gorDugmeler">
-    <button id="gMik" type="button" aria-label="Pixel mikrofonunu aç veya kapat">🎙</button>
-    <button id="gCevir" type="button" aria-label="Ön / arka kamera">🔄</button>
-    <button id="gTakip" type="button" aria-label="Takibi aç veya kapat">🎯</button>
-    <button id="gKapat" type="button" aria-label="Görüşmeyi kapat">✕</button>
-  </div>
-</div>
 <div id="isik"></div>
 
 <script>
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="18 Eki 05:00";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="19 Eki 15:00";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   function E(id){ return document.getElementById(id); }
@@ -398,54 +354,6 @@
     if(simdi-sonDokunus<600){ sonDokunus=0; beklemeBitir(); } else sonDokunus=simdi;
   });
 
-  // ---------- mikrofon güçlendirme (17 Eki 23:50) ----------
-  // Uzaktaki kişi evi az duyuyordu. Normal: telefonun kendi ayarı (gürültü azaltma açık).
-  // Yüksek / Çok yüksek: gürültü azaltma kapalı (uzaktaki konuşmayı gürültü sanıp kısmasın) + ses yükseltici + sınırlayıcı (cızırdamasın).
-  var mikGuc=Number(oku("stand_kamMikGuc"))||2, mikHam=null, mikZincir=null;
-  E("mikGucSec").value=String(mikGuc);
-  function mikKisitlari(){ return {echoCancellation:true,noiseSuppression:mikGuc<=1,autoGainControl:true}; }
-  function mikZincirKapat(){ if(mikZincir){ try{ mikZincir.src.disconnect(); mikZincir.kaz.disconnect(); mikZincir.komp.disconnect(); }catch(h){} mikZincir=null; } }
-  function mikIsle(ham){
-    mikZincirKapat();
-    if(mikGuc<=1) return ham;
-    sesiHazirla();
-    if(!sesCtx||sesCtx.state!=="running"){ yaz("Ses yükseltici şu an çalışmıyor (Pixel'de sayfaya bir kez dokunun); normal mikrofon kullanılıyor."); return ham; }
-    try{
-      var src=sesCtx.createMediaStreamSource(new MediaStream([ham]));
-      var kaz=sesCtx.createGain(); kaz.gain.value=mikGuc===2?2.5:4;
-      var komp=sesCtx.createDynamicsCompressor();
-      komp.threshold.value=-20; komp.knee.value=10; komp.ratio.value=8; komp.attack.value=0.004; komp.release.value=0.25;
-      var hedef=sesCtx.createMediaStreamDestination();
-      src.connect(kaz); kaz.connect(komp); komp.connect(hedef);
-      mikZincir={src:src,kaz:kaz,komp:komp,hedef:hedef};
-      return hedef.stream.getAudioTracks()[0];
-    }catch(h){ yaz("Ses yükseltici kurulamadı ("+(h&&h.message||h)+"); normal mikrofon kullanılıyor."); return ham; }
-  }
-  function mikGucAdi(d){ return d>=3?"çok yüksek":(d===2?"yüksek":"normal"); }
-  function mikGucAyarla(d){
-    d=Math.max(1,Math.min(3,Number(d)||2));
-    if(d===mikGuc&&akis) { bildir(); return; }
-    mikGuc=d; yazLS("stand_kamMikGuc",String(d)); E("mikGucSec").value=String(d);
-    yaz("Evin sesi: "+mikGucAdi(d)+".");
-    if(!akis){ bildir(); return; }
-    var eskiGiden=akis.getAudioTracks()[0];
-    if(mikHam) mikHam.stop();
-    navigator.mediaDevices.getUserMedia({audio:mikKisitlari()}).then(function(s){
-      if(!akis){ s.getTracks().forEach(function(t){ t.stop(); }); return; }
-      mikHam=s.getAudioTracks()[0];
-      var yeni=mikIsle(mikHam);
-      mikHam.enabled=mikAcik; yeni.enabled=mikAcik;
-      if(eskiGiden){ akis.removeTrack(eskiGiden); if(eskiGiden!==mikHam) try{ eskiGiden.stop(); }catch(h){} }
-      akis.addTrack(yeni);
-      Object.keys(izleyenler).forEach(function(i){
-        var z=izleyenler[i]; if(!z.pc) return;
-        try{ z.pc.getTransceivers().forEach(function(t){ if(t.receiver&&t.receiver.track&&t.receiver.track.kind==="audio") t.sender.replaceTrack(yeni).catch(function(){}); }); }catch(h){}
-      });
-      bildir();
-    }).catch(function(h){ yaz("Mikrofon yeniden açılamadı: "+(h&&h.message||h)); });
-  }
-  E("mikGucSec").onchange=function(){ mikGucAyarla(E("mikGucSec").value); };
-
   // ---------- kamera ----------
   function vTrack(){ return akis&&akis.getVideoTracks()[0]; }
   function videoAl(){
@@ -458,11 +366,10 @@
     var ses;
     mikAcik=true; gorAcik=true; fenerAcik=false; isikGuncelle();
     if(takipAcik){ takipAcik=false; E("takipKutu").checked=false; }
-    return navigator.mediaDevices.getUserMedia({audio:mikKisitlari()})
+    return navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})
       .then(function(s){ ses=s.getAudioTracks()[0]; return videoAl(); })
       .then(function(v){
-        mikHam=ses;
-        akis=new MediaStream([v,mikIsle(ses)]);
+        akis=new MediaStream([v,ses]);
         E("onizleme").srcObject=new MediaStream([v]);
         kameraYazisi();
         ekranAcikTut();
@@ -479,8 +386,6 @@
   function kameraKapat(){
     if(!akis) return;
     akis.getTracks().forEach(function(t){ t.stop(); });
-    if(mikHam){ try{ mikHam.stop(); }catch(h){} mikHam=null; }
-    mikZincirKapat();
     akis=null; fenerAcik=false; isikGuncelle();
     E("onizleme").srcObject=null;
     goster(E("dKamera"),beklemede?"kapalı (beklemede)":"kapalı","");
@@ -497,7 +402,7 @@
     return {t:"yetenek", yon:yon,
       zoom:c.zoom?{min:c.zoom.min,max:c.zoom.max,step:c.zoom.step||0.1}:null,
       zoomDeger:(typeof a.zoom==="number")?a.zoom:null,
-      fener:!!c.torch||yon==="user", isik:yon==="user", fenerAcik:fenerAcik, benVar:true, oda:EN_COK_IZLEYEN, mikler:mikListesi(), izleyenler:bagliAdlar(), ben:{gor:benGor,ses:benSes}, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto, isi:isiDurum, surum:SURUM, mikGuc:mikGuc, mikYerel:mikYerelKapali};
+      fener:!!c.torch||yon==="user", isik:yon==="user", fenerAcik:fenerAcik, benVar:true, oda:EN_COK_IZLEYEN, mikler:mikListesi(), izleyenler:bagliAdlar(), ben:{gor:benGor,ses:benSes}, mik:mikAcik, gor:gorAcik, pil:pil, takip:takipAcik, hedef:takipAyar.hedef, otoZoom:!!takipAyar.oto, isi:isiDurum, surum:SURUM};
   }
   function mikListesi(){ var m={}; Object.keys(izleyenler).forEach(function(i){ m[i]=!!izleyenler[i].mik; }); return m; }
   function bildir(){
@@ -529,7 +434,7 @@
   }
   function mikAyarla(d){
     var a=akis&&akis.getAudioTracks()[0]; if(!a) return;
-    mikAcik=!!d; a.enabled=mikAcik; if(mikHam) mikHam.enabled=mikAcik; yaz(mikAcik?"Mikrofon açıldı.":"Mikrofon kapandı."); bildir(); gorDugmeGuncelle();
+    mikAcik=!!d; a.enabled=mikAcik; yaz(mikAcik?"Mikrofon açıldı.":"Mikrofon kapandı."); bildir();
   }
   function gorAyarla(d){
     var v=vTrack(); if(!v) return;
@@ -549,7 +454,6 @@
       v.enabled=gorAcik; fenerAcik=false; isikGuncelle();
       akis.removeTrack(eski); akis.addTrack(v);
       E("onizleme").srcObject=new MediaStream([v]);
-      benOzGuncelle();
       Object.keys(izleyenler).forEach(function(i){ var g=izleyenler[i].gonderen; if(g) g.replaceTrack(v).catch(function(){}); });
       kameraYazisi();
       takipHafizaSifirla();
@@ -1153,7 +1057,28 @@
     s.then(function(){ if(kameraSoz===s) kameraSoz=null; },function(){ if(kameraSoz===s) kameraSoz=null; });
     return s;
   }
-  function istekGeldi(id,ad){
+  // ---------- yeni cihaz bildirimi (19 Eki) ----------
+  // Evi izle'ye ilk kez gelen cihazda yöneticiye ntfy bildirimi; bilinen cihazlar bu telefonda saklanır.
+  // Bildirimi Pixel gönderir (bağlanan kişinin sayfası atlayamaz). Haber verir, engellemez.
+  var gkAyarP=null, kimliksizSon=0;
+  function bilinenCihazlar(){ try{ var l=JSON.parse(oku("stand_bilinenCihazlar")||"[]"); return Array.isArray(l)?l:[]; }catch(h){ return []; } }
+  function yeniCihazKontrol(ad,m){
+    var cz=String((m&&m.cz)||"").slice(0,24), cg=String((m&&m.cg)||"bilinmeyen cihaz").slice(0,48), l=bilinenCihazlar();
+    if(cz&&l.indexOf(cz)>=0) return;
+    var a=gkAyarP;
+    if(!a||!a.acik||!a.konu){ yaz("Yeni cihaz: "+ad+" · "+cg+" (bildirim gönderilmedi: gizlilik kuralı kapalı ya da bildirim konusu yok)."); return; }
+    if(cz){ l.push(cz); if(l.length>60) l=l.slice(-60); yazLS("stand_bilinenCihazlar",JSON.stringify(l)); }
+    else { if(Date.now()-kimliksizSon<600000) return; kimliksizSon=Date.now(); }   // kimliksiz (eski sayfa / gizli sekme): 10 dk'da bir
+    yaz("Yeni cihaz: "+ad+" · "+cg+(cz?"":" (kimlik yok)")+", bildirim gönderiliyor.");
+    try{
+      fetch("https://ntfy.sh/",{method:"POST",body:JSON.stringify({topic:a.konu,title:"Yeni cihaz: "+ad+" · "+cg,
+        message:cz?"Bu cihaz Evi izle'ye ilk kez bağlanıyor.":"Kimliği olmayan bir cihaz bağlanıyor (eski sayfa ya da gizli sekme olabilir).",
+        priority:4,tags:["warning"],click:location.href.replace(/kamera\.html.*$/,"")})})
+        .then(function(r){ if(!r.ok) yaz("Yeni cihaz bildirimi gönderilemedi (ntfy "+r.status+")."); })
+        .catch(function(h){ yaz("Yeni cihaz bildirimi gönderilemedi ("+((h&&h.message)||h)+")."); });
+    }catch(h){}
+  }
+  function istekGeldi(id,ad,m){
     if(!id) return;
     ad=String(ad||("izleyen "+String(id).slice(-4))).slice(0,20);
     if(!akis&&!beklemede&&!kameraSoz){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ("+ad+") ama bekleme modu kapalı ve kamera açık değil."); return; }
@@ -1168,6 +1093,7 @@
     }
     var z={pc:null,ad:ad,mik:false,buradaVar:false,sonBurada:0,kopma:null,gonderen:null,kanal:null,gelenSes:null,gelenVideo:null};
     izleyenler[id]=z;
+    yeniCihazKontrol(ad,m);
     taniId=id; taniSatir=[]; taniCevap=false;
     tYaz("İzleme isteği geldi ("+ad+", izleyen "+String(id).slice(-4)+", bu sayfa "+sayfaKimlik+"). Diğer izleyen: "+(izleyenSayisi()-1)+".");
     izleyenYazisi();
@@ -1227,7 +1153,7 @@
   }
   // Evi dinle: her izleyen kendi isteğini söyler; biri bile isterse Pixel'in mikrofonu açık
   function mikHesapla(){
-    var ist=Object.keys(izleyenler).some(function(i){ return izleyenler[i].mik; })&&!mikYerelKapali;   // evdeki kişi kapattıysa kapalı
+    var ist=Object.keys(izleyenler).some(function(i){ return izleyenler[i].mik; });
     if(ist!==mikAcik&&akis) mikAyarla(ist); else bildir();
   }
   // Beni göster / Konuş: her izleyen kendi durumunu söyler (16 Eki · Oda 2: herkes aynı anda görünebilir)
@@ -1268,7 +1194,7 @@
   }
   function mesajGeldi(m){
     if(m.t==="dinlen"){ dinlen(); return; }
-    if(m.t==="istek") istekGeldi(m.id,m.ad);
+    if(m.t==="istek") istekGeldi(m.id,m.ad,m);
     else if(m.t==="burada"){ var zb=m.id&&izleyenler[m.id]; if(zb){ zb.buradaVar=true; zb.sonBurada=Date.now(); } }
     else if(m.t==="cevap"){
       var z=m.id&&izleyenler[m.id];
@@ -1289,7 +1215,6 @@
       mikHesapla();
     }
     else if(m.t==="gor") gorAyarla(m.deger);
-    else if(m.t==="mikGuc") mikGucAyarla(m.deger);
     else if(m.t==="takip") takipAyarla(!!m.deger,m);
     else if(m.t==="takipBekle"){ akici=false; takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; olcum=null; test=null; arama={bitti:true}; gecmis=[]; hareketiBirak(); }
     else if(m.t==="bitir"){ var zk=izleyenler[m.id]; if(zk){ tYaz(zk.ad+" ayrıldı."); taniGonder(); baglantiyiKapat(m.id); } }
@@ -1323,12 +1248,8 @@
     });
     benGor=gorenler.length>0;
     benSes=Object.keys(izleyenler).some(function(id){ return izleyenler[id].ses; });
-    var onceBeni=document.body.classList.contains("beni");
     document.body.classList.toggle("beni",benGor);
     document.body.classList.toggle("benIki",gorenler.length>1);
-    if(benGor&&!onceBeni) gorGoster(4000);                         // görüşme başladı: düğmeler bir an görünsün
-    if(!benGor&&onceBeni&&mikYerelKapali){ mikYerelKapali=false; mikHesapla(); }
-    benOzGuncelle(); gorDugmeGuncelle();
   }
   function gelenSesKur(z){
     if(!z.sesEl){ z.sesEl=document.createElement("audio"); z.sesEl.autoplay=true; document.body.appendChild(z.sesEl); }
@@ -1347,7 +1268,6 @@
     gelenSesKur(z); gelenEkran();
     yaz(z.ad+": "+(gor?(ses?"Beni göster açıldı (görüntü + ses).":"Beni göster açık, sesi kapalı."):(ses?"Konuş açık (sadece ses).":"Beni göster / Konuş kapandı.")));
     if(neden==="bosta") gonder({t:"bosta",id:id});
-    else if(neden==="evden") gonder({t:"bosta",id:id,neden:"evden"});
     gelenYazisi(); bildir();
   }
   function gelenTemizle(z){
@@ -1399,105 +1319,6 @@
     });
   },250);
 
-  // ---------- gelen arama: yönetici evdeyken (XR karta bağlı) aranırsa Pixel de çalar ----------
-  // Arayan sayfa "ara" mesajına pc:1 koyar. Aç: arayan Evi izle + Beni göster ile bağlanır, Pixel görüşme ekranı açılır.
-  var pxAr=null, pxZil=null;
-  function pxZilBasla(){
-    try{
-      if(!pxZil){ pxZil=new Audio("zil.mp3"); pxZil.loop=true; }
-      pxZil.currentTime=0;
-      var o=pxZil.play(); if(o&&o.catch) o.catch(function(){ zilCal(20000); });
-    }catch(h){ zilCal(20000); }
-  }
-  function pxZilDur(){ try{ if(pxZil) pxZil.pause(); }catch(h){} }
-  function pxYayin(m){ m.kimden="pixel"; m.ad="Ev"; if(istemci&&istemci.connected) istemci.publish("comitok/"+kod+"/arama",JSON.stringify(m)); }
-  function pxNtfy(id,neden){ if(/^\w{3,24}$/.test(id||"")) try{ fetch("https://ntfy.sh/stz-"+id,{method:"POST",body:"bitti "+neden}).catch(function(){}); }catch(h){} }
-  function pxKapat(yazi){
-    if(!pxAr) return;
-    if(yazi) yaz("Arama: "+yazi+".");
-    pxAr=null; pxZilDur(); E("pxArama").classList.add("gizli");
-  }
-  function aramaGeldi(m){
-    if(!m||!m.id) return;
-    var n=Date.now();
-    if(m.t==="ara"&&m.pc){
-      if(pxAr&&pxAr.id===m.id){ pxAr.son=n; return; }
-      if(pxAr) return;
-      pxAr={id:m.id,ad:String(m.ad||"?").slice(0,20),son:n,bas:n,durum:"caliyor"};
-      E("pxAramaAd").textContent="📞 "+pxAr.ad+" arıyor";
-      E("pxAramaNot").textContent="Görüntülü görüşme";
-      E("pxRed").style.visibility=""; E("pxAc").style.visibility="";
-      E("pxArama").classList.remove("gizli");
-      pxZilBasla();
-      yaz("Arama: "+pxAr.ad+" arıyor (Pixel çalıyor).");
-      return;
-    }
-    if(!pxAr||pxAr.id!==m.id||m.kimden==="pixel") return;
-    if(m.t==="iptal") pxKapat("cevapsız arama ("+pxAr.ad+")");
-    else if(m.t==="ac"||m.t==="red"||m.t==="mesgul"){ if(pxAr.durum==="caliyor") pxKapat("arama başka bir cihazdan "+(m.t==="ac"?"açıldı":"kapatıldı")); }
-  }
-  setInterval(function(){
-    if(!pxAr) return;
-    var n=Date.now();
-    if(pxAr.durum==="caliyor"&&(n-pxAr.son>15000||n-pxAr.bas>65000)) pxKapat("arama bitti ("+pxAr.ad+")");
-    else if(pxAr.durum==="acildi"&&(document.body.classList.contains("beni")||n-pxAr.bas>30000)) pxKapat(document.body.classList.contains("beni")?"görüşme başladı":"arayan bağlanmadı");
-  },1000);
-  E("pxAc").onclick=function(){
-    if(!pxAr||pxAr.durum!=="caliyor") return;
-    sesiHazirla();
-    pxAr.durum="acildi"; pxAr.bas=Date.now(); pxZilDur();
-    pxYayin({t:"ac",id:pxAr.id,pixel:1}); pxNtfy(pxAr.id,"pixel");
-    E("pxAramaAd").textContent=pxAr.ad+" bağlanıyor…"; E("pxAramaNot").textContent="Birkaç saniye sürebilir";
-    E("pxRed").style.visibility="hidden"; E("pxAc").style.visibility="hidden";
-    yaz("Arama: Pixel'den açıldı ("+pxAr.ad+").");
-  };
-  E("pxRed").onclick=function(){
-    if(!pxAr) return;
-    pxYayin({t:"red",id:pxAr.id}); pxNtfy(pxAr.id,"red");
-    pxKapat("Pixel'den reddedildi ("+pxAr.ad+")");
-  };
-
-  // ---------- görüşme ekranı: Beni göster açıkken Pixel'de kendi görüntün ve düğmeler ----------
-  var mikYerelKapali=false, gorTik=null;
-  function benOzGuncelle(){
-    var v=E("benOz"), t=benGor?vTrack():null, s=v.srcObject&&v.srcObject.getVideoTracks()[0];
-    if(s!==t) v.srcObject=t?new MediaStream([t]):null;
-    if(t){ var o=v.play(); if(o&&o.catch) o.catch(function(){}); }
-    document.body.classList.toggle("arkaKam",yon==="environment");
-  }
-  function gorDugmeGuncelle(){
-    E("gMik").classList.toggle("kapali",!mikAcik);
-    E("gTakip").classList.toggle("acik",!!takipAcik);
-  }
-  function gorGoster(sure){
-    var k=E("gorKatman"); k.classList.add("acik"); clearTimeout(gorTik);
-    gorTik=setTimeout(function(){ k.classList.remove("acik"); },sure||6000);
-  }
-  function gorYaz(t){ E("gorYazi").textContent=t; gorGoster(); }
-  E("gorKatman").addEventListener("pointerdown",function(e){
-    sesiHazirla();
-    var k=E("gorKatman");
-    if(e.target.closest&&e.target.closest("button")){ if(k.classList.contains("acik")) gorGoster(); return; }
-    if(k.classList.contains("acik")){ clearTimeout(gorTik); k.classList.remove("acik"); } else { E("gorYazi").textContent=""; gorGoster(); }
-  });
-  // görünmezken basılan düğme çalışmasın: ilk dokunuş sadece düğmeleri getirir
-  ["gMik","gCevir","gTakip","gKapat"].forEach(function(id){
-    E(id).addEventListener("click",function(e){ if(!E("gorKatman").classList.contains("acik")){ e.stopImmediatePropagation(); gorGoster(); } },true);
-  });
-  E("gMik").onclick=function(){
-    mikYerelKapali=!mikYerelKapali; mikHesapla();
-    var dinleyen=Object.keys(izleyenler).some(function(i){ return izleyenler[i].mik; });
-    gorYaz(mikYerelKapali?"Mikrofon kapalı: seni duymuyorlar":(dinleyen?"Mikrofon açık":"Mikrofon açık (karşı taraf \"Evi dinle\"yi açınca duyar)"));
-    gorDugmeGuncelle();
-  };
-  E("gCevir").onclick=function(){ kameraCevir(yon==="user"?"environment":"user"); gorYaz(yon==="user"?"Arka kamera":"Ön kamera"); };
-  E("gTakip").onclick=function(){ takipAyarla(!takipAcik); gorDugmeGuncelle(); gorYaz(takipAcik?"Takip açık":"Takip kapalı"); };
-  E("gKapat").onclick=function(){
-    gelenIdler().forEach(function(id){ benAyarla(id,false,false,"evden"); });
-    yaz("Görüşme Pixel'den kapatıldı (izleme sürüyor).");
-    E("gorKatman").classList.remove("acik");
-  };
-
   // ---------- boşta kapanma: kimse izlemiyorken açık kalanlar 3 dk sonra kapanır ----------
   // Kamera (elle açılmış), takip, tanıma kutuları ve ışık. Pixel'e dokunmak süreyi baştan başlatır.
   var bostaBas=0, sonDokunma=0;
@@ -1532,7 +1353,7 @@
       goster(E("dSunucu"),"bağlı","iyi");
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe(konu("k"));
-      istemci.subscribe("comitok/"+kod+"/arama");
+      istemci.subscribe("comitok/"+kod+"/gizlilik");   // yeni cihaz bildirimi için ntfy konusu buradan
       pixelDurumSon=""; pixelDurumYayinla();
       if(akis||beklemede) gonder({t:"hazir"});
     });
@@ -1550,7 +1371,7 @@
     });
     istemci.on("message",function(k,veri){
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
-      if(k.slice(-6)==="/arama"){ aramaGeldi(m); return; }
+      if(String(k).slice(-9)==="/gizlilik"){ gkAyarP=(m&&typeof m==="object")?m:null; return; }
       mesajGeldi(m);
     });
   }
