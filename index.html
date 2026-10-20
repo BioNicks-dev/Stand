@@ -145,8 +145,22 @@
     padding:6px 12px;border-radius:16px;background:rgba(0,0,0,.55);color:#fff;border:1px solid rgba(255,255,255,.35);
     font-size:13px;font-weight:500;z-index:4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #kOda.eylem{border-color:#7fe0aa}
-  body.buyukDuzen #kOda{top:60px;left:auto;right:12px;transform:none;max-width:62%}
-  body.yatayDuzen.buyukDuzen #kOda{top:16px;right:calc(66px + env(safe-area-inset-right,0px));max-width:45%}
+  #kOda{display:flex;align-items:center;gap:2px}
+  #kOda button{all:unset;cursor:pointer;padding:0 3px;white-space:nowrap;-webkit-touch-callout:none}
+  #kOda .ay{opacity:.6;padding:0 1px}
+  #kOda .kAd.kisik{opacity:.7;text-decoration:line-through;text-decoration-thickness:1px}
+  #kOda .kAd.konusuyor{color:#7fe0aa;opacity:1}
+  #kOda .kAd.kisik.konusuyor{color:#ff8a8a;text-decoration:none}
+  #kOda .kAd.kisik.konusuyor::after{content:" (kısık)";font-size:11px}
+  /* ses çubuğu kutusu */
+  #kSesKutu{position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:8;width:min(300px,86%);padding:10px 12px;border-radius:14px;
+    background:rgba(0,0,0,.8);color:#fff;font-size:14px;touch-action:auto}
+  #kSesKutu .ust{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  #kSesKutu .alt{display:flex;align-items:center;gap:10px}
+  #kSesKutu input{flex:1;min-height:0;accent-color:#fff}
+  #kSesKutu b{min-width:44px;text-align:right;font-weight:600}
+  #kSesKutu button{width:36px;height:36px;min-height:0;padding:0;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:0;display:flex;align-items:center;justify-content:center}
+  #kSesKutu button.acik{background:rgba(255,255,255,.92);color:#111}
   .kontrolYok{opacity:.4}
   /* öbür kişinin kutusu (toplantı) */
   #kKisiYuva{position:absolute;right:8px;top:56px;display:flex;flex-direction:column;gap:6px;z-index:4}
@@ -162,8 +176,6 @@
   .kKisi span{position:absolute;left:0;right:0;bottom:0;padding:2px 4px;font-size:11px;color:#fff;background:rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #kKisiBuyuk{position:absolute;inset:0;z-index:2;background:#000}
   #kKisiBuyuk video{width:100%;height:100%;object-fit:contain;display:block}
-  body.buyukDuzen #kKisiYuva{top:100px;right:12px}
-  body.yatayDuzen.buyukDuzen #kKisiYuva{top:56px;right:calc(66px + env(safe-area-inset-right,0px))}
   body.kameraModu #odaPanel{display:none !important}
   .aramaUst{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--ink-soft)}
   .aramaUst .ikon{min-height:38px;min-width:38px;font-size:17px;padding:4px}
@@ -187,6 +199,10 @@
   .secilir{-webkit-user-select:text;user-select:text}
   .ustLink{color:var(--ink-soft);text-decoration:none;font-size:14px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:7px 10px;white-space:nowrap}
   .gizle{display:none !important}
+  /* çizgi simgeler (19 Eki): kapalıysa üstü çizili */
+  .ik{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;flex:none;pointer-events:none}
+  .ik .cz{display:none} .kapali>.ik .cz{display:block}
+  #kBenYuva .kBenDugmeler button:not(.acik) .ik .cz{display:block}
 
   /* ev kamerası (Pixel) */
   html,body,button,input{touch-action:manipulation}
@@ -212,19 +228,12 @@
   #kEkran #kBilgi{background:none;border:0;padding:2px 4px;margin:0;min-height:0;width:auto;font:inherit;font-size:12px;pointer-events:auto;z-index:4;cursor:pointer}
   #kBilgi:empty{display:none}
   #kAyrinti{position:absolute;left:10px;right:auto;max-width:min(320px,80%);z-index:7;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.55;padding:10px 12px;border-radius:12px;bottom:28px}
-  body.buyukDuzen #kAyrinti{top:84px;bottom:auto;left:12px}
-  body.yatayDuzen.buyukDuzen #kAyrinti{top:40px;left:calc(62px + env(safe-area-inset-left,0px))}
   #kAyrinti.gizli{display:none}
   .kDugmeler button.ogreniyor{opacity:.55}
   /* klasik düzende zoom çubuğu kalın */
   /* büyük düzen: joystick, zoom ve düğmeler görüntünün üstünde */
   body.buyukDuzen #kEkran{height:70vh;height:70dvh;touch-action:none}
-  body.buyukDuzen #kEkran .kDugmeler{position:absolute;top:8px;left:58px;right:58px;padding:0;gap:5px;z-index:3}
-  body.buyukDuzen #kEkran .kDugmeler button{min-height:42px;background:rgba(0,0,0,.45);border-color:rgba(255,255,255,.3);color:#fff;font-size:17px}
   body.buyukDuzen #kEkran .kDugmeler button span{display:none}
-  body.buyukDuzen #kEkran .kDugmeler button.kapali{border-color:#ff8a8a;background:rgba(140,30,30,.55)}
-  body.buyukDuzen #kEkran .kDugmeler button.acik{border-color:#7fe0aa;background:rgba(30,110,70,.55)}
-  body.buyukDuzen #kBilgi{top:60px;left:12px;bottom:auto}
   /* Beni göster / Konuş: sağ altta iki yuvarlak düğme, açıkken üstünde kendi küçük görüntün */
   #kBenYuva{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:5}
   #kBenYuva #kBenKutu{position:relative;width:72px;height:96px;min-height:0;padding:0;border-radius:10px;overflow:hidden;border:2px solid #7fe0aa;background:#000;touch-action:none;-webkit-touch-callout:none}
@@ -236,7 +245,6 @@
   #kBenYuva button{width:52px;height:52px;min-height:0;padding:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:23px}
   #kBenYuva button.acik{border-color:#7fe0aa;background:rgba(30,110,70,.75)}
   #kBenYuva button:disabled{opacity:.35}
-  body.yatayDuzen.buyukDuzen #kBenYuva{right:calc(66px + env(safe-area-inset-right,0px));bottom:12px;flex-direction:row}
   #kPadYuva{position:absolute;left:12px;bottom:12px;width:min(44vw,200px);z-index:5;transform:translateZ(0)}
   #kPadYuva:empty{display:none}
   #kPadYuva #pad{margin:0;max-width:none;background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.45)}
@@ -265,23 +273,65 @@
   body.yatayDuzen.buyukDuzen #kEkran{height:100vh;height:100dvh}
   body.yatayDuzen.buyukDuzen .kKapat{right:calc(10px + env(safe-area-inset-right,0px))}
   body.yatayDuzen.buyukDuzen .kAyar{left:calc(10px + env(safe-area-inset-left,0px))}
-  body.yatayDuzen.buyukDuzen #kEkran .kDugmeler{top:58px;left:auto;right:calc(10px + env(safe-area-inset-right,0px));width:46px;grid-template-columns:1fr}
-  body.yatayDuzen.buyukDuzen #kEkran .kDugmeler button{min-height:40px}
-  body.yatayDuzen.buyukDuzen #kBilgi{top:16px;left:calc(62px + env(safe-area-inset-left,0px))}
   body.yatayDuzen.buyukDuzen #kPadYuva{left:calc(14px + env(safe-area-inset-left,0px));bottom:14px;width:min(40vh,180px)}
   body.yatayDuzen.buyukDuzen #kAltYuva{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:3}
   body.yatayDuzen.buyukDuzen #kAltYuva .izgara3{display:flex;gap:6px}
   body.yatayDuzen.buyukDuzen #kAltYuva button{min-height:38px;padding:4px 12px;font-size:13px;background:rgba(0,0,0,.45);color:#fff;border-color:rgba(255,255,255,.35)}
   body.yatayDuzen.buyukDuzen #kAltYuva #durBtn{width:auto;color:#ffb0b0;border-color:rgba(255,140,140,.6)}
+  /* ===== büyük düzen (19 Eki): dört köşe, saydam yuvarlak düğmeler =====
+     üst sıra: solda ayar, ortada Pixel düğmeleri, sağda kapat · sol üst: bilgi + kim burada
+     sağ üst: kişi kutuları · sağ alt: kendi kutun + Beni göster / Konuş · sol alt: joystick */
+  body.buyukDuzen #kEkran{--gs:0px;--gsa:0px;--gu:0px;--kw:92px}
+  body.yatayDuzen.buyukDuzen #kEkran{--gs:env(safe-area-inset-left,0px);--gsa:env(safe-area-inset-right,0px);--gu:env(safe-area-inset-top,0px);--kw:clamp(96px,11vw,170px)}
+  body.buyukDuzen #kEkran .kYuvarlak{top:calc(8px + var(--gu));width:44px;height:44px;border:0;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center}
+  body.buyukDuzen #kEkran .kAyar{left:calc(10px + var(--gs))}
+  body.buyukDuzen #kEkran .kKapat{right:calc(10px + var(--gsa));background:rgba(229,72,77,.85)}
+  body.buyukDuzen #kEkran .kDugmeler{position:absolute;top:calc(8px + var(--gu));left:calc(62px + var(--gs));right:calc(62px + var(--gsa));padding:0;
+    display:flex;justify-content:center;gap:6px;z-index:3}
+  body.buyukDuzen #kEkran .kDugmeler button{width:44px;height:44px;min-height:0;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.38);color:#fff;flex:none;display:flex;align-items:center;justify-content:center}
+  body.buyukDuzen #kEkran .kDugmeler button.acik{background:rgba(255,255,255,.92);color:#111}
+  body.buyukDuzen #kEkran .kDugmeler button:disabled{opacity:.35}
+  body.buyukDuzen #kBilgi{top:calc(60px + var(--gu));left:calc(12px + var(--gs));bottom:auto}
+  body.buyukDuzen #kOda{top:calc(86px + var(--gu));left:calc(12px + var(--gs));right:auto;transform:none;max-width:calc(100% - var(--kw) - 48px - var(--gs) - var(--gsa))}
+  body.buyukDuzen #kSesKutu{top:calc(124px + var(--gu));left:calc(12px + var(--gs));transform:none}
+  body.buyukDuzen #kAyrinti{top:calc(124px + var(--gu));bottom:auto;left:calc(12px + var(--gs))}
+  body.buyukDuzen #kKisiYuva{top:calc(60px + var(--gu));right:calc(12px + var(--gsa));left:auto;bottom:auto;gap:8px}
+  body.buyukDuzen .kKisi,body.buyukDuzen #kBenYuva #kBenKutu{width:var(--kw);height:calc(var(--kw) * 4 / 3);border-radius:12px;border:1.5px solid rgba(255,255,255,.55)}
+  body.buyukDuzen #kBenYuva{right:calc(12px + var(--gsa));bottom:12px;flex-direction:row-reverse;align-items:flex-end;gap:10px}
+  body.buyukDuzen .kBenDugmeler{flex-direction:column}
+  body.buyukDuzen #kBenYuva button{border:0;background:rgba(0,0,0,.38);display:flex;align-items:center;justify-content:center}
+  body.buyukDuzen #kBenYuva .kBenDugmeler button.acik{background:rgba(255,255,255,.92);color:#111}
+  body.buyukDuzen #kBenYuva .ik{width:24px;height:24px}
+  /* kutulardaki küçük simgeler */
+  .kYuvarlak{display:flex;align-items:center;justify-content:center}
+  .kKisi .kMik{position:absolute;right:auto;bottom:auto;padding:0;top:5px;left:5px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;pointer-events:none}
+  .kMik .ik{width:14px;height:14px} .kMik .ik .cz{display:block}
+  #kBenKutu #kBenCevir{position:absolute;left:auto;bottom:auto;padding:0;pointer-events:auto;top:5px;right:5px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;z-index:2}
+  #kBenCevir .ik{width:17px;height:17px}
+  #kBenKutu.ev #kBenCevir{display:none}
+  #kBenKutu.arka #kBenVideo{transform:none}
   /* hareketsizlikte sadece görüntü: kontroller yavaşça kaybolur; görüntü ve kutular kalır */
   #kEkran .kYuvarlak,#kEkran .kDugmeler,#kPadYuva,#kOda,#kBilgi,.kBenDugmeler,#kAltYuva{transition:opacity .25s}
   body.sadeGoruntu #kEkran .kYuvarlak,body.sadeGoruntu #kEkran .kDugmeler,body.sadeGoruntu #kPadYuva,body.sadeGoruntu #kOda,
-  body.sadeGoruntu #kBilgi,body.sadeGoruntu .kBenDugmeler,body.sadeGoruntu #kAltYuva{opacity:0 !important;transition:opacity 1s;pointer-events:none !important}
+  body.sadeGoruntu #kBilgi,body.sadeGoruntu .kBenDugmeler,body.sadeGoruntu #kAltYuva,body.sadeGoruntu #kBenCevir{opacity:0 !important;transition:opacity 1s;pointer-events:none !important}
+  body.sadeGoruntu #kOda.konusma{opacity:1 !important;pointer-events:auto !important}
   body.gzKilit #kEkran .kYuvarlak,body.gzKilit #kEkran .kDugmeler,body.gzKilit #kPadYuva,body.gzKilit #kOda,
   body.gzKilit #kBilgi,body.gzKilit .kBenDugmeler,body.gzKilit #kAltYuva{pointer-events:none !important}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-ayar" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+  <symbol id="i-kapat" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-cevir" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5M4 4v3h3M4 13a8 8 0 0 0 14.5 4.5M20 20v-3h-3"/></symbol>
+  <symbol id="i-ses" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+  <symbol id="i-mik" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+  <symbol id="i-gor" viewBox="0 0 24 24"><rect x="3" y="6.5" width="12" height="11" rx="2"/><path d="M15 10.5l6-3v9l-6-3z"/></symbol>
+  <symbol id="i-fener" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-isik" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-takip" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <symbol id="i-beni" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+</svg>
 <!-- ============ GELEN ARAMA (sadece yonetici) ============ -->
 <div id="aramaKutu" class="gizle" role="alertdialog" aria-labelledby="aramaUyg aramaKim">
   <div class="ic">
@@ -345,9 +395,13 @@
     <div id="kOrta"></div>
     <button id="kBilgi" type="button" aria-label="Ayrıntılar"></button>
     <div id="kAyrinti" class="gizli"></div>
-    <button class="kYuvarlak kAyar" id="kAyarBtn" aria-label="Ayarlar">⚙</button>
-    <button class="kYuvarlak kKapat" id="kKapatBtn" aria-label="Kamerayı kapat">✕</button>
-    <button id="kOda" type="button" class="gizle" aria-label="Kim burada, kontrol kimde"></button>
+    <button class="kYuvarlak kAyar" id="kAyarBtn" aria-label="Ayarlar"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ayar"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button>
+    <button class="kYuvarlak kKapat" id="kKapatBtn" aria-label="Kamerayı kapat"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-kapat"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button>
+    <div id="kOda" class="gizle" aria-label="Kim burada, kontrol kimde"></div>
+    <div id="kSesKutu" class="gizle" role="dialog" aria-label="Ses seviyesi">
+      <div class="ust"><span id="kSesAd">—</span><button id="kSesKapat" type="button" aria-label="Kapat"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-kapat"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button></div>
+      <div class="alt"><button id="kSesSessiz" type="button" aria-label="Sessiz"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ses"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button><input id="kSesCubuk" type="range" min="0" max="200" step="10" value="100" aria-label="Ses seviyesi"><b id="kSesYuzde">100%</b></div>
+    </div>
     <div id="kKisiBuyuk" class="gizle"><video autoplay playsinline muted></video></div>
     <div id="kKisiYuva"></div>
     <div id="kKisiSesler" style="display:none"></div>
@@ -355,20 +409,20 @@
     <div id="kZoomGosterge"></div>
     <div id="kAltYuva"></div>
     <div id="kBenYuva">
-      <button id="kBenKutu" type="button" class="gizle" aria-label="Kendi görüntünü büyüt"><video id="kBenVideo" autoplay playsinline muted></video><span id="kBenAd" class="gizle">Ev</span></button>
+      <button id="kBenKutu" type="button" class="gizle" aria-label="Kendi görüntünü büyüt"><video id="kBenVideo" autoplay playsinline muted></video><span id="kBenAd" class="gizle">Ev</span><span id="kBenCevir" role="button" aria-label="Kendi kameranı çevir (ön / arka)"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cevir"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></span></button>
       <div class="kBenDugmeler">
-        <button id="kBeniBtn" type="button" aria-label="Beni göster: görüntün ve sesin evdeki ekrana gider" disabled>📺</button>
-        <button id="kKonusBtn" type="button" aria-label="Konuş: sesin evde duyulur" disabled>🎙</button>
+        <button id="kBeniBtn" type="button" aria-label="Beni göster: görüntün ve sesin evdeki ekrana gider" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-beni"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button>
+        <button id="kKonusBtn" type="button" aria-label="Konuş: sesin evde duyulur" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mik"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button>
       </div>
     </div>
   </div>
   <div class="kDugmeler" id="kDugmeler">
-    <button id="kCevirBtn" aria-label="Ön / arka kamera" disabled>🔄<span>Ön</span></button>
-    <button id="kSesBtn" class="kapali" aria-label="Evi dinle: evin sesini aç veya kapat">🔈<span>Evi dinle</span></button>
-    <button id="kMikBtn" aria-label="Evdeki mikrofon" disabled style="display:none">🎙<span>Mikrofon</span></button>
-    <button id="kGorBtn" aria-label="Görüntüyü aç veya kapat" disabled>📷<span>Görüntü</span></button>
-    <button id="kFenerBtn" aria-label="Feneri aç veya kapat" disabled>🔦<span>Fener</span></button>
-    <button id="kTakipBtn" aria-label="İnsan / kedi takibini aç veya kapat" disabled>🎯<span>Takip</span></button>
+    <button id="kCevirBtn" aria-label="Ön / arka kamera" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-cevir"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Ön</span></button>
+    <button id="kSesBtn" class="kapali" aria-label="Evi dinle: evin sesini aç veya kapat (uzun bas: ses seviyesi)"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ses"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Evi dinle</span></button>
+    <button id="kMikBtn" aria-label="Evdeki mikrofon" disabled style="display:none"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mik"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Mikrofon</span></button>
+    <button id="kGorBtn" aria-label="Görüntüyü aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gor"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Görüntü</span></button>
+    <button id="kFenerBtn" aria-label="Feneri aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-fener"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Fener</span></button>
+    <button id="kTakipBtn" aria-label="İnsan / kedi takibini aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-takip"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Takip</span></button>
   </div>
 </div>
 
@@ -378,7 +432,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 17 Eki 20:00</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 19 Eki 18:00</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
   <div class="panel odaPanel gizle" id="odaPanel"><span id="odaYazi"></span><button class="kucuk gizle" id="odaBtn"></button></div>
@@ -1166,12 +1220,34 @@
       }
       yazi="Kontrol: "+({"kontrol sende":"sende","kontrol ortak":"ortak (son dokunan kazanır)","kontrol onda":"yöneticide"}[kont]||kont);
       kisa=kisaAd+" · "+kont+(btn?" · "+(btn==="Kontrolü geri al"?"geri al":(odaIste?"istendi…":"iste")):"");
+      var kontKisa=kont+(btn?" · "+(btn==="Kontrolü geri al"?"geri al":(odaIste?"istendi…":"iste")):"");
     }
     E("odaPanel").classList.toggle("gizle",!yazi);
     E("odaYazi").textContent=yazi;
     E("odaBtn").textContent=btn; E("odaBtn").classList.toggle("gizle",!btn); E("odaBtn").disabled=btn==="İstendi…";
-    var p=E("kOda");
-    p.classList.toggle("gizle",!kisa); p.textContent=kisa; p.classList.toggle("eylem",!!btn&&!odaIste);
+    odaSatirCiz(kisa?d:[],kisa?kontKisa:"",!!btn&&!odaIste);
+  }
+  // Kim burada satırı (19 Eki): her ad ayrı dokunulur (ses seviyesi), sondaki kontrol yazısı eskisi gibi
+  function odaSatirCiz(d,kont,eylem){
+    var p=E("kOda"), imza=JSON.stringify([d.map(function(k){ return [k.id,k.ad,!!k.iz]; }),kont]);
+    p.classList.toggle("gizle",!d.length); p.classList.toggle("eylem",eylem);
+    if(p._imza===imza) return;
+    p._imza=imza; p.innerHTML="";
+    function ay(t){ var s=document.createElement("span"); s.className="ay"; s.textContent=t; p.appendChild(s); }
+    d.forEach(function(k,i){
+      if(i) ay(",");
+      var b=document.createElement("button"); b.type="button"; b.className="kAd";
+      b.setAttribute("data-id",k.id); b.textContent=(k.iz?"👁 ":"")+k.ad; b.setAttribute("aria-label",k.ad+": ses seviyesi");
+      b.onclick=function(e){ e.stopPropagation(); sesKutuAc(k.id,k.ad); };
+      p.appendChild(b);
+    });
+    if(kont){
+      ay("·");
+      var c=document.createElement("button"); c.type="button"; c.className="kKont"; c.textContent=kont;
+      c.onclick=function(e){ e.stopPropagation(); odaEylem(); };
+      p.appendChild(c);
+    }
+    sesSiniflar();
   }
   function odaEylem(){
     if(rol!=="uzak") return;
@@ -1204,7 +1280,7 @@
     odaGuncelle();
   };
   E("odaBtn").onclick=odaEylem;
-  E("kOda").onclick=function(e){ e.stopPropagation(); odaEylem(); };
+  E("kOda").onclick=function(e){ e.stopPropagation(); };
   document.addEventListener("visibilitychange",function(){
     if(odaOnde()){ odaGorunurBas=Date.now(); if(yk) odaKararBekliyor=true; }
     varligimiBildir(); odaGuncelle();
@@ -1598,6 +1674,7 @@
         b=document.createElement("button"); b.type="button"; b.className="kKisi"; b.setAttribute("data-id",id);
         var v=document.createElement("video"); v.autoplay=true; v.muted=true; v.setAttribute("playsinline",""); b.appendChild(v);
         var s=document.createElement("span"); b.appendChild(s);
+        if(id!=="ev"){ var mk=document.createElement("span"); mk.className="kMik"; mk.innerHTML='<svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mik"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg>'; b.appendChild(mk); }
         kisiDokunus(b,function(){ kisiBuyukId=(id==="ev")?null:id; kisiGoster(); });
         yuva.appendChild(b);
       }
@@ -1608,10 +1685,11 @@
       if(eskiT!==yeniT) vid.srcObject=akim;
       var o=vid.play(); if(o&&o.catch) o.catch(function(){});
       b.querySelector("span").textContent=id==="ev"?"Ev":kisiler[id].ad;
+      var mkk=b.querySelector(".kMik"); if(mkk) mkk.classList.toggle("gizle",!!(odaKisiler[id]&&odaKisiler[id].bs));   // mikrofonu kapalıysa üstü çizili mikrofon
       b.setAttribute("aria-label",id==="ev"?"Ev görüntüsünü büyüt":kisiler[id].ad+" görüntüsünü büyüt");
     });
     var bv=E("kKisiBuyuk"), bvid=bv.querySelector("video");
-    bv.classList.toggle("ayna",kisiBuyukId==="ben");
+    bv.classList.toggle("ayna",kisiBuyukId==="ben"&&benYon==="user");
     if(kisiBuyukId){
       var t=kisiBuyukId==="ben"?grYerel.gor:kisiler[kisiBuyukId].video;
       if(!bvid.srcObject||bvid.srcObject.getVideoTracks()[0]!==t) bvid.srcObject=new MediaStream([t]);
@@ -1628,7 +1706,7 @@
     var istenen=ev?(grVideo.srcObject&&grVideo.srcObject.getVideoTracks()[0]):gor;
     var simdiki=v.srcObject&&v.srcObject.getVideoTracks()[0];
     if(simdiki!==istenen) v.srcObject=istenen?new MediaStream([istenen]):null;
-    kutu.classList.remove("gizle"); kutu.classList.toggle("ev",ev); E("kBenAd").classList.toggle("gizle",!ev);
+    kutu.classList.remove("gizle"); kutu.classList.toggle("ev",ev); kutu.classList.toggle("arka",benYon!=="user"); E("kBenAd").classList.toggle("gizle",!ev);
     kutu.setAttribute("aria-label",ev?"Ev görüntüsünü büyüt":"Kendi görüntünü büyüt");
     var o=v.play(); if(o&&o.catch) o.catch(function(){});
   }
@@ -1641,6 +1719,110 @@
   // büyük ekrandaki kişiye dokununca da ev görüntüsüne dönülür
   kisiDokunus(E("kKisiBuyuk"),function(){ kisiBuyukId=null; kisiGoster(); });
   kisiDokunus(E("kBenKutu"),function(){ kisiBuyukId=(kisiBuyukId==="ben")?null:"ben"; kisiGoster(); });
+
+  // ---------- ses seviyeleri ve kim konuşuyor (19 Eki) ----------
+  // Seviye kişinin adına göre bu telefonda saklanır (0 = sessiz, 1 = normal, 2 = iki kat). Normalde ses eskisi gibi
+  // doğrudan çalar; sadece seviye %100'den farklıysa (ve 0 değilse) sayfa içi ses katmanından (Web Audio) geçer.
+  // Konuşma tespiti bağlantının kendi ses düzeyinden (getSynchronizationSources): ses yoluna dokunmaz.
+  var sesCtx=null, sesYol={}, sesSon={}, sesOnceki={}, sesKutuAn=null, sesKutuTik=null, evDinle=false;
+  function sesAd(an){ if(an==="ev") return "ev"; var k=odaKisiler[an]; return (k&&k.ad)||(kisiler[an]&&kisiler[an].ad)||String(an); }
+  function sesSeviye(an){ var v=null; try{ v=localStorage.getItem("stand_ses_"+sesAd(an)); }catch(h){} if(v===null||v==="") return 1; v=Number(v); return isNaN(v)?1:Math.max(0,Math.min(2,v)); }
+  function sesSeviyeYaz(an,v){ try{ localStorage.setItem("stand_ses_"+sesAd(an),String(v)); }catch(h){} }
+  function sesCtxHazirla(){
+    if(!sesCtx){ var C=window.AudioContext||window.webkitAudioContext; if(!C) return null; try{ sesCtx=new C(); }catch(h){ return null; } }
+    if(sesCtx.state==="suspended"){ var r=sesCtx.resume(); if(r&&r.then) r.then(sesHepsi).catch(function(){}); }
+    return sesCtx;
+  }
+  function sesYolKapat(an){ var y=sesYol[an]; if(!y) return; try{ y.src.disconnect(); y.g.disconnect(); }catch(h){} delete sesYol[an]; }
+  function sesUygula(an,el,iz,acik){
+    if(!el) return;
+    var v=sesSeviye(an);
+    if(!acik||v<=0){ el.muted=true; sesYolKapat(an); return; }
+    if(Math.abs(v-1)<0.05||!iz){ el.muted=false; sesYolKapat(an); return; }
+    var c=sesCtx;
+    if(!c||c.state!=="running"){ el.muted=false; sesYolKapat(an); return; }   // katman henüz hazır değil: normal çal
+    var y=sesYol[an];
+    if(!y||y.iz!==iz){
+      sesYolKapat(an);
+      try{ y={iz:iz,src:c.createMediaStreamSource(new MediaStream([iz])),g:c.createGain()}; y.src.connect(y.g); y.g.connect(c.destination); sesYol[an]=y; }
+      catch(h){ el.muted=false; return; }
+    }
+    y.g.gain.value=v; el.muted=true;
+  }
+  function evSesUygula(){
+    var st=grVideo.srcObject, iz=(st&&st.getAudioTracks)?(st.getAudioTracks()[0]||null):null;
+    sesUygula("ev",grVideo,iz,evDinle);
+  }
+  function sesHepsi(){
+    evSesUygula();
+    Array.prototype.slice.call(E("kKisiSesler").children).forEach(function(a){
+      var id=a.getAttribute("data-id"), x=kisiler[id]; if(x) sesUygula(id,a,x.ses,true);
+    });
+    Object.keys(sesYol).forEach(function(an){ if(an!=="ev"&&!kisiler[an]) sesYolKapat(an); });
+  }
+  function sesDuzey(x){
+    try{
+      var r=null; x.pc.getReceivers().forEach(function(q){ if(!r&&q.track&&q.track.kind==="audio") r=q; });
+      if(!r||!r.getSynchronizationSources) return 0;
+      var l=r.getSynchronizationSources(); if(!l.length) return 0;
+      var ts=l[0].timestamp, yas=Math.min(Math.abs(performance.now()-ts),Math.abs(Date.now()-ts));
+      return yas>1200?0:(l[0].audioLevel||0);
+    }catch(h){ return 0; }
+  }
+  function sesSiniflar(){
+    var n=Date.now(), konusan=false;
+    Array.prototype.slice.call(document.querySelectorAll("#kOda .kAd")).forEach(function(b){
+      var id=b.getAttribute("data-id"), k=n-(sesSon[id]||0)<800;
+      b.classList.toggle("konusuyor",k); b.classList.toggle("kisik",sesSeviye(id)<=0);
+      if(k) konusan=true;
+    });
+    E("kOda").classList.toggle("konusma",konusan);
+  }
+  setInterval(function(){
+    if(!grAcik) return;
+    var n=Date.now();
+    Object.keys(kisiler).forEach(function(id){ var x=kisiler[id]; if(x.bagli&&sesDuzey(x)>0.04) sesSon[id]=n; });
+    sesSiniflar();
+    sesHepsi();
+  },250);
+  // ses çubuğu kutusu
+  function sesKutuAc(an,ad){
+    sesKutuAn=an;
+    E("kSesAd").textContent=an==="ev"?"Evin sesi"+(evDinle?"":" (Evi dinle kapalı)"):(ad||sesAd(an))+" sesi";
+    E("kSesKutu").classList.remove("gizle");
+    sesCtxHazirla(); sesKutuYaz(); sesKutuSure();
+  }
+  function sesKutuKapat(){ sesKutuAn=null; E("kSesKutu").classList.add("gizle"); clearTimeout(sesKutuTik); }
+  function sesKutuSure(){ clearTimeout(sesKutuTik); sesKutuTik=setTimeout(sesKutuKapat,6000); }
+  function sesKutuYaz(){
+    if(sesKutuAn===null) return;
+    var v=sesSeviye(sesKutuAn), y=Math.round(v*100);
+    E("kSesCubuk").value=String(y); E("kSesYuzde").textContent=y+"%";
+    E("kSesSessiz").classList.toggle("kapali",v<=0);
+  }
+  function sesAyarla(v){
+    if(sesKutuAn===null) return;
+    v=Math.max(0,Math.min(2,Math.round(v*10)/10));
+    sesSeviyeYaz(sesKutuAn,v); if(v>0) sesOnceki[sesKutuAn]=v;
+    sesCtxHazirla(); sesHepsi(); sesSiniflar(); sesKutuYaz(); sesKutuSure();
+  }
+  E("kSesCubuk").addEventListener("input",function(){ sesAyarla(Number(E("kSesCubuk").value)/100); });
+  E("kSesSessiz").onclick=function(e){ e.stopPropagation(); if(sesKutuAn===null) return; var v=sesSeviye(sesKutuAn); sesAyarla(v>0?0:(sesOnceki[sesKutuAn]||1)); };
+  E("kSesKapat").onclick=function(e){ e.stopPropagation(); sesKutuKapat(); };
+  E("kSesKutu").addEventListener("click",function(e){ e.stopPropagation(); sesKutuSure(); });
+  document.addEventListener("pointerdown",function(e){
+    if(sesKutuAn===null) return;
+    if(e.target.closest&&e.target.closest("#kSesKutu,#kOda .kAd,#kSesBtn")) return;
+    sesKutuKapat();
+  },true);
+  // Evi dinle: uzun basınca evin ses seviyesi
+  (function(){
+    var b=E("kSesBtn"), t=null;
+    b.style.webkitTouchCallout="none"; b.style.webkitUserSelect="none";
+    b.addEventListener("pointerdown",function(){ b._uzun=false; clearTimeout(t); t=setTimeout(function(){ b._uzun=true; sesKutuAc("ev"); },550); });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ b.addEventListener(ev,function(){ clearTimeout(t); }); });
+    b.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+  })();
 
   // ---------- kişi kutularını taşıma: sürükle, bırakınca en yakın köşeye otursun ----------
   // Köşe bu telefonda saklanır, dik ve yatay ayrı. Köşe düğmelerin hemen içinde: hiçbir şeyin üstüne binmez.
@@ -1672,7 +1854,11 @@
     }
     return {x:Math.max(0,Math.min(W-w,x)),y:Math.max(0,Math.min(H-h,y)),ok:false};
   }
+  // 19 Eki: kutular CSS ile sabit köşede (sağ üst); eski taşıma ve engelden kaçma hesabı kullanılmıyor
   function kutuYerlestir(){
+    var y=E("kKisiYuva"); y.style.left=y.style.top=y.style.right=y.style.bottom=y.style.flexDirection="";
+  }
+  function kutuYerlestirEski(){
     var yuva=E("kKisiYuva"), ekran=E("kEkran");
     if(kutuSuruk||!grAcik||!yuva.children.length) return;
     var W=ekran.clientWidth, H=ekran.clientHeight, eng=kutuEngeller(), kose=kutuKose();
@@ -1687,7 +1873,7 @@
     yuva.style.left=Math.round(s.x)+"px"; yuva.style.top=Math.round(s.y)+"px";
   }
   E("kKisiYuva").addEventListener("pointerdown",function(e){
-    if(e.isPrimary===false) return;
+    return;   // 19 Eki: taşıma kapalı (kutular sabit köşede)
     var yuva=E("kKisiYuva");
     kutuSuruk={id:e.pointerId,x0:e.clientX,y0:e.clientY,l:yuva.offsetLeft,t:yuva.offsetTop,oynadi:false};
   });
@@ -1727,6 +1913,7 @@
     var o=E("kOrta"); if(!o.classList.contains("gizle")&&o.textContent) return true;  // ortada uyarı yazısı
     if(!E("sinirNot").classList.contains("gizle")) return true;                        // dönüş sınırı uyarısı
     if(!E("kAyrinti").classList.contains("gizli")) return true;                        // ayrıntı kutusu açık
+    if(!E("kSesKutu").classList.contains("gizle")) return true;                        // ses kutusu açık
     if(!E("ayarlar").classList.contains("gizle")) return true;                         // ayarlar açık
     return false;
   }
@@ -1754,6 +1941,7 @@
   // iPhone sesi bazen ilk dokunuşu bekler: her dokunuşta duran sesleri yeniden başlat
   document.addEventListener("pointerdown",function(){
     Array.prototype.slice.call(E("kKisiSesler").children).forEach(function(a){ if(a.paused){ var o=a.play(); if(o&&o.catch) o.catch(function(){}); } });
+    if(sesCtx&&sesCtx.state==="suspended") sesCtxHazirla();
   },true);
 
   // ---------- kartların kaydı (yönetici, Ayarlar açıkken) ----------
@@ -2382,7 +2570,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="19 Eki 15:00";
+  var SAYFA_SURUM="19 Eki 18:00";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
@@ -2606,7 +2794,7 @@
     E("kFenerBtn").disabled=!m.fener;
     E("kFenerBtn").classList.toggle("acik",!!m.fenerAcik);
     var isikMi=!!m.isik&&m.yon!=="environment";
-    E("kFenerBtn").firstChild.nodeValue=isikMi?"💡":"🔦";
+    E("kFenerBtn").querySelector("use").setAttribute("href",isikMi?"#i-isik":"#i-fener");
     E("kFenerBtn").querySelector("span").textContent=isikMi?"Işık":"Fener";
     grBenDugmeler();
     E("kTakipBtn").classList.toggle("acik",!!m.takip);
@@ -2728,7 +2916,8 @@
     document.body.classList.remove("kameraModu");
     E("kameraAlan").classList.add("gizle");
     duzenUygula();
-    grVideo.muted=true; E("kSesBtn").classList.add("kapali"); E("kSesBtn").firstChild.nodeValue="🔈";
+    evDinle=false; evSesUygula(); E("kSesBtn").classList.add("kapali"); sesKutuKapat();
+    benYon="user";
   }
   E("kameraAcBtn").onclick=kameraModuAc;
   E("kKapatBtn").onclick=kameraModuKapat;
@@ -2737,16 +2926,17 @@
   var grMikSon=0;
   function grMikEsitle(){
     if(!grYet||!grPc) return;
-    var ist=!grVideo.muted, simdiki=grYet.mikler?!!grYet.mikler[grId]:!!grYet.mik;   // yeni Pixel: her izleyenin kendi isteği
+    var ist=evDinle, simdiki=grYet.mikler?!!grYet.mikler[grId]:!!grYet.mik;   // yeni Pixel: her izleyenin kendi isteği
     if(simdiki!==ist&&Date.now()-grMikSon>3000){ grMikSon=Date.now(); grGonder({t:"mik",id:grId,deger:ist}); }
   }
   E("kSesBtn").onclick=function(){
-    grVideo.muted=!grVideo.muted;
-    E("kSesBtn").classList.toggle("kapali",grVideo.muted);
-    E("kSesBtn").firstChild.nodeValue=grVideo.muted?"🔈":"🔊";
+    if(E("kSesBtn")._uzun){ E("kSesBtn")._uzun=false; return; }   // uzun basış: ses kutusu açıldı
+    evDinle=!evDinle;
+    E("kSesBtn").classList.toggle("kapali",!evDinle);
+    sesCtxHazirla(); evSesUygula();
     grVideo.play().catch(function(){});
     grMikSon=0; grMikEsitle();
-    grKisaYazi(grVideo.muted?"Evi dinleme kapandı":"Evi dinliyorsun\nevin sesi bu telefondan çalar",2200);
+    grKisaYazi(evDinle?"Evi dinliyorsun\nevin sesi bu telefondan çalar":"Evi dinleme kapandı",2200);
   };
   E("kCevirBtn").onclick=function(){ if(grYet&&kontrolVarMi()) grGonder({t:"kamera",yon:grYet.yon==="environment"?"on":"arka"}); };
   E("kMikBtn").onclick=function(){ if(grYet) grGonder({t:"mik",id:grId,deger:!grYet.mik}); };
@@ -2803,7 +2993,7 @@
     var sesAl=ist.ses&&!var_.ses, gorAl=ist.gor&&!var_.gor;
     var al=(sesAl||gorAl)?navigator.mediaDevices.getUserMedia({
         audio:sesAl?{echoCancellation:true,noiseSuppression:true,autoGainControl:true}:false,
-        video:gorAl?{facingMode:"user",width:{ideal:640},height:{ideal:480},frameRate:{ideal:20}}:false}):Promise.resolve(null);
+        video:gorAl?{facingMode:benYon,width:{ideal:640},height:{ideal:480},frameRate:{ideal:20}}:false}):Promise.resolve(null);
     grBenMesgul=true; grBenDugmeler();
     return al.then(function(st){
       grYerel=var_;
@@ -2832,6 +3022,37 @@
       grKisaYazi("Kamera / mikrofon açılamadı\nSafari'de kamera ve mikrofon izni verilmeli",4000);
     }).then(function(){ grBenMesgul=false; grBenDugmeler(); });
   }
+  // Kendi kameranı çevir (19 Eki): Beni göster açıkken ön / arka
+  var benYon="user";
+  function grBenCevir(){
+    if(grBenMesgul||!grYerel||!grYerel.gor||!grBeni) return;
+    var yeni=benYon==="user"?"environment":"user", kapat=false;
+    function al(yon){ return navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:yon,width:{ideal:640},height:{ideal:480},frameRate:{ideal:20}}})
+      .then(function(st){ var t=st.getVideoTracks()[0]; if(!t) throw new Error("görüntü yok"); return t; }); }
+    grBenMesgul=true; grBenDugmeler();
+    try{ grYerel.gor.stop(); }catch(h){}   // iPhone aynı anda iki kamerayı açamıyor
+    al(yeni).then(function(t){ benYon=yeni; return t; })
+      .catch(function(h){ yaz("Kamera çevrilemedi ("+((h&&(h.name||h.message))||h)+"), eski kameraya dönülüyor."); grKisaYazi("Kamera çevrilemedi",2500); return al(benYon); })
+      .then(function(t){
+        if(!grYerel||!grBeni){ try{ t.stop(); }catch(h){} return; }
+        grYerel.gor=t;
+        var gv=grGonderen("video"); if(gv) gv.replaceTrack(t).catch(function(){});
+        Object.keys(kisiler).forEach(function(id){ kisiYerelUygula(kisiler[id]); });
+        kisiGoster();
+        grKisaYazi(benYon==="user"?"Ön kamera":"Arka kamera",1500);
+        yaz("Beni göster: "+(benYon==="user"?"ön":"arka")+" kamera.");
+      })
+      .catch(function(h){ kapat=true; yaz("Kamera açılamadı ("+((h&&(h.name||h.message))||h)+"), Beni göster kapatılıyor."); })
+      .then(function(){
+        grBenMesgul=false;
+        if(kapat){ grBeni=false; grBenUygula(); } else grBenDugmeler();
+      });
+  }
+  (function(){
+    var el=E("kBenCevir"), son=0;
+    el.addEventListener("touchend",function(e){ e.preventDefault(); e.stopPropagation(); son=Date.now(); grBenCevir(); },{passive:false});
+    el.addEventListener("click",function(e){ e.stopPropagation(); if(Date.now()-son<700) return; grBenCevir(); });
+  })();
   E("kBeniBtn").onclick=function(){
     if(grBenMesgul||E("kBeniBtn").disabled) return;
     grBeni=!grBeni; grKonus=grBeni;
@@ -2961,7 +3182,7 @@
   // tek dokunuş: bağlantı yoksa bağlan. Çift dokunuş: yakınsa 1×'e dön, değilse doldur / tamamını göster
   E("kEkran").addEventListener("pointerup",function(e){
     if(gzUyanPid!==null&&e.pointerId===gzUyanPid) return;   // gizli kontrolleri geri getiren dokunuş
-    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva,#kKisiYuva")) return;
+    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva,#kKisiYuva,#kOda,#kSesKutu")) return;
     if(kisiBuyukId) return;
     if(grHareketVardi){ if(!grPinch&&!grTekParmak) grHareketVardi=false; return; }
     if(!grPc&&!grIstekte){ gkElleZaman=Date.now(); grBaglan(); return; }
