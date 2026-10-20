@@ -432,7 +432,7 @@
     <h1>Stand kumandası</h1>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 19 Eki 18:00</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 20 Eki 14:00</p>
 
   <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
   <div class="panel odaPanel gizle" id="odaPanel"><span id="odaYazi"></span><button class="kucuk gizle" id="odaBtn"></button></div>
@@ -596,6 +596,8 @@
           <option value="60">60 ms</option><option value="80">80 ms</option><option value="120">120 ms</option>
         </select></label>
       </div>
+      <button class="genis" id="kumAraBtn" style="margin-top:8px">Kumandayı ara (45 sn)</button>
+      <p class="not">Stand bağlıyken kart kumandayı kendiliğinden aramaz (arama standı düşürüyordu). Kumanda kopmuşsa önce kumandayı açın, sonra bu düğmeye basın.</p>
       <button class="genis" id="btYenidenBtn" style="margin-top:8px">Bluetooth kartını yeniden başlat</button>
       <p class="not">iPhone veya kumanda bağlanamıyorsa kullanın. Bağlantılar kısa süre kopar, 15–20 saniyede kendiliğinden geri gelir.</p>
 
@@ -650,7 +652,6 @@
         <kbd>[ ]</kbd><span>Hibrit dönüş süresi − / +</span>
         <kbd>o</kbd><span>Standın 180° yönü</span>
         <kbd>h</kbd><span>Sayfa komutlarının paket aralığı</span>
-        <kbd>t</kbd><span>Bilinmeyen komut taraması (test)</span>
         <h3>İnternet kartı</h3>
         <kbd>?</kbd><span>Durum, IP ve kablosuz güncelleme adresi</span>
       </div>
@@ -2010,6 +2011,10 @@
         goster("gIphone",sonDurum.iphone?"bağlı":"kapalı",sonDurum.iphone?"iyi":"kotu");
         goster("gKumanda",sonDurum.kumanda?"bağlı":"kapalı",sonDurum.kumanda?"iyi":"kotu");
       }
+      var kaB=E("kumAraBtn");
+      if(taze&&sonDurum.kumanda){ kaB.textContent="Kumanda bağlı"; kaB.disabled=true; }
+      else if(taze&&sonDurum.kumAra){ kaB.textContent="Kumanda aranıyor… "+sonDurum.kumAra+" sn"; kaB.disabled=true; }
+      else { kaB.textContent="Kumandayı ara (45 sn)"; kaB.disabled=!taze; }
       var kIzin=!!(taze&&sonDurum.kameraIzin);
       E("iphonePanel").classList.toggle("gizle",!(taze&&sonDurum.iphone&&(yk||kIzin)));   // yönetici olmayan telefonda izin kapalıyken hiç görünmez
       E("kameraIzinBtn").textContent="Kamera izni: "+(kIzin?"açık":"kapalı");
@@ -2187,6 +2192,12 @@
   E("btKutu").onclick=btYenidenBaslat;
   E("btKutu").onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); btYenidenBaslat(); } };
   E("btYenidenBtn").onclick=btYenidenBaslat;
+  E("kumAraBtn").onclick=function(){
+    if(!yk){ yaz("Kumandayı sadece yönetici kodu olan telefon arar."); return; }
+    if(!istemci||!istemci.connected){ yaz("Sunucuya bağlı değil, komut gönderilemedi."); return; }
+    yoneticiGonder({t:"kumandaAra"});
+    yaz("Kumanda aranıyor (45 sn). Kumandayı şimdi açın.");
+  };
   function seciliDegil(id){ return document.activeElement!==E(id); }
   function kartAyarlariniYansit(m){
     var a=m.ayarlar;
@@ -2570,7 +2581,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="19 Eki 18:00";
+  var SAYFA_SURUM="20 Eki 14:00";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
