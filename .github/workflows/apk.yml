@@ -1,0 +1,31 @@
+name: Pixel uygulamasi
+on:
+  push:
+    paths: ['android/**', '.github/workflows/apk.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  derle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Derle
+        working-directory: android
+        run: |
+          base64 -d imza.b64 > imza.jks
+          gradle assembleRelease --no-daemon --stacktrace
+      - name: Yayinla
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/build/outputs/apk/release/*.apk StandKamera.apk
+          gh release view apk >/dev/null 2>&1 || gh release create apk --title "Pixel uygulamasi" --notes "Stand Kamera"
+          gh release upload apk StandKamera.apk --clobber
