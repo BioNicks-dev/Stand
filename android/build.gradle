@@ -1,0 +1,31 @@
+// Stand Kamera (Pixel uygulaması). GitHub kendisi derler: .github/workflows/apk.yml
+plugins { id 'com.android.application' version '8.7.3' }
+
+android {
+    namespace 'com.bionicks.stand'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'com.bionicks.stand'
+        minSdk 29
+        targetSdk 35
+        versionCode 1
+        versionName '1'
+    }
+    // Her derlemede aynı imza: yeni sürüm eskisinin üzerine kurulabilsin (imza.b64 derlemede açılır)
+    signingConfigs {
+        imza {
+            storeFile file('imza.jks')
+            storePassword 'standkamera'
+            keyAlias 'stand'
+            keyPassword 'standkamera'
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig signingConfigs.imza }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    lint { checkReleaseBuilds false; abortOnError false }
+}

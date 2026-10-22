@@ -45,6 +45,8 @@
   #kayit{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;max-height:30vh;overflow:auto}
   .not{font-size:14px;color:var(--ink-soft)}
   .gizli{display:none}
+  #appIzin button{margin:6px 0}
+  #appIzin .tamam{color:var(--live);margin:6px 0}
   html,body,button,input{touch-action:manipulation}
   .anahtar{display:flex;align-items:center;gap:10px;margin:12px 0;font-size:15px;color:var(--ink)}
   .anahtar input{width:22px;height:22px;margin:0;accent-color:var(--live)}
@@ -116,7 +118,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not">· 21 Eki 21:30</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 21 Eki 22:17</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -136,6 +138,12 @@
       </div>
     </div>
     <div id="sagSutun">
+    <div id="appKutu" class="gizli">
+      <b>Pixel uygulaması</b> <span id="appSurum" class="not"></span>
+      <div id="appIzin"></div>
+      <button id="appDurdur" type="button">Uygulamayı durdur</button>
+      <p class="not">Durdurunca bu sayfa Chrome'dan eskisi gibi kullanılır. Yeniden başlatmak için Stand Kamera simgesine dokunun.</p>
+    </div>
     <div class="durum">
       Sunucu: <b id="dSunucu" class="uyari">bağlanıyor</b><br>
       Kamera: <b id="dKamera" class="uyari">kapalı</b><br>
@@ -207,9 +215,13 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="21 Eki 21:30";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="21 Eki 22:17";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
+  // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
+  // Uygulamada: bekleme kendiliğinden başlar, ekran gerçekten kapalı bekler, istek gelince uygulama ekranı açar.
+  // Chrome'da StandApp yoktur: sayfa eskisi gibi çalışır.
+  var APP=(window.StandApp&&typeof window.StandApp.uyan==="function")?window.StandApp:null;
   function E(id){ return document.getElementById(id); }
   function oku(a){ try{ return localStorage.getItem(a)||""; }catch(h){ return ""; } }
   function yazLS(a,v){ try{ localStorage.setItem(a,v); }catch(h){} }
@@ -353,7 +365,11 @@
   E("zilDene").onclick=function(){ zilCal(ZIL_SURE); };
 
   // ---------- ekranı açık tutma ----------
+  // Uygulamada ekran sadece kamera açıkken açık tutulur; Chrome'da bekleme modunda da (siyah ekran)
+  var appEkran=false;
+  function ekranGerekli(){ return APP?!!(akis||kameraSoz):(beklemede||!!akis); }
   function ekranAcikTut(){
+    if(APP){ if(!appEkran&&ekranGerekli()){ appEkran=true; try{ APP.ekran(true); }catch(h){} } return; }
     if(!("wakeLock" in navigator)||document.visibilityState!=="visible") return;
     if(ekranKilidi&&!ekranKilidi.released) return;
     navigator.wakeLock.request("screen").then(function(k){
@@ -366,6 +382,7 @@
   });
   // Bekleme modu da kamera da yoksa ekran açık tutulmaz: Pixel kendi normal ayarına döner (Screen timeout)
   function ekranBirak(){
+    if(APP){ if(appEkran&&!ekranGerekli()){ appEkran=false; try{ APP.ekran(false); }catch(h){} yaz("Ekran artık açık tutulmuyor (Pixel kendi süresiyle kapanır)."); } return; }
     if(beklemede||akis) return;
     if(ekranKilidi&&!ekranKilidi.released){ try{ ekranKilidi.release().catch(function(){}); }catch(h){} yaz("Ekran artık açık tutulmuyor (Pixel kendi ayarıyla kapanır)."); }
     ekranKilidi=null;
@@ -1176,12 +1193,22 @@
     if(n-(zilSonGorulen[ad]||0)<ZIL_ARA) return false;
     return !Object.keys(izleyenler).some(function(i){ return izleyenler[i].ad===ad; });
   }
+  // Uygulamada ekran kapalıyken kamera açılamaz: ekranın açılmasını en çok 6 sn bekle
+  function gorunurBekle(){
+    if(!APP||document.visibilityState==="visible") return Promise.resolve();
+    return new Promise(function(r){
+      var t=setTimeout(bit,6000);
+      function bit(){ clearTimeout(t); document.removeEventListener("visibilitychange",f); if(document.visibilityState!=="visible") yaz("Uygulama: ekran 6 sn içinde açılmadı, kamera yine de deneniyor."); r(); }
+      function f(){ if(document.visibilityState==="visible") bit(); }
+      document.addEventListener("visibilitychange",f);
+    });
+  }
   function kameraHazirla(zilVar){
     if(zilVar){ zilSon=Date.now(); zilCal(ZIL_SURE); yaz("Zil çalıyor."); }
     var bekle=new Promise(function(r){ setTimeout(r,zilVar?ZIL_SURE:0); });
     if(akis) return bekle;
     if(kameraSoz) return zilVar?Promise.all([kameraSoz,bekle]):kameraSoz;
-    var s=bekle.then(kameraAc);
+    var s=bekle.then(gorunurBekle).then(kameraAc);
     kameraSoz=s;
     s.then(function(){ if(kameraSoz===s) kameraSoz=null; },function(){ if(kameraSoz===s) kameraSoz=null; });
     return s;
@@ -1211,6 +1238,7 @@
     if(!id) return;
     ad=String(ad||("izleyen "+String(id).slice(-4))).slice(0,20);
     if(!akis&&!beklemede&&!kameraSoz){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ("+ad+") ama bekleme modu kapalı ve kamera açık değil."); return; }
+    if(APP){ if(document.visibilityState!=="visible") yaz("Uygulama: ekran açılıyor ("+ad+")."); try{ APP.uyan(); }catch(h){} }
     if(izleyenler[id]){ tYaz(ad+" yeniden bağlanıyor, eski bağlantısı kapatılıyor."); baglantiyiKapat(id); }
     var zilVar=zilGerekli(ad);
     if(!zilVar&&beklemede&&E("zilAcik").checked) yaz("Zil çalmadı ("+ad+": son 5 dk içinde çaldı ya da bu kişi zaten bağlıydı).");
@@ -1633,11 +1661,60 @@
     });
   }
 
+  // ---------- Pixel uygulaması (22 Eki) ----------
+  var appSonBagli=Date.now(), appIzinBekle=false, appDurTik=null;
+  var IZIN_ADI={ustte:"Diğer uygulamaların üzerinde göster izni ver",pil:"Pil kısıtlamasını kaldır",kamera:"Kamera ve mikrofon izni ver"};
+  function appIzinler(){
+    var b={}; try{ b=JSON.parse(APP.bilgi()); }catch(h){}
+    var eksik=[]; if(!b.ustte) eksik.push("ustte"); if(!b.pil) eksik.push("pil"); if(!b.kamera) eksik.push("kamera");
+    var k=E("appIzin"); k.textContent="";
+    if(!eksik.length){ var t=document.createElement("div"); t.className="tamam"; t.textContent="İzinler tamam."; k.appendChild(t); }
+    eksik.forEach(function(ne){
+      var d=document.createElement("button"); d.type="button"; d.className="ana"; d.textContent=IZIN_ADI[ne];
+      d.onclick=function(){ try{ APP.ayarAc(ne==="kamera"?"uygulama":ne); }catch(h){} };
+      k.appendChild(d);
+    });
+    return !eksik.length;
+  }
+  function uygulamaBasla(){
+    var s=""; try{ s=APP.surum(); }catch(h){}
+    E("surumYazi").textContent="· "+SURUM+" · uygulama "+s; E("appSurum").textContent=s;
+    E("appKutu").className="durum";
+    yaz("Uygulama içinde açıldı (uygulama sürümü "+s+").");
+    setInterval(function(){ try{ APP.nabiz(); }catch(h){} },5000);
+    setInterval(function(){ try{ JSON.parse(APP.kayitAl()).forEach(function(m){ yaz("Uygulama: "+m); }); }catch(h){} },3000);
+    // sunucuya 10 dk bağlanamazsa sayfa kendini yeniler
+    setInterval(function(){
+      if(istemci&&istemci.connected){ appSonBagli=Date.now(); return; }
+      if(Date.now()-appSonBagli>600000&&navigator.onLine!==false){ appSonBagli=Date.now(); yaz("Uygulama: 10 dk sunucuya bağlanılamadı, sayfa yenileniyor."); setTimeout(function(){ location.reload(); },500); }
+    },30000);
+    // bekleme modundan çıkılıp unutulursa: 3 dk dokunulmaz ve hiçbir şey açık değilse bekleme moduna döner
+    setInterval(function(){
+      if(beklemede||akis||kameraSoz||izleyenSayisi()||takipAcik||appIzinBekle) return;
+      if(Date.now()-sonDokunma<180000) return;
+      yaz("Uygulama: 3 dk dokunulmadı, bekleme moduna dönüldü."); beklemeBaslat();
+    },15000);
+    // izin ayarından dönünce yeniden bak; hepsi tamamsa bekleme başlar
+    document.addEventListener("visibilitychange",function(){
+      if(document.visibilityState!=="visible") return;
+      var tamam=appIzinler();
+      if(tamam&&appIzinBekle){ appIzinBekle=false; yaz("Uygulama: izinler tamam, bekleme modu başladı."); beklemeBaslat(); }
+    });
+    E("appDurdur").onclick=function(){
+      var b=E("appDurdur");
+      if(!appDurTik){ b.textContent="Emin misin? Tekrar dokun"; appDurTik=setTimeout(function(){ appDurTik=null; b.textContent="Uygulamayı durdur"; },4000); return; }
+      clearTimeout(appDurTik); appDurTik=null; yaz("Uygulama durduruluyor."); try{ APP.durdur(); }catch(h){}
+    };
+    if(appIzinler()){ yaz("Uygulama: bekleme modu kendiliğinden başladı."); beklemeBaslat(); }
+    else { appIzinBekle=true; yaz("Uygulama: izinler eksik. Aşağıdaki düğmelerden verin; bekleme modu sonra kendiliğinden başlar."); }
+  }
+
   if(!kod||!ss){ kurulumuGoster(); return; }
   E("ana").className=""; document.body.classList.add("anaAcik");
   goster(E("dKamera"),"kapalı","");
   taniDurum();
   sunucuyaBaglan();
+  if(APP) uygulamaBasla();
   if(turnBuz()){ goster(E("dAktarma"),"kayıtlı","" ); setTimeout(aktarmaDene,1500); }   // her açılışta bir kez kendini dener
 })();
 </script>
