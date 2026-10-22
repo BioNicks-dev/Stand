@@ -51,6 +51,11 @@
   #siyah{position:fixed;inset:0;background:#000;z-index:1000;cursor:none}
   #siyahYazi{position:absolute;left:20px;top:20px;color:#3a3a3a;font-size:15px;white-space:nowrap}
   #siyahYazi.izleniyor{color:#8a8a8a;font-size:22px}
+  #siyahUyari{position:absolute;left:50%;bottom:12vh;transform:translateX(-50%);width:min(86vw,520px);
+    background:#1a1206;color:#f2c46d;border:2px solid #b8862b;border-radius:18px;padding:22px 18px;
+    font:600 21px/1.35 system-ui,sans-serif;text-align:center;cursor:pointer}
+  #siyahUyari small{display:block;margin-top:8px;font-weight:400;font-size:16px;color:#d9b36a}
+  #siyahUyari.gizli{display:none}
   /* Beni göster: iPhone'dan gelen görüntü tam ekran; ekran ışığı: bembeyaz ekran (ikisi de dokunuşları geçirir) */
   #benKutu{position:fixed;inset:0;background:#000;z-index:1001;display:none;pointer-events:none;flex-direction:row;gap:4px}
   #benKutu video{flex:1 1 0;min-width:0;min-height:0;width:100%;height:100%;max-height:none;border-radius:0;object-fit:cover;display:block}
@@ -111,7 +116,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not">· 20 Eki 19:00</span></h1>
+  <h1>Kamera <span class="not">· 21 Eki 21:30</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -177,7 +182,7 @@
   </div>
 </div>
 
-<div id="siyah" class="gizli"><div id="siyahYazi"></div></div>
+<div id="siyah" class="gizli"><div id="siyahYazi"></div><button id="siyahUyari" type="button" class="gizli"></button></div>
 <div id="benKutu"></div>
 <div id="pxArama" class="gizli" role="alertdialog" aria-labelledby="pxAramaAd">
   <div>
@@ -202,14 +207,19 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="20 Eki 19:00";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="21 Eki 21:30";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   function E(id){ return document.getElementById(id); }
   function oku(a){ try{ return localStorage.getItem(a)||""; }catch(h){ return ""; } }
   function yazLS(a,v){ try{ localStorage.setItem(a,v); }catch(h){} }
   function saat(){ var d=new Date(); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)+":"+("0"+d.getSeconds()).slice(-2); }
-  function yaz(m){ var k=E("kayit"); k.textContent=saat()+" "+m+"\n"+k.textContent.slice(0,3000); }
+  // Son satırlar hafızada da tutulur: stand sayfasındaki Kayıt > Pixel sekmesi bunları ister (21 Eki)
+  var pkHafiza=[], pkNo=0;
+  function yaz(m){
+    var k=E("kayit"); k.textContent=saat()+" "+m+"\n"+k.textContent.slice(0,3000);
+    pkNo++; pkHafiza.push([pkNo,Date.now(),String(m)]); if(pkHafiza.length>150) pkHafiza.shift();
+  }
   function kayitKopyalaYap(){
     var m=E("kayit").textContent, b=E("kayitKopyala");
     var bitti=function(){ b.textContent="Kopyalandı"; setTimeout(function(){ b.textContent="Kaydı kopyala"; },1500); };
@@ -392,6 +402,21 @@
     yaz("Bekleme modundan çıkıldı.");
     ekranBirak();
   }
+  // Takip, fener ya da (kimse izlemiyorken) kamera açıksa siyah ekranda görünür: tek dokunuş hepsini kapatır (21 Eki)
+  function siyahUyari(){
+    var b=E("siyahUyari"); if(!b) return;
+    var v=[];
+    if(takipAcik) v.push("Takip açık");
+    if(fenerAcik) v.push(yon==="user"?"Ekran ışığı açık":"Fener açık");
+    if(akis&&!izleyenSayisi()&&!kameraSoz) v.push("Kamera açık");
+    if(!beklemede||!v.length){ b.className="gizli"; return; }
+    var metin=v.join(" · ");
+    if(b.getAttribute("data-m")!==metin){ b.setAttribute("data-m",metin); b.textContent=metin; var k=document.createElement("small"); k.textContent="Kapatmak için dokun"; b.appendChild(k); }
+    b.className="";
+  }
+  setInterval(siyahUyari,1000);
+  E("siyahUyari").addEventListener("pointerdown",function(e){ e.stopPropagation(); });
+  E("siyahUyari").onclick=function(e){ e.stopPropagation(); sondur("Pixel'in ekranına dokunuldu"); };
   E("beklemeBtn").onclick=beklemeBaslat;
   E("siyah").addEventListener("pointerdown",function(){
     var simdi=Date.now();
@@ -1131,6 +1156,14 @@
       if(z.pc&&z.buradaVar&&n-z.sonBurada>10000){
         tYaz(z.ad+": 10 sn sinyal gelmedi (sayfa kapandı ya da arka planda), bağlantısı kapatıldı."); taniGonder(); baglantiyiKapat(id);
       }
+      // Hayalet izleyen (21 Eki): istek gelmiş ama görüntü hiç kurulmamış (sayfa bu arada ayrılmış, "bitir" ulaşmamış)
+      else if(!z.baglandi&&n-z.bas>45000){
+        tYaz(z.ad+": 45 sn içinde görüntü kurulamadı (sayfası ayrılmış olabilir), listeden çıkarıldı."); taniGonder(); baglantiyiKapat(id);
+      }
+      // Görüntü kurulmuş ama sayfa hiç "buradayım" demiyor
+      else if(z.baglandi&&!z.buradaVar&&n-z.baglandi>15000){
+        tYaz(z.ad+": bağlandıktan sonra 15 sn hiç sinyal gelmedi, listeden çıkarıldı."); taniGonder(); baglantiyiKapat(id);
+      }
     });
   },2000);
   // Zil (bekleme modunda, ayar açıksa) her yeni kişide çalar; şu durumlarda çalmaz:
@@ -1187,7 +1220,7 @@
       yaz("İzleme isteği geldi ("+ad+") ama zaten "+EN_COK_IZLEYEN+" kişi bağlı: "+kimler.join(", ")+".");
       return;
     }
-    var z={pc:null,ad:ad,mik:false,buradaVar:false,sonBurada:0,kopma:null,gonderen:null,kanal:null,gelenSes:null,gelenVideo:null};
+    var z={pc:null,ad:ad,mik:false,buradaVar:false,sonBurada:0,kopma:null,gonderen:null,kanal:null,gelenSes:null,gelenVideo:null,bas:Date.now(),baglandi:0};
     izleyenler[id]=z;
     yeniCihazKontrol(ad,m);
     taniId=id; taniSatir=[]; taniCevap=false;
@@ -1227,7 +1260,7 @@
       var s=p.connectionState;
       tYaz(z.ad+": bağlantı: "+(DURUM_TR[s]||s));
       clearTimeout(z.kopma);
-      if(s==="connected"){ yaz(z.ad+" bağlandı."); mikHesapla(); }
+      if(s==="connected"){ if(!z.baglandi) z.baglandi=Date.now(); yaz(z.ad+" bağlandı."); mikHesapla(); }
       else if(s==="failed"){ yaz(z.ad+": bağlantı kurulamadı."); baglantiyiKapat(id); return; }
       else if(s==="disconnected"){
         // 15 sn içinde geri gelmezse bu izleyenin görüşmesi bitmiş sayılır
@@ -1264,7 +1297,7 @@
   var pixelDurumSon="", pixelDurumZaman=0;
   function pixelDurumu(){
     var ids=Object.keys(izleyenler);
-    if(ids.length) return {d:"izleniyor",kimler:ids.map(function(i){ return izleyenler[i].ad; })};
+    if(ids.length) return {d:"izleniyor",kimler:ids.map(function(i){ return izleyenler[i].ad; }),takip:takipAcik,fener:fenerAcik};
     if(takipAcik) return {d:"takip"};
     if(akis||kameraSoz) return {d:"kamera"};
     if(beklemede) return {d:"hazir"};
@@ -1288,8 +1321,29 @@
     if(!beklemede) beklemeBaslat(); else kameraKapat();
     pixelDurumYayinla();
   }
+  // Takibi ve feneri kapat (21 Eki): stand sayfasındaki Pixel kutusundan ya da Pixel'in siyah ekranından.
+  // İzleyenlerin görüntüsü kesilmez; kimse izlemiyorsa kamera da kapanır, bekleme moduna dönülür.
+  function sondur(kim){
+    var v=[];
+    if(takipAcik){ takipAyarla(false); v.push("takip"); }
+    if(fenerAcik){ v.push(yon==="user"?"ekran ışığı":"fener"); fenerAyarla(false); }
+    if(!izleyenSayisi()&&!kameraSoz&&akis){ v.push("kamera"); if(beklemede) kameraKapat(); }
+    if(!izleyenSayisi()&&!beklemede) beklemeBaslat();
+    yaz(kim+": "+(v.length?v.join(", ")+" kapatıldı.":"kapatılacak bir şey yoktu."));
+    siyahUyari(); pixelDurumSon=""; pixelDurumYayinla();
+  }
+  // Stand sayfası Kayıt > Pixel sekmesi: son satırları ister (s: her Pixel sayfası için son aldığı numara)
+  function kayitIstendi(m){
+    var son=(m.s&&Number(m.s[sayfaKimlik]))||0;
+    if(son>pkNo) son=0;
+    var l=pkHafiza.filter(function(x){ return x[0]>son; }).slice(-80);
+    if(!l.length&&m.s&&m.s[sayfaKimlik]!==undefined) return;   // yeni satır yok: cevap gerekmez
+    gonder({t:"pkayCevap",o:sayfaKimlik,surum:SURUM,satirlar:l});
+  }
   function mesajGeldi(m){
     if(m.t==="dinlen"){ dinlen(); return; }
+    if(m.t==="sondur"){ sondur((m.ad?m.ad+" (stand sayfası)":"Stand sayfası")); return; }
+    if(m.t==="pkay"){ kayitIstendi(m); return; }
     if(m.t==="istek") istekGeldi(m.id,m.ad,m);
     else if(m.t==="burada"){ var zb=m.id&&izleyenler[m.id]; if(zb){ zb.buradaVar=true; zb.sonBurada=Date.now(); } }
     else if(m.t==="cevap"){
