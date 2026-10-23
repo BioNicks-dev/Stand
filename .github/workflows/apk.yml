@@ -1,3 +1,6 @@
+# Pixel uygulamasını (Stand Kamera) derler ve "apk" sürümüne koyar.
+# android klasöründe bir şey değişince kendiliğinden çalışır.
+# İndirme adresi: https://github.com/bionicks-dev/Stand/releases/download/apk/StandKamera.apk
 name: Pixel uygulamasi
 on:
   push:
@@ -27,5 +30,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp android/build/outputs/apk/release/*.apk StandKamera.apk
+          echo "$GITHUB_RUN_NUMBER" > surum.txt
           gh release view apk >/dev/null 2>&1 || gh release create apk --title "Pixel uygulamasi" --notes "Stand Kamera"
           gh release upload apk StandKamera.apk --clobber
+          gh release upload apk surum.txt --clobber
