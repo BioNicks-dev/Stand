@@ -1,5 +1,6 @@
 package com.bionicks.stand;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -204,6 +205,22 @@ public class Bekci extends Service {
         if (islemci != null && islemci.isHeld()) islemci.release();
         Sayfa.kapat();
         super.onDestroy();
+    }
+
+    // Uygulama son kullanılanlardan kaydırılarak kapatıldı: sayfa bekçide yaşamaya devam eder.
+    // Android yine de her şeyi kapatırsa diye 2 sn sonra bekçiyi yeniden başlatma kurulur.
+    @Override
+    public void onTaskRemoved(Intent kok) {
+        if (!Kayit.durdu(this)) {
+            Kayit.yaz("Uygulama kaydırılarak kapatıldı; bekçi çalışmaya devam ediyor.");
+            try {
+                AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+                PendingIntent pi = PendingIntent.getForegroundService(this, 3, new Intent(this, Bekci.class),
+                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + 2000, pi);
+            } catch (Exception e) { Kayit.yaz("Yeniden başlatma kurulamadı: " + e.getMessage()); }
+        }
+        super.onTaskRemoved(kok);
     }
 
     @Override public IBinder onBind(Intent i) { return null; }
