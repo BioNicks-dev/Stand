@@ -1,0 +1,78 @@
+package com.bionicks.stand;
+
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.PowerManager;
+import android.os.SystemClock;
+import android.provider.Settings;
+import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
+import org.json.JSONObject;
+
+// Sayfanın gördüğü "StandApp": ekranı aç, ekranı açık tut, nabız, kayıt, izinler, sunucu bilgisi, durdur.
+final class Kopru {
+    private final Context c;
+    private final Handler h = new Handler(Looper.getMainLooper());
+    Kopru(Context c) { this.c = c; }
+
+    @JavascriptInterface public String surum() { return Kayit.SURUM; }
+
+    @JavascriptInterface public void uyan() { h.post(() -> Bekci.uyandir(c, null)); }
+
+    // Kamera açıkken ekran açık kalsın; kapanınca Pixel kendi süresiyle (Screen timeout) söner
+    @JavascriptInterface public void ekran(final boolean acik) {
+        h.post(() -> {
+            Ana a = Ana.ben;
+            if (a == null) return;
+            if (acik) a.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            else a.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        });
+    }
+
+    @JavascriptInterface public void nabiz() { Bekci.sonNabiz = SystemClock.elapsedRealtime(); }
+
+    @JavascriptInterface public String kayitAl() { return Kayit.al(); }
+
+    // Bekçinin duyduğu, sayfanın kaçırmış olabileceği izleme isteği (bir kez verilir)
+    @JavascriptInterface public String bekleyenIstek() { return Bekci.bekleyenAl(); }
+
+    // Sayfa sunucu bilgisini bekçiye verir (bekçi isteği kendisi dinlesin)
+    @JavascriptInterface public void baglanti(String kod, String ss) { Bekci.ayarla(c, kod, ss); }
+
+    @JavascriptInterface public String bilgi() {
+        JSONObject o = new JSONObject();
+        try {
+            PowerManager pm = (PowerManager) c.getSystemService(Context.POWER_SERVICE);
+            o.put("surum", Kayit.SURUM);
+            o.put("ustte", Settings.canDrawOverlays(c));
+            o.put("pil", pm.isIgnoringBatteryOptimizations(c.getPackageName()));
+            o.put("kamera", Sayfa.izinVar(c));
+            o.put("bekci", Bekci.bagli);
+        } catch (Exception e) { }
+        return o.toString();
+    }
+
+    // Telefonun ilgili ayar sayfasını açar: "ustte", "pil", "uygulama"
+    @JavascriptInterface public void ayarAc(final String ne) {
+        h.post(() -> {
+            Uri p = Uri.parse("package:" + c.getPackageName());
+            Intent a;
+            if ("ustte".equals(ne)) a = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, p);
+            else if ("pil".equals(ne)) a = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, p);
+            else a = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, p);
+            a.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try { c.startActivity(a); }
+            catch (Exception e) {
+                try { c.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, p).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception e2) { }
+            }
+        });
+    }
+
+    @JavascriptInterface public void durdur() {
+        Kayit.yaz("Uygulama elle durduruldu.");
+        c.startService(new Intent(c, Bekci.class).setAction(Bekci.DURDUR));
+    }
+}

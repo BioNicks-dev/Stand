@@ -8,8 +8,8 @@ android {
         applicationId 'com.bionicks.stand'
         minSdk 29
         targetSdk 35
-        versionCode 1
-        versionName '1'
+        versionCode 2
+        versionName '2'
     }
     // Her derlemede aynı imza: yeni sürüm eskisinin üzerine kurulabilsin (imza.b64 derlemede açılır)
     signingConfigs {
