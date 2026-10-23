@@ -118,7 +118,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 21 Eki 22:17</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 22 Eki 21:28</span></h1>
 
   <div id="kurulum" class="gizli">
     <p class="not">Bu telefonda bağlantı bilgisi yok. Stand sayfasındakiyle aynı bilgileri yazın.</p>
@@ -215,7 +215,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="21 Eki 22:17";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="22 Eki 21:28";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1210,6 +1210,7 @@
     if(kameraSoz) return zilVar?Promise.all([kameraSoz,bekle]):kameraSoz;
     var s=bekle.then(gorunurBekle).then(kameraAc);
     kameraSoz=s;
+    if(APP) ekranAcikTut();   // uygulamada istek gelir gelmez ekran açık kalsın
     s.then(function(){ if(kameraSoz===s) kameraSoz=null; },function(){ if(kameraSoz===s) kameraSoz=null; });
     return s;
   }
@@ -1234,8 +1235,12 @@
         .catch(function(h){ yaz("Yeni cihaz bildirimi gönderilemedi ("+((h&&h.message)||h)+")."); });
     }catch(h){}
   }
+  var sonIstekId="", sonIstekZaman=0;
   function istekGeldi(id,ad,m){
     if(!id) return;
+    // aynı istek 5 sn içinde ikinci kez geldiyse (bekçiden ve gecikmeli sunucudan) yok say
+    if(id===sonIstekId&&Date.now()-sonIstekZaman<5000&&izleyenler[id]){ yaz("Aynı istek ikinci kez geldi, yok sayıldı."); return; }
+    sonIstekId=id; sonIstekZaman=Date.now();
     ad=String(ad||("izleyen "+String(id).slice(-4))).slice(0,20);
     if(!akis&&!beklemede&&!kameraSoz){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ("+ad+") ama bekleme modu kapalı ve kamera açık değil."); return; }
     if(APP){ if(document.visibilityState!=="visible") yaz("Uygulama: ekran açılıyor ("+ad+")."); try{ APP.uyan(); }catch(h){} }
@@ -1640,6 +1645,7 @@
       istemci.subscribe("comitok/"+kod+"/arama");
       pixelDurumSon=""; pixelDurumYayinla();
       if(akis||beklemede) gonder({t:"hazir"});
+      if(APP) setTimeout(bekleyenIstekBak,300);
     });
     istemci.on("reconnect",function(){ goster(E("dSunucu"),"yeniden bağlanıyor","uyari"); });
     istemci.on("close",function(){ if(E("dSunucu").textContent==="bağlı"){ goster(E("dSunucu"),"koptu","uyari"); yaz("Sunucu bağlantısı koptu."); } });
@@ -1676,13 +1682,24 @@
     });
     return !eksik.length;
   }
+  // Uygulama 2: isteği bekçi de dinler. Sayfa ekran kapalıyken isteği kaçırdıysa ekrana gelince bekçiden alır.
+  function bekleyenIstekBak(){
+    if(!APP||typeof APP.bekleyenIstek!=="function"||!(istemci&&istemci.connected)) return;
+    var t=""; try{ t=APP.bekleyenIstek(); }catch(h){}
+    if(!t) return;
+    var m=null; try{ m=JSON.parse(t); }catch(h){ return; }
+    if(!m||!m.id||m.id===sonIstekId||izleyenler[m.id]) return;
+    yaz("Uygulama: sayfa bu isteği kaçırmıştı, bekçiden alındı ("+(m.ad||"?")+").");
+    istekGeldi(m.id,m.ad,m);
+  }
   function uygulamaBasla(){
     var s=""; try{ s=APP.surum(); }catch(h){}
     E("surumYazi").textContent="· "+SURUM+" · uygulama "+s; E("appSurum").textContent=s;
     E("appKutu").className="durum";
     yaz("Uygulama içinde açıldı (uygulama sürümü "+s+").");
     setInterval(function(){ try{ APP.nabiz(); }catch(h){} },5000);
-    setInterval(function(){ try{ JSON.parse(APP.kayitAl()).forEach(function(m){ yaz("Uygulama: "+m); }); }catch(h){} },3000);
+    setInterval(function(){ try{ JSON.parse(APP.kayitAl()).forEach(function(m){ yaz("Uygulama: "+m); }); }catch(h){} bekleyenIstekBak(); },3000);
+    if(typeof APP.baglanti==="function"){ try{ APP.baglanti(kod,ss); }catch(h){} }
     // sunucuya 10 dk bağlanamazsa sayfa kendini yeniler
     setInterval(function(){
       if(istemci&&istemci.connected){ appSonBagli=Date.now(); return; }
@@ -1697,6 +1714,9 @@
     // izin ayarından dönünce yeniden bak; hepsi tamamsa bekleme başlar
     document.addEventListener("visibilitychange",function(){
       if(document.visibilityState!=="visible") return;
+      // ekrana gelince: sunucu bağlantısı koptuysa hemen yeniden bağlan, kaçırılan isteğe bak
+      if(istemci&&!istemci.connected&&!istemci.reconnecting){ try{ istemci.reconnect(); }catch(h){} }
+      bekleyenIstekBak();
       var tamam=appIzinler();
       if(tamam&&appIzinBekle){ appIzinBekle=false; yaz("Uygulama: izinler tamam, bekleme modu başladı."); beklemeBaslat(); }
     });
