@@ -511,7 +511,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 21 Eki 21:30</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 22 Eki 22:10</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -776,6 +776,15 @@
           <button class="kucuk" id="gkDenemeBtn">Deneme</button>
         </div>
         <p class="not" id="gkDurum"></p>
+      </div>
+    </div>
+
+    <div class="sadeceYonetici">
+      <h2>Güncelleme</h2>
+      <div class="panel">
+        <p class="not" style="margin:0 0 6px">Pixel günde bir kez GitHub'daki kamera sayfasının yeni sürümüne bakar, kimse izlemiyorken kendini yeniler. Geliştirme modunda her dakika bakar; 2 saat sonra kendisi kapanır.</p>
+        <div class="satir"><span>Geliştirme modu</span><b id="gmDurum">kapalı</b></div>
+        <button class="genis kucuk" id="gmBtn" style="margin-top:6px">Geliştirme modunu aç (2 saat)</button>
       </div>
     </div>
 
@@ -1126,7 +1135,7 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
-      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/gizlilik"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
+      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -1168,6 +1177,7 @@
       if(konu.indexOf("/rehber/")>0){ rehberGeldi(konu.split("/").pop(),veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-9)==="/gizlilik"){ gkAyarGeldi(m); return; }
+      if(konu.slice(-11)==="/gelistirme"){ gmGeldi(m); return; }
       if(konu.slice(-4)==="/var" && rol==="uzak"){ odaMesaj(m); return; }
       if(konu.slice(-4)==="/var" && rol==="evde"){
         var yeni=!uzaklar[m.id];
@@ -1657,6 +1667,20 @@
     gkArayuz(); gkDurumYaz();
   }
   var GK_ALANLAR=["gkAcik","gkEvde","gkHi","gkBas","gkBit","gkHs","gkSayfa","gkSure","gkOlusturBtn","gkKopyalaBtn","gkDenemeBtn"];
+  // ---------- geliştirme modu (22 Eki): Pixel kamera sayfası yeni sürüme her dakika bakar ----------
+  // Sunucuda saklanan (retain) {bitis: zaman} mesajı; Pixel bağlanınca da alır. bitis 0 = kapalı.
+  var gmBitis=0;
+  function gmGeldi(m){ gmBitis=Number(m&&m.bitis)||0; gmArayuz(); }
+  function gmArayuz(){
+    var d=E("gmDurum"), b=E("gmBtn"); if(!d||!b) return;
+    var kalan=gmBitis-Date.now();
+    if(kalan>0){
+      var dk=Math.ceil(kalan/60000);
+      d.textContent="açık · "+(dk>=60?Math.floor(dk/60)+" sa "+(dk%60)+" dk":dk+" dk")+" kaldı"; d.className="iyi";
+      b.textContent="Geliştirme modunu kapat";
+    } else { d.textContent="kapalı"; d.className=""; b.textContent="Geliştirme modunu aç (2 saat)"; }
+  }
+  setInterval(gmArayuz,30000);
   function gkArayuz(){
     var a=gkA();
     E("gkAcik").checked=!!a.acik; E("gkEvde").checked=!!a.evde; E("gkHi").checked=!!a.hi;
@@ -1695,6 +1719,12 @@
   ["gkAcik","gkEvde","gkHi","gkBas","gkBit","gkHs","gkSayfa","gkSure"].forEach(function(id){
     E(id).addEventListener("change",function(){ gkAyarYayinla(); });
   });
+  E("gmBtn").onclick=function(){
+    if(!(istemci&&istemci.connected)){ yaz("Geliştirme modu: sunucuya bağlı değil, tekrar deneyin."); return; }
+    var bitis=gmBitis>Date.now()?0:Date.now()+2*3600000;
+    istemci.publish("comitok/"+kod+"/gelistirme",JSON.stringify({bitis:bitis}),{qos:0,retain:true});
+    gmBitis=bitis; gmArayuz(); yaz("Geliştirme modu "+(bitis?"açıldı (2 saat): Pixel her dakika yeni sürüme bakacak.":"kapatıldı."));
+  };
   E("gkOlusturBtn").onclick=function(){
     if(gkA().konu&&!confirm("Yeni konu oluşturulursa ntfy uygulamasında yeni konuya tekrar abone olman gerekir. Devam edilsin mi?")) return;
     var b=new Uint8Array(16), harf="abcdefghijklmnopqrstuvwxyz0123456789", k="stand-";
@@ -2782,7 +2812,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="21 Eki 21:30";
+  var SAYFA_SURUM="22 Eki 22:10";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)

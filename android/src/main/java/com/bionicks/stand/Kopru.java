@@ -18,7 +18,7 @@ final class Kopru {
     private final Handler h = new Handler(Looper.getMainLooper());
     Kopru(Context c) { this.c = c; }
 
-    @JavascriptInterface public String surum() { return Kayit.SURUM; }
+    @JavascriptInterface public String surum() { return String.valueOf(Guncelle.benimSurum(c)); }
 
     @JavascriptInterface public void uyan() { h.post(() -> Bekci.uyandir(c, null)); }
 
@@ -46,7 +46,8 @@ final class Kopru {
         JSONObject o = new JSONObject();
         try {
             PowerManager pm = (PowerManager) c.getSystemService(Context.POWER_SERVICE);
-            o.put("surum", Kayit.SURUM);
+            o.put("surum", Guncelle.benimSurum(c));
+            o.put("yukle", c.getPackageManager().canRequestPackageInstalls());
             o.put("ustte", Settings.canDrawOverlays(c));
             o.put("pil", pm.isIgnoringBatteryOptimizations(c.getPackageName()));
             o.put("kamera", Sayfa.izinVar(c));
@@ -61,6 +62,7 @@ final class Kopru {
             Uri p = Uri.parse("package:" + c.getPackageName());
             Intent a;
             if ("ustte".equals(ne)) a = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, p);
+            else if ("yukle".equals(ne)) a = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, p);
             else if ("pil".equals(ne)) a = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, p);
             else a = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, p);
             a.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -70,6 +72,11 @@ final class Kopru {
             }
         });
     }
+
+    // Kendini güncelleme: sayfa bakmasını söyler; indirildiyse ve kimse izlemiyorsa kurdurur
+    @JavascriptInterface public void guncellemeBak() { Guncelle.bak(c); }
+    @JavascriptInterface public boolean guncellemeHazir() { return Guncelle.hazirSurum > 0; }
+    @JavascriptInterface public void guncellemeKur() { h.post(() -> Guncelle.kur(c)); }
 
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");

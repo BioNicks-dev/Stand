@@ -12,7 +12,6 @@ import org.json.JSONArray;
 // "Durduruldu" bilgisi de burada saklanır.
 final class Kayit {
     private static final ArrayList<String> SATIRLAR = new ArrayList<>();
-    static final String SURUM = "3";
 
     static synchronized void yaz(String m) {
         String s = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date()) + " " + m;

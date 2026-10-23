@@ -154,7 +154,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 22 Eki 21:55</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 22 Eki 22:10</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -291,7 +291,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="22 Eki 21:55";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="22 Eki 22:10";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1720,6 +1720,7 @@
       istemci.subscribe(konu("k"));
       istemci.subscribe("comitok/"+kod+"/gizlilik");   // yeni cihaz bildirimi için ntfy konusu buradan
       istemci.subscribe("comitok/"+kod+"/arama");
+      istemci.subscribe("comitok/"+kod+"/gelistirme");
       pixelDurumSon=""; pixelDurumYayinla();
       if(akis||beklemede) gonder({t:"hazir"});
       if(APP) setTimeout(bekleyenIstekBak,300);
@@ -1740,16 +1741,62 @@
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(String(k).slice(-9)==="/gizlilik"){ gkAyarP=(m&&typeof m==="object")?m:null; return; }
       if(k.slice(-6)==="/arama"){ aramaGeldi(m); return; }
+      if(k.slice(-11)==="/gelistirme"){ gnGelistirme(m); return; }
       mesajGeldi(m);
     });
   }
 
+  // ---------- kendini güncelleme (22 Eki) ----------
+  // Günde bir kez (geliştirme modunda her dakika) GitHub'daki kamera.html sürümüne bakar.
+  // Yenisi varsa: uygulamada kimse izlemiyorken kendini yeniler; Chrome'da sadece haber verir
+  // (Chrome'da yenilenince bekleme modu kapanır, elle başlatmak gerekir).
+  var gmBitis=0, gnSon=Number(oku("stand_surumBakis"))||0, gnYeni="", gnBakiyor=false, gnHaber="";
+  function gnGelistirme(m){
+    var once=gmBitis>Date.now();
+    gmBitis=Number(m&&m.bitis)||0;
+    var simdi=gmBitis>Date.now();
+    if(simdi&&!once){ yaz("Geliştirme modu açık: yeni sürüme her dakika bakılacak."); gnSon=0; }
+    else if(!simdi&&once) yaz("Geliştirme modu kapandı: yeni sürüme günde bir bakılacak.");
+  }
+  function gnBosta(){ return !izleyenSayisi()&&!akis&&!kameraSoz&&!pxAr&&!document.body.classList.contains("beni"); }
+  function gnBak(){
+    if(APP&&typeof APP.guncellemeBak==="function"){ try{ APP.guncellemeBak(); }catch(h){} }   // uygulamanın kendisi de yeni sürüme baksın
+    if(gnBakiyor||!window.fetch) return; gnBakiyor=true;
+    fetch("kamera.html",{cache:"no-cache"}).then(function(c){ return c.ok?c.text():""; }).then(function(t){
+      gnBakiyor=false;
+      var m=/var SURUM="([^"]+)"/.exec(t||""); if(!m) return;
+      if(m[1]===SURUM){ gnYeni=""; return; }
+      if(gnYeni!==m[1]){ gnYeni=m[1]; yaz("Yeni sürüm bulundu: "+gnYeni+" (bu sayfa "+SURUM+")."+(APP?" Kimse izlemiyorken yenilenecek.":" Pixel'de sayfayı yenileyin.")); }
+      gnYenile();
+    }).catch(function(){ gnBakiyor=false; });
+  }
+  function gnYenile(){
+    if(!gnYeni||!APP||!gnBosta()) return;
+    // aynı sürüm için 10 dk içinde ikinci kez yenileme yok (önbellek eski sayfayı verirse döngüye girmesin)
+    var once=oku("stand_yenilendi").split("|");
+    if(once[0]===gnYeni&&Date.now()-Number(once[1]||0)<600000) return;
+    yazLS("stand_yenilendi",gnYeni+"|"+Date.now());
+    yaz("Sayfa yeni sürüme yenileniyor ("+gnYeni+").");
+    var u=location.href;
+    setTimeout(function(){ if(/[?&]t=\d+/.test(u)) location.replace(u.replace(/([?&]t=)\d+/,"$1"+Date.now())); else location.reload(); },400);
+  }
+  setInterval(function(){
+    var aralik=gmBitis>Date.now()?60000:86400000;
+    if(Date.now()-gnSon>=aralik){ gnSon=Date.now(); yazLS("stand_surumBakis",String(gnSon)); gnBak(); }
+    else gnYenile();
+    // uygulamanın yeni sürümü indirildiyse kimse izlemiyorken kur
+    if(APP&&typeof APP.guncellemeHazir==="function"&&gnBosta()){ try{ if(APP.guncellemeHazir()) APP.guncellemeKur(); }catch(h){} }
+  },30000);
+  setTimeout(function(){ var o=oku("stand_yenilendi").split("|"); if(o[0]&&o[0]===SURUM&&Date.now()-Number(o[1]||0)<600000) yaz("Yeni sürüme yenilendi ("+SURUM+")."); },1000);
+
   // ---------- Pixel uygulaması (22 Eki) ----------
   var appSonBagli=Date.now(), appIzinBekle=false, appDurTik=null;
-  var IZIN_ADI={ustte:"Diğer uygulamaların üzerinde göster izni ver",pil:"Pil kısıtlamasını kaldır",kamera:"Kamera ve mikrofon izni ver"};
+  var IZIN_ADI={ustte:"Diğer uygulamaların üzerinde göster izni ver",pil:"Pil kısıtlamasını kaldır",kamera:"Kamera ve mikrofon izni ver",yukle:"Kendini güncellemesine izin ver"};
   function appIzinler(){
     var b={}; try{ b=JSON.parse(APP.bilgi()); }catch(h){}
     var eksik=[]; if(!b.ustte) eksik.push("ustte"); if(!b.pil) eksik.push("pil"); if(!b.kamera) eksik.push("kamera");
+    var zorunlu=eksik.length;   // güncelleme izni bekleme modunu engellemez
+    if(b.yukle===false) eksik.push("yukle");
     var k=E("appIzin"); k.textContent="";
     if(!eksik.length){ var t=document.createElement("div"); t.className="tamam"; t.textContent="İzinler tamam."; k.appendChild(t); }
     if(eksik.length) E("appKutu").open=true;
@@ -1758,7 +1805,7 @@
       d.onclick=function(){ try{ APP.ayarAc(ne==="kamera"?"uygulama":ne); }catch(h){} };
       k.appendChild(d);
     });
-    return !eksik.length;
+    return !zorunlu;
   }
   // Uygulama 2: isteği bekçi de dinler. Sayfa ekran kapalıyken isteği kaçırdıysa ekrana gelince bekçiden alır.
   function bekleyenIstekBak(){
