@@ -39,7 +39,8 @@ public class Bekci extends Service {
     private final Handler h = new Handler(Looper.getMainLooper());
     private PowerManager.WakeLock islemci;
     private boolean calisiyor = false;
-    private Mqtt mq;
+    private volatile Mqtt mq;
+    private volatile String bKonu = "", iKonu = "";
     private String mqKod = "", mqSs = "";
     private boolean kopukYazildi = false;
     private BroadcastReceiver ekranAlici;
@@ -98,10 +99,16 @@ public class Bekci extends Service {
         if (mq != null) mq.durdur();
         mqKod = kod; mqSs = ss;
         final String konu = "comitok/" + kod + "/goruntu/k";
-        mq = new Mqtt(SUNUCU, 8883, true, KULLANICI, ss, konu, new Mqtt.Dinleyici() {
+        bKonu = "comitok/" + kod + "/goruntu/b";      // bekçinin durumu: stand sayfası "uykuda · uyandırılabilir" gösterir
+        iKonu = "comitok/" + kod + "/goruntu/i";      // iPhone'lara giden mesajlar
+        mq = new Mqtt(SUNUCU, 8883, true, KULLANICI, ss, konu, bKonu, "{\"b\":\"yok\"}", new Mqtt.Dinleyici() {
             @Override public void mesaj(String k, String govde) { istekBak(govde); }
             @Override public void durum(boolean b, String neden) {
                 bagli = b;
+                if (b) {
+                    Mqtt m = mq;
+                    if (m != null) m.yayinla(bKonu, "{\"b\":\"dinliyor\",\"z\":" + System.currentTimeMillis() + "}", true);
+                }
                 if (b) { Kayit.yaz("Bekçi sunucuya bağlandı, istekleri dinliyor."); kopukYazildi = false; }
                 else if (!kopukYazildi) { Kayit.yaz("Bekçi sunucuya bağlanamadı/koptu: " + neden + " (kendisi yeniden dener)."); kopukYazildi = true; }
             }
@@ -115,13 +122,15 @@ public class Bekci extends Service {
         catch (Exception e) { return; }
         if (!"istek".equals(t) || id.isEmpty()) return;
         synchronized (Bekci.class) { bekleyen = govde; bekleyenZaman = System.currentTimeMillis(); }
-        final String kim = ad;
-        h.post(() -> {
-            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-            Ana a = Ana.ben;
-            if (pm.isInteractive() && a != null && a.onde) return;   // sayfa zaten önde, kendisi cevaplar
-            uyandir(this, "Bekçi isteği duydu (" + kim + ")");
-        });
+        final String kim = ad, kimlik = id;
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        Ana a = Ana.ben;
+        if (pm.isInteractive() && a != null && a.onde) return;   // sayfa zaten önde, kendisi cevaplar
+        // iPhone'a hemen haber ver: Pixel uyanıyor, 30 sn beklesin (bu mesaj zaten bekçinin iş parçacığında)
+        Mqtt m = mq;
+        if (m != null && m.yayinla(iKonu, "{\"t\":\"uyaniyor\",\"id\":" + JSONObject.quote(kimlik) + "}", false))
+            Kayit.yaz("Bekçi iPhone'a \"Pixel uyanıyor\" dedi.");
+        h.post(() -> uyandir(this, "Bekçi isteği duydu (" + kim + ")"));
     }
 
     // Sayfa açılınca/ekrana gelince sorar: kaçırdığı istek var mı? (25 sn'den eski istek verilmez)

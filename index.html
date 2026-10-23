@@ -511,7 +511,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 22 Eki 22:10</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 22 Eki 22:23</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1135,7 +1135,7 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
-      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
+      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/goruntu/b"); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -1172,6 +1172,7 @@
       }
       if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
       if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
+      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); }catch(h){} pixelKutusu(); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       if(konu.slice(-6)==="/arama"){ gsMesaj(veri.toString()); return; }
       if(konu.indexOf("/rehber/")>0){ rehberGeldi(konu.split("/").pop(),veri.toString()); return; }
@@ -1216,11 +1217,17 @@
 
   // ---------- Pixel kutusu (17 Eki): Pixel'in durumu; turuncuyken dokununca bekleme moduna geçer ----------
   var pixelDurum=null, pixelDurumGeldi=0, PIXEL_ESKI=150000;
+  var bekciDurum=null;   // Pixel uygulamasının bekçisi (22 Eki): {b:"dinliyor"} ya da {b:"yok"}
+
   function pixelKutusu(){
     var d=pixelDurum, yazi="bilinmiyor", sinif="soluk", dokun=false;
     if(d){
       var eski=d.d!=="kapali"&&(!d.z||Date.now()-d.z>PIXEL_ESKI)&&Date.now()-pixelDurumGeldi>PIXEL_ESKI;
-      if(d.d==="kapali"||eski){ yazi="kapalı"; sinif="kotu"; }
+      if(d.d==="kapali"||eski){
+        // sayfa uyuyor ama uygulamanın bekçisi dinliyorsa Pixel uyandırılabilir
+        if(bekciDurum&&bekciDurum.b==="dinliyor"){ yazi="uykuda · uyandırılabilir"; sinif="iyi"; }
+        else { yazi="kapalı"; sinif="kotu"; }
+      }
       else if(d.d==="hazir"){ yazi="hazır"; sinif="iyi"; }
       else if(d.d==="izleniyor"){
         yazi="izleniyor"+((d.kimler&&d.kimler.length)?": "+d.kimler.join(", "):""); sinif="iyi";
@@ -2812,7 +2819,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="22 Eki 22:10";
+  var SAYFA_SURUM="22 Eki 22:23";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
@@ -3084,6 +3091,17 @@
   function grMesaj(metin){
     if(!grAcik) return;
     var m; try{ m=JSON.parse(metin); }catch(h){ return; }
+    // Pixel uygulamasının bekçisi isteği duydu, ekranı açıyor: beklemeyi 30 sn'ye uzat
+    if(m.t==="uyaniyor"){
+      if(m.id!==grId||!grIstekte||grPc) return;
+      clearTimeout(grBekleme);
+      grOrta("Pixel uyanıyor…");
+      yaz("Evi izle: Pixel uyanıyor, 30 sn beklenecek.");
+      grBekleme=setTimeout(function(){
+        if(!grPc){ grIstekte=false; yaz("Evi izle: Pixel uyandı ama 30 sn içinde teklif gelmedi."); grOrta("Kamera cevap vermedi. Pixel'de kamera sayfası bekleme modunda mı? Tekrar denemek için dokunun.",true); }
+      },30000);
+      return;
+    }
     if(m.t==="pkayit"){
       if(m.id!==grId) return;
       if(m.cevap) grPkCevap=true;

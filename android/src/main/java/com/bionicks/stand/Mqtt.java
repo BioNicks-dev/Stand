@@ -21,6 +21,9 @@ final class Mqtt extends Thread {
     }
 
     private final String host, kul, sifre, konu;
+    private final String vasiyetKonu, vasiyetGovde;   // bağlantı beklenmedik koparsa sunucunun yayınlayacağı mesaj (saklı)
+    private final Object yazKilit = new Object();
+    private volatile OutputStream out;
     private final int port;
     private final boolean tls;
     private final Dinleyici d;
@@ -28,10 +31,12 @@ final class Mqtt extends Thread {
     private volatile Socket s;
     private long sonGiden, sonGelen;
 
-    Mqtt(String host, int port, boolean tls, String kul, String sifre, String konu, Dinleyici d) {
+    Mqtt(String host, int port, boolean tls, String kul, String sifre, String konu,
+         String vasiyetKonu, String vasiyetGovde, Dinleyici d) {
         super("stand-mqtt");
         this.host = host; this.port = port; this.tls = tls;
         this.kul = kul; this.sifre = sifre; this.konu = konu; this.d = d;
+        this.vasiyetKonu = vasiyetKonu; this.vasiyetGovde = vasiyetGovde;
         setDaemon(true);
     }
 
@@ -71,12 +76,14 @@ final class Mqtt extends Thread {
         } else s = ham;
         s.setSoTimeout(10000);
         DataInputStream in = new DataInputStream(s.getInputStream());
-        OutputStream out = s.getOutputStream();
+        out = s.getOutputStream();
 
         // CONNECT
         ByteArrayOutputStream g = new ByteArrayOutputStream();
-        yazStr(g, "MQTT"); g.write(4); g.write(0xC2); g.write(0); g.write(60);
+        boolean vasiyet = vasiyetKonu != null && vasiyetGovde != null;
+        yazStr(g, "MQTT"); g.write(4); g.write(0xC2 | (vasiyet ? 0x24 : 0)); g.write(0); g.write(60);
         yazStr(g, "comitok_bekci_" + Long.toHexString(System.nanoTime() & 0xffffffL));
+        if (vasiyet) { yazStr(g, vasiyetKonu); yazStr(g, vasiyetGovde); }
         yazStr(g, kul); yazStr(g, sifre);
         paket(out, 0x10, g.toByteArray());
         int b = in.readUnsignedByte();
@@ -97,7 +104,7 @@ final class Mqtt extends Thread {
             catch (SocketTimeoutException e) {
                 long simdi = System.currentTimeMillis();
                 if (simdi - sonGelen > 90000) throw new IOException("sunucudan 90 sn cevap yok");
-                if (simdi - sonGiden > 25000) { out.write(new byte[]{(byte) 0xC0, 0}); out.flush(); sonGiden = simdi; }
+                if (simdi - sonGiden > 25000) ping();
                 continue;
             }
             s.setSoTimeout(15000);
@@ -111,7 +118,7 @@ final class Mqtt extends Thread {
                 String govde = new String(veri, bas, veri.length - bas, StandardCharsets.UTF_8);
                 try { d.mesaj(k, govde); } catch (Exception e) { }
             }
-            if (System.currentTimeMillis() - sonGiden > 25000) { out.write(new byte[]{(byte) 0xC0, 0}); out.flush(); sonGiden = System.currentTimeMillis(); }
+            if (System.currentTimeMillis() - sonGiden > 25000) ping();
         }
         return true;
     }
@@ -125,14 +132,31 @@ final class Mqtt extends Thread {
         return v;
     }
 
+    private void ping() throws IOException {
+        synchronized (yazKilit) { out.write(new byte[]{(byte) 0xC0, 0}); out.flush(); sonGiden = System.currentTimeMillis(); }
+    }
+
+    // Mesaj gönder (QoS 0). Ağ işi olduğu için ana iş parçacığından çağrılmaz.
+    boolean yayinla(String k, String govde, boolean sakla) {
+        OutputStream o = out;
+        if (o == null) return false;
+        try {
+            ByteArrayOutputStream g = new ByteArrayOutputStream();
+            yazStr(g, k);
+            byte[] b = govde.getBytes(StandardCharsets.UTF_8);
+            g.write(b, 0, b.length);
+            paket(o, 0x30 | (sakla ? 1 : 0), g.toByteArray());
+            return true;
+        } catch (IOException e) { return false; }
+    }
+
     private void paket(OutputStream out, int tip, byte[] govde) throws IOException {
         ByteArrayOutputStream p = new ByteArrayOutputStream();
         p.write(tip);
         int x = govde.length;
         do { int e = x % 128; x /= 128; if (x > 0) e |= 128; p.write(e); } while (x > 0);
         p.write(govde);
-        out.write(p.toByteArray()); out.flush();
-        sonGiden = System.currentTimeMillis();
+        synchronized (yazKilit) { out.write(p.toByteArray()); out.flush(); sonGiden = System.currentTimeMillis(); }
     }
 
     private static void yazStr(ByteArrayOutputStream g, String t) {
