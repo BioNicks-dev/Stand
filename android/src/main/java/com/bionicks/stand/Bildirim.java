@@ -32,7 +32,12 @@ public class Bildirim extends NotificationListenerService {
         for (String x : l) if (k.contains(x)) return true;
         return false;
     }
-    private static boolean cevaplaMi(String t) { return icerir(t, "answer", "cevapla", "yanıtla", "kabul"); }
+    // 23 Eki kaydı: WhatsApp'ın gelen görüntülü arama bildiriminde düğmeler "Decline, Video"; kabul düğmesinin adı "Video"
+    private static boolean cevaplaMi(String t) {
+        String k = t.trim().toLowerCase(Locale.ROOT);
+        return icerir(t, "answer", "cevapla", "yanıtla", "kabul") || k.equals("video") || k.equals("voice") || k.equals("görüntülü") || k.equals("sesli");
+    }
+    private static boolean gelenMi(String yazi) { return icerir(yazi, "incoming", "gelen"); }
     private static boolean reddetMi(String t) { return icerir(t, "decline", "reddet"); }
     private static boolean kapatMi(String t) { return icerir(t, "hang up", "end call", "kapat", "sonlandır", "bitir"); }
 
@@ -56,6 +61,11 @@ public class Bildirim extends NotificationListenerService {
         Bundle e = n.extras;
         String baslik = e == null ? "" : m(e.getCharSequence(Notification.EXTRA_TITLE));
         String yazi = e == null ? "" : m(e.getCharSequence(Notification.EXTRA_TEXT));
+        // yedek: "Incoming …" yazan bildirimde reddet/kapat olmayan ilk düğme kabul düğmesidir
+        if (ac == null && gelenMi(yazi) && n.actions != null) for (Notification.Action a : n.actions) {
+            String t = m(a.title);
+            if (!reddetMi(t) && !kapatMi(t)) { ac = a.actionIntent; break; }
+        }
         String ozet = "WhatsApp bildirimi: \"" + baslik + "\" · \"" + yazi + "\" · düğmeler: " + (dug.length() > 0 ? dug : "yok")
                 + ((n.flags & Notification.FLAG_ONGOING_EVENT) != 0 ? " · sürekli" : "");
         long simdi = System.currentTimeMillis();
