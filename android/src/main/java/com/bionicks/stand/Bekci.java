@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ServiceInfo;
+import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -19,12 +20,16 @@ import android.os.Looper;
 import android.os.PowerManager;
 import android.os.SystemClock;
 import android.provider.Settings;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.json.JSONObject;
 
 // Bekçi: ekran kapalıyken de çalışır.
 //  - Sayfayı (kamera.html) kendi içinde canlı tutar.
 //  - İzleme isteğini sayfadan bağımsız, kendi sunucu bağlantısıyla dinler; istek gelince ekranı açar.
 //  - Sayfa 5 dk ses vermezse yeniler. Bildirimdeki "Durdur" her şeyi kapatır.
+//  - Uygulama 7: gizlilik ayarını, ev kamerası kapalı bilgisini, XR'ın evde olup olmadığını ve odadaki
+//    sayfaları da dinler (WhatsApp aramalarında gizlilik kuralı için, Arama.java). Pixel şarjını da gönderir.
 public class Bekci extends Service {
     static final String DURDUR = "com.bionicks.stand.DURDUR";
     private static final String SUNUCU = "l08d16ff.ala.us-east-1.emqxsl.com", KULLANICI = "telefon";
@@ -43,7 +48,10 @@ public class Bekci extends Service {
     private volatile String bKonu = "", iKonu = "";
     private String mqKod = "", mqSs = "";
     private boolean kopukYazildi = false;
-    private BroadcastReceiver ekranAlici;
+    private BroadcastReceiver ekranAlici, sarjAlici;
+    private final ExecutorService ag = Executors.newSingleThreadExecutor();   // ağ işleri ana iş parçacığında yapılmaz
+    private long sonPil = 0;
+    private static final long PIL_ARA = 30 * 60 * 1000L;
 
     static void baslat(Context c) { c.startForegroundService(new Intent(c, Bekci.class)); }
 
@@ -83,6 +91,13 @@ public class Bekci extends Service {
             IntentFilter f = new IntentFilter(Intent.ACTION_SCREEN_ON);
             f.addAction(Intent.ACTION_SCREEN_OFF);
             registerReceiver(ekranAlici, f);
+            // şarja takılınca/çıkarılınca şarj bilgisi hemen gönderilir
+            sarjAlici = new BroadcastReceiver() {
+                @Override public void onReceive(Context c, Intent e) { h.postDelayed(Bekci.this::durumGonder, 3000); }
+            };
+            IntentFilter sf = new IntentFilter(Intent.ACTION_POWER_CONNECTED);
+            sf.addAction(Intent.ACTION_POWER_DISCONNECTED);
+            registerReceiver(sarjAlici, sf);
             Sayfa.hazirla(this);
             dinle();
             h.postDelayed(kontrol, 30000);
@@ -99,15 +114,21 @@ public class Bekci extends Service {
         if (mq != null) mq.durdur();
         mqKod = kod; mqSs = ss;
         final String konu = "comitok/" + kod + "/goruntu/k";
+        final String onek = "comitok/" + kod + "/";
+        String[] konular = { konu, onek + "gizlilik", onek + "kamkapi", onek + "durum", onek + "var" };
+        Arama.odaDegisti(kod);
         bKonu = "comitok/" + kod + "/goruntu/b";      // bekçinin durumu: stand sayfası "uykuda · uyandırılabilir" gösterir
         iKonu = "comitok/" + kod + "/goruntu/i";      // iPhone'lara giden mesajlar
-        mq = new Mqtt(SUNUCU, 8883, true, KULLANICI, ss, konu, bKonu, "{\"b\":\"yok\"}", new Mqtt.Dinleyici() {
-            @Override public void mesaj(String k, String govde) { istekBak(govde); }
+        mq = new Mqtt(SUNUCU, 8883, true, KULLANICI, ss, konular, bKonu, "{\"b\":\"yok\"}", new Mqtt.Dinleyici() {
+            @Override public void mesaj(String k, String govde) {
+                if (k.equals(konu)) istekBak(govde);
+                else Arama.mesaj(k.substring(onek.length()), govde);
+            }
             @Override public void durum(boolean b, String neden) {
                 bagli = b;
                 if (b) {
                     Mqtt m = mq;
-                    if (m != null) m.yayinla(bKonu, "{\"b\":\"dinliyor\",\"z\":" + System.currentTimeMillis() + "}", true);
+                    if (m != null) m.yayinla(bKonu, durumMetni(), true);
                 }
                 if (b) { Kayit.yaz("Bekçi sunucuya bağlandı, istekleri dinliyor."); kopukYazildi = false; }
                 else if (!kopukYazildi) { Kayit.yaz("Bekçi sunucuya bağlanamadı/koptu: " + neden + " (kendisi yeniden dener)."); kopukYazildi = true; }
@@ -115,6 +136,41 @@ public class Bekci extends Service {
         });
         mq.start();
     }
+
+    // Bekçinin durumu (saklı): dinliyor + Pixel şarjı (y = yüzde, s = şarja takılı mı). Stand sayfası göstergede yazar.
+    private String durumMetni() {
+        JSONObject o = new JSONObject();
+        try {
+            o.put("b", "dinliyor");
+            o.put("z", System.currentTimeMillis());
+            BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
+            int y = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            Intent pil = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            boolean takili = pil != null && pil.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+            if (y >= 0 && y <= 100) o.put("pil", new JSONObject().put("y", y).put("s", takili));
+        } catch (Exception e) { }
+        sonPil = SystemClock.elapsedRealtime();
+        return o.toString();
+    }
+
+    private void durumGonder() {
+        final Mqtt m = mq;
+        if (m == null || !bagli) return;
+        final String t = durumMetni();
+        ag.execute(() -> m.yayinla(bKonu, t, true));
+    }
+
+    // Arama.java için: sunucuya kısa mesaj (ağ işi kendi iş parçacığında)
+    static void gonder(final String konuSonu, final String govde, final boolean sakla) {
+        final Bekci b = ben;
+        if (b == null) return;
+        final Mqtt m = b.mq;
+        final String kod = b.mqKod;
+        if (m == null || kod.isEmpty()) return;
+        b.ag.execute(() -> m.yayinla("comitok/" + kod + "/" + konuSonu, govde, sakla));
+    }
+
+    static Context baglam() { return ben; }
 
     private void istekBak(String govde) {
         String ad = "?", t = "", id = "";
@@ -174,6 +230,7 @@ public class Bekci extends Service {
         @Override public void run() {
             if (!calisiyor) return;
             long simdi = SystemClock.elapsedRealtime();
+            if (bagli && simdi - sonPil > PIL_ARA) durumGonder();
             if (Sayfa.w == null) Sayfa.hazirla(Bekci.this);
             else if (simdi - sonNabiz > NABIZ_SINIR) {
                 Kayit.yaz("Sayfa 5 dk ses vermedi, yenileniyor.");
@@ -211,6 +268,8 @@ public class Bekci extends Service {
         if (mq != null) { mq.durdur(); mq = null; }
         bagli = false;
         if (ekranAlici != null) { try { unregisterReceiver(ekranAlici); } catch (Exception e) { } }
+        if (sarjAlici != null) { try { unregisterReceiver(sarjAlici); } catch (Exception e) { } }
+        ag.shutdown();
         if (islemci != null && islemci.isHeld()) islemci.release();
         Sayfa.kapat();
         super.onDestroy();

@@ -1,5 +1,7 @@
 package com.bionicks.stand;
 
+import android.app.NotificationManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
@@ -52,6 +54,8 @@ final class Kopru {
             o.put("pil", pm.isIgnoringBatteryOptimizations(c.getPackageName()));
             o.put("kamera", Sayfa.izinVar(c));
             o.put("bekci", Bekci.bagli);
+            NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+            o.put("bildirim", nm.isNotificationListenerAccessGranted(new ComponentName(c, Bildirim.class)));
         } catch (Exception e) { }
         return o.toString();
     }
@@ -64,6 +68,8 @@ final class Kopru {
             if ("ustte".equals(ne)) a = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, p);
             else if ("yukle".equals(ne)) a = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, p);
             else if ("pil".equals(ne)) a = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, p);
+            else if ("bildirim".equals(ne)) a = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+                    .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, new ComponentName(c, Bildirim.class).flattenToString());
             else a = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, p);
             a.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try { c.startActivity(a); }
@@ -77,6 +83,10 @@ final class Kopru {
     @JavascriptInterface public void guncellemeBak() { Guncelle.bak(c); }
     @JavascriptInterface public boolean guncellemeHazir() { return Guncelle.hazirSurum > 0; }
     @JavascriptInterface public void guncellemeKur() { h.post(() -> Guncelle.kur(c)); }
+
+    // WhatsApp aramaları (uygulama 7): kamera sayfasındaki ayar
+    @JavascriptInterface public String waAyar() { return Arama.ayarAl(c); }
+    @JavascriptInterface public void waAyarYaz(String json) { Arama.ayarYaz(c, json); }
 
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");

@@ -154,7 +154,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 23 Eki 21:08</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 23 Eki 21:35</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -192,6 +192,15 @@
       <summary>Pixel uygulaması <span id="appSurum" class="not"></span></summary>
       <div class="ic">
       <div id="appIzin"></div>
+      <div id="waKutu" class="gizli">
+        <h3 style="margin:14px 0 4px;font-size:15px">WhatsApp aramaları</h3>
+        <label class="anahtar"><input type="checkbox" id="waAcik"> İzinli kişiler WhatsApp'tan görüntülü arayınca kendisi açsın</label>
+        <label for="waYon">Yönetici (sormadan açılır)</label>
+        <input id="waYon" autocomplete="off" autocorrect="off" spellcheck="false">
+        <label for="waDiger">Diğer kişiler (gizlilik kuralıyla açılır; birden çoksa virgülle)</label>
+        <input id="waDiger" autocomplete="off" autocorrect="off" spellcheck="false">
+        <p class="not">Adlar Pixel'in rehberindeki adla aynı olmalı. Listede olmayan biri ararsa uygulama dokunmaz. Ev kamerası kapalıyken diğer kişilerin araması reddedilir. Sesli aramalar açılmaz. Gizlilik ayarları stand sayfasındakiyle aynıdır (Ayarlar &gt; Gizlilik).</p>
+      </div>
       <button id="appDurdur" type="button" class="dur">Uygulamayı durdur</button>
       <p class="not">Durdurunca bu sayfa Chrome'dan eskisi gibi kullanılır. Yeniden başlatmak için Stand Kamera simgesine dokunun.</p>
       </div>
@@ -291,7 +300,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="23 Eki 21:08";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="23 Eki 21:35";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1852,12 +1861,13 @@
 
   // ---------- Pixel uygulaması (22 Eki) ----------
   var appSonBagli=Date.now(), appIzinBekle=false, appDurTik=null;
-  var IZIN_ADI={ustte:"Diğer uygulamaların üzerinde göster izni ver",pil:"Pil kısıtlamasını kaldır",kamera:"Kamera ve mikrofon izni ver",yukle:"Kendini güncellemesine izin ver"};
+  var IZIN_ADI={ustte:"Diğer uygulamaların üzerinde göster izni ver",pil:"Pil kısıtlamasını kaldır",kamera:"Kamera ve mikrofon izni ver",yukle:"Kendini güncellemesine izin ver",bildirim:"Bildirim erişimi ver (WhatsApp aramaları için)"};
   function appIzinler(){
     var b={}; try{ b=JSON.parse(APP.bilgi()); }catch(h){}
     var eksik=[]; if(!b.ustte) eksik.push("ustte"); if(!b.pil) eksik.push("pil"); if(!b.kamera) eksik.push("kamera");
     var zorunlu=eksik.length;   // güncelleme izni bekleme modunu engellemez
     if(b.yukle===false) eksik.push("yukle");
+    if(b.bildirim===false) eksik.push("bildirim");   // uygulama 7: WhatsApp aramaları (bekleme modunu engellemez)
     var k=E("appIzin"); k.textContent="";
     if(!eksik.length){ var t=document.createElement("div"); t.className="tamam"; t.textContent="İzinler tamam."; k.appendChild(t); }
     if(eksik.length) E("appKutu").open=true;
@@ -1878,12 +1888,26 @@
     yaz("Uygulama: sayfa bu isteği kaçırmıştı, bekçiden alındı ("+(m.ad||"?")+").");
     istekGeldi(m.id,m.ad,m);
   }
+  // WhatsApp aramaları (uygulama 7): ayar uygulamada saklanır, değişince hemen kaydedilir
+  function waKur(){
+    if(typeof APP.waAyar!=="function") return;
+    var a={}; try{ a=JSON.parse(APP.waAyar()); }catch(h){}
+    E("waKutu").className="";
+    E("waAcik").checked=a.acik!==false; E("waYon").value=a.yon||""; E("waDiger").value=a.diger||"";
+    function kaydet(){
+      var y=E("waYon").value.trim(), d=E("waDiger").value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).join(", ");
+      E("waDiger").value=d;
+      try{ APP.waAyarYaz(JSON.stringify({acik:E("waAcik").checked,yon:y,diger:d})); }catch(h){}
+    }
+    E("waAcik").addEventListener("change",kaydet); E("waYon").addEventListener("change",kaydet); E("waDiger").addEventListener("change",kaydet);
+  }
   function uygulamaBasla(){
     var s=""; try{ s=APP.surum(); }catch(h){}
     E("surumYazi").textContent="· "+SURUM+" · uygulama "+s; E("appSurum").textContent=s;
     E("appKutu").className="bolum";
     E("beklemeNot").textContent="Bekleme modunda ekran kapalı bekler. Biri bağlanınca uygulama ekranı açar, (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Ayarlar için siyah ekrana hızlıca iki kez dokunun; 3 dk dokunulmazsa beklemeye kendisi döner.";
     yaz("Uygulama içinde açıldı (uygulama sürümü "+s+").");
+    waKur();
     setInterval(function(){ try{ APP.nabiz(); }catch(h){} },5000);
     setInterval(function(){ try{ JSON.parse(APP.kayitAl()).forEach(function(m){ yaz("Uygulama: "+m); }); }catch(h){} bekleyenIstekBak(); },3000);
     if(typeof APP.baglanti==="function"){ try{ APP.baglanti(kod,ss); }catch(h){} }

@@ -12,7 +12,7 @@ import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
-// Bekçinin kendi küçük sunucu bağlantısı (MQTT 3.1.1, sadece dinler).
+// Bekçinin kendi küçük sunucu bağlantısı (MQTT 3.1.1). Birkaç konuyu dinler, kısa mesaj gönderir (uygulama 7).
 // Sayfadan bağımsızdır: Android ekran kapalıyken sayfayı yavaşlatsa da bu bağlantı ayakta kalır.
 final class Mqtt extends Thread {
     interface Dinleyici {
@@ -20,7 +20,8 @@ final class Mqtt extends Thread {
         void durum(boolean bagli, String neden);
     }
 
-    private final String host, kul, sifre, konu;
+    private final String host, kul, sifre;
+    private final String[] konular;
     private final String vasiyetKonu, vasiyetGovde;   // bağlantı beklenmedik koparsa sunucunun yayınlayacağı mesaj (saklı)
     private final Object yazKilit = new Object();
     private volatile OutputStream out;
@@ -31,11 +32,11 @@ final class Mqtt extends Thread {
     private volatile Socket s;
     private long sonGiden, sonGelen;
 
-    Mqtt(String host, int port, boolean tls, String kul, String sifre, String konu,
+    Mqtt(String host, int port, boolean tls, String kul, String sifre, String[] konular,
          String vasiyetKonu, String vasiyetGovde, Dinleyici d) {
         super("stand-mqtt");
         this.host = host; this.port = port; this.tls = tls;
-        this.kul = kul; this.sifre = sifre; this.konu = konu; this.d = d;
+        this.kul = kul; this.sifre = sifre; this.konular = konular; this.d = d;
         this.vasiyetKonu = vasiyetKonu; this.vasiyetGovde = vasiyetGovde;
         setDaemon(true);
     }
@@ -92,7 +93,8 @@ final class Mqtt extends Thread {
         if (gv[1] != 0) throw new IOException("sunucu reddetti (kod " + gv[1] + ")");
 
         // SUBSCRIBE
-        g.reset(); g.write(0); g.write(1); yazStr(g, konu); g.write(0);
+        g.reset(); g.write(0); g.write(1);
+        for (String k : konular) { yazStr(g, k); g.write(0); }
         paket(out, 0x82, g.toByteArray());
         d.durum(true, "");
         sonGelen = sonGiden = System.currentTimeMillis();
