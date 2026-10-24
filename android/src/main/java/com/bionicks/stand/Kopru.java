@@ -56,6 +56,7 @@ final class Kopru {
             o.put("bekci", Bekci.bagli);
             NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
             o.put("bildirim", nm.isNotificationListenerAccessGranted(new ComponentName(c, Bildirim.class)));
+            o.put("erisim", Erisim.izinVar(c));   // uygulama 11: WhatsApp aramasını ekrandan kabul
         } catch (Exception e) { }
         return o.toString();
     }
@@ -70,8 +71,15 @@ final class Kopru {
             else if ("pil".equals(ne)) a = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, p);
             else if ("bildirim".equals(ne)) a = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
                     .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, new ComponentName(c, Bildirim.class).flattenToString());
+            else if ("erisim".equals(ne)) a = new Intent("android.settings.ACCESSIBILITY_DETAILS_SETTINGS")
+                    .putExtra(Intent.EXTRA_COMPONENT_NAME, new ComponentName(c, Erisim.class).flattenToString());
             else a = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, p);
             a.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if ("erisim".equals(ne)) {
+                // Stand Kamera'nın kendi sayfası açılmazsa genel Erişilebilirlik listesi
+                try { c.startActivity(a); return; } catch (Exception e) { }
+                a = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
             try { c.startActivity(a); }
             catch (Exception e) {
                 try { c.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, p).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception e2) { }

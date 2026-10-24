@@ -19,11 +19,12 @@ import java.util.Map;
 public class Bildirim extends NotificationListenerService {
     static final String WA = "com.whatsapp";
     static volatile boolean bagli = false;
+    static volatile Bildirim ben = null;
     private final Handler h = new Handler(Looper.getMainLooper());
     private final Map<String, Long> yazilan = new HashMap<>();
 
-    @Override public void onListenerConnected() { bagli = true; Kayit.yaz("Bildirim erişimi açık: WhatsApp aramaları izleniyor."); }
-    @Override public void onListenerDisconnected() { bagli = false; Kayit.yaz("Bildirim erişimi koptu (Android kapattı ya da izin alındı)."); }
+    @Override public void onListenerConnected() { bagli = true; ben = this; Kayit.yaz("Bildirim erişimi açık: WhatsApp aramaları izleniyor."); }
+    @Override public void onListenerDisconnected() { bagli = false; ben = null; Kayit.yaz("Bildirim erişimi koptu (Android kapattı ya da izin alındı)."); }
 
     private static String m(CharSequence c) { return c == null ? "" : c.toString(); }
 
@@ -86,6 +87,28 @@ public class Bildirim extends NotificationListenerService {
         // gelen arama bildirimi kalkıp yerine görüşme bildirimi gelebilir: 3 sn sonra bak
         h.postDelayed(() -> Arama.kalkti(key, baskaAramaVar(key)), 3000);
     }
+
+    // Uygulama 11 (Erisim.java): bu gelen arama bildirimi hâlâ "gelen arama" mı? (kabul edilince ya kalkar ya da görüşme bildirimine döner)
+    static boolean gelenVar(String key) {
+        Bildirim b = ben;
+        if (b == null) return true;   // bilemiyoruz: denemeye devam
+        try {
+            StatusBarNotification[] l = b.getActiveNotifications();
+            if (l != null) for (StatusBarNotification s : l) {
+                if (!key.equals(s.getKey())) continue;
+                Notification n = s.getNotification();
+                if (n == null) return false;
+                String yazi = n.extras == null ? "" : m(n.extras.getCharSequence(Notification.EXTRA_TEXT));
+                if (gelenMi(yazi)) return true;
+                if (n.actions != null) for (Notification.Action a : n.actions) if (cevaplaMi(m(a.title))) return true;
+                return false;
+            }
+            return false;
+        } catch (Exception e) { return true; }
+    }
+
+    // WhatsApp'ın herhangi bir arama bildirimi var mı (görüşme sürüyor mu)
+    static boolean aramaBildirimiVar() { Bildirim b = ben; return b != null && b.baskaAramaVar(""); }
 
     private boolean baskaAramaVar(String haric) {
         try {

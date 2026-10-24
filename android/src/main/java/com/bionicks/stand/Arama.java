@@ -26,7 +26,8 @@ import org.json.JSONObject;
 //  - Diğer kişiler (varsayılan "Seda"): stand sayfasındaki gizlilik kuralı aynen uygulanır
 //    (yönetici evdeyse VEYA saat aralığındaysa ntfy bildirimi + Engelle, 15 sn; ev kamerası kapalıysa reddeder).
 //  - Başka biri: hiç dokunmaz.
-// Bildirimlere sadece düğmesine basarak dokunur; HİÇBİR BİLDİRİMİ SİLMEZ (8-9 Ekim: silmek WhatsApp'ı bozmuştu).
+// Uygulama 11: kabul artık erişilebilirlik hizmetiyle ekrandan (Erisim.java: sürükleme / dokunma). Reddetme hâlâ bildirim düğmesiyle.
+// HİÇBİR BİLDİRİMİ SİLMEZ (8-9 Ekim: silmek WhatsApp'ı bozmuştu).
 // Kararlar ana iş parçacığında, ağ işleri ayrı iş parçacığında.
 final class Arama {
     private static final Handler h = new Handler(Looper.getMainLooper());
@@ -164,11 +165,24 @@ final class Arama {
         islenen.remove(key);
         Bekleyen b = bek;
         if (b != null && !b.bitti && key.equals(b.key)) { Kayit.yaz("WhatsApp: " + b.ad + " beklerken vazgeçti (arama bitti)."); bitir(); return; }
-        if (aktifKey != null && !baskaVar) {
-            Kayit.yaz("WhatsApp: görüşme bitti (" + aktifAd + ").");
-            aktifKey = null; aktifAd = null; aktifSurdu = false;
-            if (!aktifYon) varlik(null, false, false);
-        }
+        if (aktifKey != null && !baskaVar) bitisBak(aktifKey);
+    }
+
+    // Uygulama 11: WhatsApp görüşme sırasında bildirim göstermeyebilir; arama ekranı açıksa görüşme sürüyor sayılır
+    private static void bitisBak(final String key) {
+        if (aktifKey == null || !key.equals(aktifKey)) return;
+        if (Erisim.waEkraniVar() || Bildirim.aramaBildirimiVar()) { h.postDelayed(() -> bitisBak(key), 5000); return; }
+        Kayit.yaz("WhatsApp: görüşme bitti (" + aktifAd + ").");
+        Erisim.birak();
+        boolean yon = aktifYon;
+        aktifKey = null; aktifAd = null; aktifSurdu = false;
+        if (!yon) varlik(null, false, false);
+    }
+
+    // Erisim.java: ekrandan kabul tuttu
+    static void kabulEdildi(String key) {
+        if (aktifKey == null) return;
+        if (!aktifSurdu) { aktifSurdu = true; Kayit.yaz("WhatsApp: görüşme bağlandı (" + aktifAd + ")."); }
     }
 
     // ---------- gizlilik kuralı (index.html'deki gkSorulmali ile aynı) ----------
@@ -316,13 +330,9 @@ final class Arama {
 
     private static void cevapla(String key, String kim, PendingIntent ac, boolean yon) {
         aktifKey = key; aktifAd = kim; aktifYon = yon; aktifSurdu = false;
-        if (!bas(ac, "Cevapla")) { aktifKey = null; aktifAd = null; return; }
+        // Uygulama 11: önce ekrandan (erişilebilirlik). Hizmet kapalıysa eski yol: bildirim düğmesi (büyük ihtimalle açmaz).
+        if (!Erisim.kabul(key, kim) && !bas(ac, "Cevapla")) { aktifKey = null; aktifAd = null; return; }
         if (!yon) varlikAktif(key);
-        // 8 sn içinde "süren görüşme" bildirimi görülmezse kayda uyarı (yedek: MacroDroid'deki Open Camera makrosu)
-        h.postDelayed(() -> {
-            if (key.equals(aktifKey) && !aktifSurdu)
-                Kayit.yaz("Uyarı: WhatsApp araması 8 sn içinde bağlanmış görünmüyor (" + kim + "). Gerekirse MacroDroid'de \"Open Camera\" makrosunu geri açın.");
-        }, 8000);
     }
 
     // Seda WhatsApp'tan bağlıyken odada "Seda (WhatsApp)" görünsün (yöneticinin sayfasında ding + kim burada)

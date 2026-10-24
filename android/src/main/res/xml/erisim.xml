@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uygulama 11: Erisim.java ayarı. Sadece WhatsApp'ın olaylarını alır; ekranı sadece arama kabul edilirken okur. -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/erisim_aciklama"
+    android:packageNames="com.whatsapp"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:notificationTimeout="200"
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true" />

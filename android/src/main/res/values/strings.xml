@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="erisim_aciklama">İzinli kişiler Pixel\'i WhatsApp\'tan görüntülü arayınca aramayı ekranda kaydırarak açar (MacroDroid\'in yaptığı gibi). Sadece WhatsApp\'ın arama ekranına bakar, başka uygulamaları okumaz.</string>
+</resources>

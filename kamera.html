@@ -154,7 +154,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 23 Eki 21:35</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 19:48</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -300,7 +300,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="23 Eki 21:35";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="24 Eki 19:48";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1861,13 +1861,14 @@
 
   // ---------- Pixel uygulaması (22 Eki) ----------
   var appSonBagli=Date.now(), appIzinBekle=false, appDurTik=null;
-  var IZIN_ADI={ustte:"Diğer uygulamaların üzerinde göster izni ver",pil:"Pil kısıtlamasını kaldır",kamera:"Kamera ve mikrofon izni ver",yukle:"Kendini güncellemesine izin ver",bildirim:"Bildirim erişimi ver (WhatsApp aramaları için)"};
+  var IZIN_ADI={ustte:"Diğer uygulamaların üzerinde göster izni ver",pil:"Pil kısıtlamasını kaldır",kamera:"Kamera ve mikrofon izni ver",yukle:"Kendini güncellemesine izin ver",bildirim:"Bildirim erişimi ver (WhatsApp aramaları için)",erisim:"Erişilebilirlik izni ver (WhatsApp aramasını açmak için)"};
   function appIzinler(){
     var b={}; try{ b=JSON.parse(APP.bilgi()); }catch(h){}
     var eksik=[]; if(!b.ustte) eksik.push("ustte"); if(!b.pil) eksik.push("pil"); if(!b.kamera) eksik.push("kamera");
     var zorunlu=eksik.length;   // güncelleme izni bekleme modunu engellemez
     if(b.yukle===false) eksik.push("yukle");
     if(b.bildirim===false) eksik.push("bildirim");   // uygulama 7: WhatsApp aramaları (bekleme modunu engellemez)
+    if(b.erisim===false) eksik.push("erisim");       // uygulama 11: aramayı ekrandan kabul (bekleme modunu engellemez)
     var k=E("appIzin"); k.textContent="";
     if(!eksik.length){ var t=document.createElement("div"); t.className="tamam"; t.textContent="İzinler tamam."; k.appendChild(t); }
     if(eksik.length) E("appKutu").open=true;
