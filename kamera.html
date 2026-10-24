@@ -154,7 +154,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 22 Eki 22:51</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 23 Eki 21:08</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -291,7 +291,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="22 Eki 22:51";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="23 Eki 21:08";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -349,7 +349,24 @@
   }).catch(function(){});
 
   function konu(son){ return "comitok/"+kod+"/goruntu/"+son; }
-  function gonder(m){ if(istemci&&istemci.connected) istemci.publish(konu("i"),JSON.stringify(m)); }
+  // Bağlantı yokken gönderilenler kaybolmasın (23 Eki kaydı: Pixel uyanınca sunucu bağlantısı 5 sn koptu,
+  // teklif bu arada gönderildi ve iPhone'a hiç ulaşmadı). Sıraya alınır, bağlanınca gider; 30 sn'den eskiler
+  // ya da artık geçersiz olanlar (izleyen ayrıldı, teklif yenilendi) atılır.
+  var gidecekler=[];
+  function gonder(m,gecerli){
+    if(istemci&&istemci.connected){ istemci.publish(konu("i"),JSON.stringify(m)); return; }
+    gidecekler.push({m:m,z:Date.now(),g:gecerli||null});
+    if(gidecekler.length>30) gidecekler.shift();
+  }
+  function gidecekleriGonder(){
+    var l=gidecekler, n=Date.now(), sayi=0; gidecekler=[];
+    l.forEach(function(x){
+      if(n-x.z>30000) return;
+      if(x.g){ try{ if(!x.g()) return; }catch(h){ return; } }
+      istemci.publish(konu("i"),JSON.stringify(x.m)); sayi++;
+    });
+    if(sayi) yaz("Bağlantı yokken bekleyen "+sayi+" mesaj gönderildi.");
+  }
 
   // ---------- aktarma (TURN) ----------
   function turnBuz(){
@@ -1295,6 +1312,28 @@
   // Evi izle'ye ilk kez gelen cihazda yöneticiye ntfy bildirimi; bilinen cihazlar bu telefonda saklanır.
   // Bildirimi Pixel gönderir (bağlanan kişinin sayfası atlayamaz). Haber verir, engellemez.
   var gkAyarP=null, kimliksizSon=0;
+  // ---------- ev kamerası kapalı (23 Eki) ----------
+  // Yönetici stand sayfasında Pixel kutusuna uzun basınca kapanır/açılır (comitok/<oda>/kamkapi, saklı).
+  // Kapalıyken yönetici dışında kimse bağlanamaz; o an bağlı olanların bağlantısı kesilir.
+  // Son durum bu telefonda da saklanır: sayfa yenilenip sunucu henüz cevap vermeden gelen istek de reddedilir.
+  var kamKapi=null;
+  try{ kamKapi=JSON.parse(localStorage.getItem("stand_kamKapi")||"null"); }catch(h){}
+  function kamKapaliMi(){ return !!(kamKapi&&kamKapi.k); }
+  function kamKapiGeldi(m){
+    var once=kamKapaliMi();
+    kamKapi=(m&&typeof m==="object")?{k:!!m.k,z:Number(m.z)||0,ad:String(m.ad||"").slice(0,16)}:null;
+    try{ localStorage.setItem("stand_kamKapi",JSON.stringify(kamKapi)); }catch(h){}
+    var simdi=kamKapaliMi();
+    if(simdi===once) return;
+    yaz("Ev kamerası "+(simdi?"kapatıldı":"açıldı")+(kamKapi&&kamKapi.ad?" ("+kamKapi.ad+")":"")+".");
+    if(!simdi) return;
+    Object.keys(izleyenler).forEach(function(i){
+      var z=izleyenler[i]; if(z.y) return;
+      gonder({t:"kapali",id:i});
+      yaz(z.ad+": ev kamerası kapatıldığı için bağlantısı kesildi.");
+      baglantiyiKapat(i);
+    });
+  }
   function bilinenCihazlar(){ try{ var l=JSON.parse(oku("stand_bilinenCihazlar")||"[]"); return Array.isArray(l)?l:[]; }catch(h){ return []; } }
   function yeniCihazKontrol(ad,m){
     var cz=String((m&&m.cz)||"").slice(0,24), cg=String((m&&m.cg)||"bilinmeyen cihaz").slice(0,48), l=bilinenCihazlar();
@@ -1319,6 +1358,19 @@
     if(id===sonIstekId&&Date.now()-sonIstekZaman<5000&&izleyenler[id]){ yaz("Aynı istek ikinci kez geldi, yok sayıldı."); return; }
     sonIstekId=id; sonIstekZaman=Date.now();
     ad=String(ad||("izleyen "+String(id).slice(-4))).slice(0,20);
+    // Yönetici ev kamerasını kapattıysa (23 Eki) sadece yönetici bağlanabilir
+    if(kamKapaliMi()&&!(m&&m.y)){
+      gonder({t:"kapali",id:id});
+      yaz("İzleme isteği geldi ("+ad+") ama ev kamerası kapalı (yönetici kapattı), bağlanmadı.");
+      return;
+    }
+    // Aynı izleyen teklifi beklerken isteği tekrarladıysa (teklif yolda kaybolmuş olabilir): bağlantıyı
+    // baştan kurmak yerine aynı teklif yeniden gönderilir
+    var z0=izleyenler[id];
+    if(z0&&!z0.baglandi&&Date.now()-z0.bas<30000){
+      if(z0.teklifMesaj&&z0.pc&&z0.pc.signalingState==="have-local-offer"){ tYaz(ad+": istek tekrar geldi, aynı teklif yeniden gönderildi."); gonder(z0.teklifMesaj); return; }
+      if(!z0.pc){ tYaz(ad+": istek tekrar geldi, teklif hâlâ hazırlanıyor."); return; }
+    }
     if(!akis&&!beklemede&&!kameraSoz){ gonder({t:"hazirDegil",id:id}); yaz("İzleme isteği geldi ("+ad+") ama bekleme modu kapalı ve kamera açık değil."); return; }
     if(APP){ if(document.visibilityState!=="visible") yaz("Uygulama: ekran açılıyor ("+ad+")."); try{ APP.uyan(); }catch(h){} }
     if(izleyenler[id]){ tYaz(ad+" yeniden bağlanıyor, eski bağlantısı kapatılıyor."); baglantiyiKapat(id); }
@@ -1330,7 +1382,7 @@
       yaz("İzleme isteği geldi ("+ad+") ama zaten "+EN_COK_IZLEYEN+" kişi bağlı: "+kimler.join(", ")+".");
       return;
     }
-    var z={pc:null,ad:ad,mik:false,buradaVar:false,sonBurada:0,kopma:null,gonderen:null,kanal:null,gelenSes:null,gelenVideo:null,bas:Date.now(),baglandi:0};
+    var z={pc:null,ad:ad,y:!!(m&&m.y),mik:false,buradaVar:false,sonBurada:0,kopma:null,gonderen:null,kanal:null,gelenSes:null,gelenVideo:null,bas:Date.now(),baglandi:0};
     izleyenler[id]=z;
     yeniCihazKontrol(ad,m);
     taniId=id; taniSatir=[]; taniCevap=false;
@@ -1385,7 +1437,9 @@
       .then(function(){
         if(!bu()) return;
         var tb=turnBuz();
-        gonder({t:"teklif",id:id,sdp:p.localDescription.sdp,yon:yon,sayfa:sayfaKimlik,surum:SURUM,turn:tb,oda:EN_COK_IZLEYEN});
+        z.teklifMesaj={t:"teklif",id:id,sdp:p.localDescription.sdp,yon:yon,sayfa:sayfaKimlik,surum:SURUM,turn:tb,oda:EN_COK_IZLEYEN};
+        if(!(istemci&&istemci.connected)) tYaz(z.ad+": sunucu bağlantısı yok, teklif bağlanınca gönderilecek.");
+        gonder(z.teklifMesaj,function(){ return bu()&&p.signalingState==="have-local-offer"; });
         tYaz(z.ad+": teklif gönderildi. Pixel adresleri: "+adresOzet(p.localDescription.sdp)+(tb?"":" (aktarma bilgisi girilmemiş)"));
       })
       .catch(function(h){ tYaz("Teklif hazırlanamadı: "+(h&&h.message||h)); });
@@ -1407,11 +1461,14 @@
   var pixelDurumSon="", pixelDurumZaman=0;
   function pixelDurumu(){
     var ids=Object.keys(izleyenler);
-    if(ids.length) return {d:"izleniyor",kimler:ids.map(function(i){ return izleyenler[i].ad; }),takip:takipAcik,fener:fenerAcik};
-    if(takipAcik) return {d:"takip"};
-    if(akis||kameraSoz) return {d:"kamera"};
-    if(beklemede) return {d:"hazir"};
-    return {d:"ekran"};
+    var m;
+    if(ids.length) m={d:"izleniyor",kimler:ids.map(function(i){ return izleyenler[i].ad; }),takip:takipAcik,fener:fenerAcik};
+    else if(takipAcik) m={d:"takip"};
+    else if(akis||kameraSoz) m={d:"kamera"};
+    else if(beklemede) m={d:"hazir"};
+    else m={d:"ekran"};
+    if(pil) m.pil={y:pil.y,s:pil.s};   // stand sayfasındaki Pixel kutusunda şarj (23 Eki)
+    return m;
   }
   function pixelDurumYayinla(){
     if(!istemci||!istemci.connected) return;
@@ -1721,6 +1778,8 @@
       istemci.subscribe("comitok/"+kod+"/gizlilik");   // yeni cihaz bildirimi için ntfy konusu buradan
       istemci.subscribe("comitok/"+kod+"/arama");
       istemci.subscribe("comitok/"+kod+"/gelistirme");
+      istemci.subscribe("comitok/"+kod+"/kamkapi");     // yönetici ev kamerasını kapattı mı (23 Eki)
+      gidecekleriGonder();
       pixelDurumSon=""; pixelDurumYayinla();
       if(akis||beklemede) gonder({t:"hazir"});
       if(APP) setTimeout(bekleyenIstekBak,300);
@@ -1741,6 +1800,7 @@
       sonMesajZaman=Date.now();
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(String(k).slice(-9)==="/gizlilik"){ gkAyarP=(m&&typeof m==="object")?m:null; return; }
+      if(String(k).slice(-8)==="/kamkapi"){ kamKapiGeldi(m); return; }
       if(k.slice(-6)==="/arama"){ aramaGeldi(m); return; }
       if(k.slice(-11)==="/gelistirme"){ gnGelistirme(m); return; }
       mesajGeldi(m);

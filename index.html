@@ -52,6 +52,16 @@
   .gosterge{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
   .gosterge span{display:block;font-size:12px;color:var(--ink-soft)}
   .gosterge b{display:block;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  /* 23 Eki: Uzak bağlantı yazısı sığmazsa kayar; Pixel kutusunda şarj */
+  #gUzak{text-overflow:clip}
+  #gUzak span.kayan{display:inline-block;font-size:inherit;color:inherit;white-space:nowrap}
+  #gUzak span.kayan.kay{animation:uzakKay 10s ease-in-out infinite alternate}
+  @keyframes uzakKay{0%,15%{transform:translateX(0)}85%,100%{transform:translateX(var(--kay,0))}}
+  @media (prefers-reduced-motion: reduce){ #gUzak span.kayan.kay{animation:none} #gUzak{text-overflow:ellipsis} }
+  #gPixel span.pil{display:inline;font-size:inherit;color:inherit}
+  #gPixel span.pil.dusuk{color:var(--stop)}
+  #pixelKutu{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  #kameraAcBtn.kamKapali{opacity:.45}
   #izinKutu{cursor:pointer}
   /* Bluetooth kutusu: tam genişlik, iki yarısı üstteki sütunlarla hizalı */
   .btKutu{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;column-gap:8px;padding:0;cursor:pointer}
@@ -148,10 +158,10 @@
   #kOda{display:flex;align-items:center;gap:2px}
   #kOda button{all:unset;cursor:pointer;padding:0 3px;white-space:nowrap;-webkit-touch-callout:none}
   #kOda .ay{opacity:.6;padding:0 1px}
-  #kOda .kAd.kisik{opacity:.7;text-decoration:line-through;text-decoration-thickness:1px}
+  #kOda .kAd{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  #kOda .kAd.kisik{opacity:.75}
+  #kOda .kAd.kisik::before{content:"🔇 ";font-size:11px}
   #kOda .kAd.konusuyor{color:#7fe0aa;opacity:1}
-  #kOda .kAd.kisik.konusuyor{color:#ff8a8a;text-decoration:none}
-  #kOda .kAd.kisik.konusuyor::after{content:" (kısık)";font-size:11px}
   /* ses çubuğu kutusu */
   #kSesKutu{position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:8;width:min(300px,86%);padding:10px 12px;border-radius:14px;
     background:rgba(0,0,0,.8);color:#fff;font-size:14px;touch-action:auto}
@@ -511,7 +521,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 22 Eki 22:51</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 23 Eki 21:08</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -522,7 +532,7 @@
   <div class="gostergeler">
     <div class="gosterge"><span>Stand</span><b id="gStand" class="soluk">bilinmiyor</b></div>
     <div class="gosterge" id="izinKutu" role="button" tabindex="0" aria-label="Uzaktan kontrol iznini aç veya kapat"><span>İzin</span><b id="gIzin" class="soluk">kapalı</b></div>
-    <div class="gosterge" id="pixelKutu" role="button" tabindex="0" aria-label="Pixel durumu. Turuncuyken dokununca Pixel'de takip ve fener kapanır."><span id="pixelBaslik">Pixel</span><b id="gPixel" class="soluk">bilinmiyor</b></div>
+    <div class="gosterge" id="pixelKutu" role="button" tabindex="0" aria-label="Pixel durumu. Turuncuyken dokununca Pixel'de takip ve fener kapanır. Yönetici uzun basınca ev kamerası kapanır ya da açılır."><span id="pixelBaslik">Pixel</span><b id="gPixel" class="soluk">bilinmiyor</b></div>
     <div class="gosterge"><span>Uzak bağlantı</span><b id="gUzak" class="soluk">kapalı</b></div>
     <div class="gosterge"><span>Sunucu</span><b id="gSunucu" class="soluk">çevrimdışı</b></div>
     <div class="gosterge btKutu gizle" id="btKutu" role="button" tabindex="0" aria-label="Bluetooth durumu. Dokununca Bluetooth kartını yeniden başlatmayı sorar.">
@@ -1135,7 +1145,7 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
-      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/goruntu/b"); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
+      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/goruntu/b"); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); istemci.subscribe("comitok/"+kod+"/kamkapi"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -1172,7 +1182,8 @@
       }
       if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
       if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
-      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); }catch(h){} pixelKutusu(); return; }
+      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
+      if(konu.slice(-8)==="/kamkapi"){ var kk=null; try{ kk=JSON.parse(veri.toString()); }catch(h){} kamKapiGeldi(kk); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       if(konu.slice(-6)==="/arama"){ gsMesaj(veri.toString()); return; }
       if(konu.indexOf("/rehber/")>0){ rehberGeldi(konu.split("/").pop(),veri.toString()); return; }
@@ -1219,16 +1230,25 @@
   var pixelDurum=null, pixelDurumGeldi=0, PIXEL_ESKI=150000;
   var bekciDurum=null;   // Pixel uygulamasının bekçisi (22 Eki): {b:"dinliyor"} ya da {b:"yok"}
 
+  // Pixel şarjı (23 Eki): Pixel uyanıkken sayfasından, uyurken uygulamanın bekçisinden gelir; en yenisi gösterilir
+  var bekciDurumGeldi=0;
+  function pixelPil(){
+    var a=pixelDurum&&pixelDurum.pil?{p:pixelDurum.pil,z:Number(pixelDurum.z)||pixelDurumGeldi}:null;
+    var b=bekciDurum&&bekciDurum.pil?{p:bekciDurum.pil,z:Number(bekciDurum.z)||bekciDurumGeldi}:null;
+    var x=(a&&b)?(a.z>=b.z?a:b):(a||b);
+    if(!x||typeof x.p.y!=="number") return null;
+    return {y:Math.max(0,Math.min(100,Math.round(x.p.y))),s:!!x.p.s};
+  }
   function pixelKutusu(){
-    var d=pixelDurum, yazi="bilinmiyor", sinif="soluk", dokun=false;
+    var d=pixelDurum, yazi="bilinmiyor", sinif="soluk", dokun=false, hazir=false;
     if(d){
       var eski=d.d!=="kapali"&&(!d.z||Date.now()-d.z>PIXEL_ESKI)&&Date.now()-pixelDurumGeldi>PIXEL_ESKI;
       if(d.d==="kapali"||eski){
         // sayfa uyuyor ama uygulamanın bekçisi dinliyorsa Pixel uyandırılabilir
-        if(bekciDurum&&bekciDurum.b==="dinliyor"){ yazi="hazır"; sinif="iyi"; }
+        if(bekciDurum&&bekciDurum.b==="dinliyor"){ yazi="hazır"; sinif="iyi"; hazir=true; }
         else { yazi="kapalı"; sinif="kotu"; }
       }
-      else if(d.d==="hazir"){ yazi="hazır"; sinif="iyi"; }
+      else if(d.d==="hazir"){ yazi="hazır"; sinif="iyi"; hazir=true; }
       else if(d.d==="izleniyor"){
         yazi="izleniyor"+((d.kimler&&d.kimler.length)?": "+d.kimler.join(", "):""); sinif="iyi";
         var ac=[]; if(d.takip) ac.push("takip"); if(d.fener) ac.push("fener");
@@ -1238,11 +1258,59 @@
       else if(d.d==="kamera"){ yazi="kamera açık"; sinif="amber"; dokun=true; }
       else if(d.d==="ekran"){ yazi="ekran açık"; sinif="amber"; dokun=true; }
     }
+    // yönetici ev kamerasını kapattıysa önce o yazılır
+    if(kamKapaliMi()){
+      var iz=d&&d.d==="izleniyor"&&d.kimler&&d.kimler.length?" · izleniyor: "+d.kimler.join(", "):"";
+      yazi="kapalı ("+(yk?"sen kapattın":"yönetici kapattı")+")"+iz; sinif="kotu"; hazir=false;
+    }
     goster("gPixel",yazi,sinif);
+    var pp=hazir?pixelPil():null;
+    if(pp){
+      var sp=document.createElement("span"); sp.className="pil"+(pp.y<20&&!pp.s?" dusuk":"");
+      sp.textContent=" · %"+pp.y+(pp.s?" ⚡":""); E("gPixel").appendChild(sp);
+    }
     E("pixelBaslik").textContent=dokun?"Pixel · dokun: kapat":"Pixel";
     E("pixelKutu").classList.toggle("dokunulur",dokun);
   }
+  // ---------- ev kamerası kapalı (23 Eki) ----------
+  // Yönetici Pixel kutusuna uzun basınca ev kamerası kapanır/açılır. Kapalıyken yönetici dışında kimse
+  // Evi izle'ye / görüşmede Evi ekle'ye bağlanamaz; Pixel de reddeder. Durum sunucuda saklı (kamkapi).
+  var kamKapi=null;
+  function kamKapaliMi(){ return !!(kamKapi&&kamKapi.k); }
+  function kamKapiGeldi(m){
+    var once=kamKapaliMi();
+    kamKapi=(m&&typeof m==="object")?m:null;
+    var simdi=kamKapaliMi();
+    E("kameraAcBtn").classList.toggle("kamKapali",simdi&&!yk);
+    pixelKutusu();
+    if(simdi===once) return;
+    yaz("Ev kamerası "+(simdi?"kapatıldı":"açıldı")+(m&&m.ad?" ("+m.ad+")":"")+".");
+    // yönetici açınca bekleyen ekran kendiliğinden bağlanır
+    if(!simdi&&grAcik&&grPixelIstiyor()&&!grPc&&!grIstekte&&!grDevralindi&&grGorunur()) grBaglan();
+  }
+  function kamKapiDegistir(){
+    if(!yk) return;
+    if(!(istemci&&istemci.connected&&kod)){ yaz("Sunucuya bağlı değil, ev kamerası ayarı değiştirilemedi."); return; }
+    var k=!kamKapaliMi();
+    var m={k:k,z:Date.now(),ad:benimAdim()};
+    istemci.publish("comitok/"+kod+"/kamkapi",JSON.stringify(m),{retain:true});
+    kamKapiGeldi(m);
+    goster("gPixel",k?"kapatılıyor…":"açılıyor…","soluk");
+    setTimeout(pixelKutusu,900);
+  }
+  (function(){
+    var b=E("pixelKutu"), t=null;
+    b.style.webkitTouchCallout="none"; b.style.webkitUserSelect="none"; b.style.userSelect="none";
+    b.addEventListener("pointerdown",function(){
+      b._uzun=false; clearTimeout(t);
+      if(!yk||rol!=="uzak") return;
+      t=setTimeout(function(){ b._uzun=true; kamKapiDegistir(); },800);
+    });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ b.addEventListener(ev,function(){ clearTimeout(t); }); });
+    b.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+  })();
   E("pixelKutu").onclick=function(){
+    if(E("pixelKutu")._uzun){ E("pixelKutu")._uzun=false; return; }   // uzun basış: ev kamerası açıldı/kapandı
     if(!E("pixelKutu").classList.contains("dokunulur")) return;
     if(!grGonder({t:"sondur",ad:benimAdim()})){ yaz("Sunucuya bağlı değil, Pixel'e gönderilemedi."); return; }
     yaz("Pixel: takip ve fener kapatılıyor (kimse izlemiyorsa kamera da; izleyenlerin görüntüsü kesilmez).");
@@ -1416,8 +1484,8 @@
     d.forEach(function(k,i){
       if(i) ay(",");
       var b=document.createElement("button"); b.type="button"; b.className="kAd";
-      b.setAttribute("data-id",k.id); b.textContent=(k.iz?"👁 ":"")+k.ad; b.setAttribute("aria-label",k.ad+": ses seviyesi");
-      b.onclick=function(e){ e.stopPropagation(); sesKutuAc(k.id,k.ad); };
+      b.setAttribute("data-id",k.id); b.textContent=(k.iz?"👁 ":"")+k.ad; b.setAttribute("aria-label",k.ad+": dokun sessiz / sesli, uzun bas ses seviyesi");
+      kisiAdDokunus(b,k.id,k.ad);
       p.appendChild(b);
     });
     if(kont){
@@ -2012,6 +2080,27 @@
     sesSiniflar();
     sesHepsi();
   },250);
+  // Kim burada satırındaki ad (23 Eki): dokununca bu telefonda o kişi sessiz / sesli, uzun basınca ses çubuğu.
+  // Sessizken konuşursa adı yeşil yanar, ses gelmez. Seçim kişinin adına göre bu telefonda saklanır.
+  function sesOnceSeviye(an){ var v=null; try{ v=localStorage.getItem("stand_sesOnce_"+sesAd(an)); }catch(h){} v=Number(v); return (v>0&&v<=2)?v:1; }
+  function kisiSesDegistir(an,ad){
+    var v=sesSeviye(an), yeni;
+    if(v>0){ try{ localStorage.setItem("stand_sesOnce_"+sesAd(an),String(v)); }catch(h){} yeni=0; }
+    else yeni=sesOnceki[an]||sesOnceSeviye(an);
+    sesSeviyeYaz(an,yeni); if(yeni>0) sesOnceki[an]=yeni;
+    sesCtxHazirla(); sesHepsi(); sesSiniflar(); if(sesKutuAn===an) sesKutuYaz();
+    var adi=ad||sesAd(an);
+    yaz(adi+(yeni>0?": sesi açıldı (bu telefonda).":": sessize alındı (bu telefonda; o konuşmaya devam edebilir)."));
+    grKisaYazi(yeni>0?"🔈 "+adi+" sesli":"🔇 "+adi+" sessiz\nkonuşunca adı yeşil yanar",yeni>0?1500:2500);
+  }
+  function kisiAdDokunus(b,an,ad){
+    var t=null;
+    b.style.webkitTouchCallout="none"; b.style.webkitUserSelect="none";
+    b.addEventListener("pointerdown",function(){ b._uzun=false; clearTimeout(t); t=setTimeout(function(){ b._uzun=true; sesKutuAc(an,ad); },550); });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(ev){ b.addEventListener(ev,function(){ clearTimeout(t); }); });
+    b.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+    b.onclick=function(e){ e.stopPropagation(); if(b._uzun){ b._uzun=false; return; } kisiSesDegistir(an,ad); };
+  }
   // ses çubuğu kutusu
   function sesKutuAc(an,ad){
     sesKutuAn=an;
@@ -2030,11 +2119,11 @@
   function sesAyarla(v){
     if(sesKutuAn===null) return;
     v=Math.max(0,Math.min(2,Math.round(v*10)/10));
-    sesSeviyeYaz(sesKutuAn,v); if(v>0) sesOnceki[sesKutuAn]=v;
+    sesSeviyeYaz(sesKutuAn,v); if(v>0){ sesOnceki[sesKutuAn]=v; try{ localStorage.setItem("stand_sesOnce_"+sesAd(sesKutuAn),String(v)); }catch(h){} }
     sesCtxHazirla(); sesHepsi(); sesSiniflar(); sesKutuYaz(); sesKutuSure();
   }
   E("kSesCubuk").addEventListener("input",function(){ sesAyarla(Number(E("kSesCubuk").value)/100); });
-  E("kSesSessiz").onclick=function(e){ e.stopPropagation(); if(sesKutuAn===null) return; var v=sesSeviye(sesKutuAn); sesAyarla(v>0?0:(sesOnceki[sesKutuAn]||1)); };
+  E("kSesSessiz").onclick=function(e){ e.stopPropagation(); if(sesKutuAn===null) return; var v=sesSeviye(sesKutuAn); sesAyarla(v>0?0:(sesOnceki[sesKutuAn]||sesOnceSeviye(sesKutuAn))); };
   E("kSesKapat").onclick=function(e){ e.stopPropagation(); sesKutuKapat(); };
   E("kSesKutu").addEventListener("click",function(e){ e.stopPropagation(); sesKutuSure(); });
   document.addEventListener("pointerdown",function(e){
@@ -2193,6 +2282,26 @@
   }
 
   // ---------- göstergeler ----------
+  // Uzak bağlantı (23 Eki): yazı kutuya sığmazsa kutunun içinde yavaşça kayar (başta ve sonda kısa durur).
+  // Yazı değişmedikçe yeniden kurulmaz, kayma baştan başlamaz.
+  function uzakYaz(metin,sinif){
+    var el=E("gUzak");
+    if(el._metin===metin){ el.className=sinif||""; if(el.clientWidth&&el._gen!==el.clientWidth) uzakKayOlc(); return; }
+    el._metin=metin; el.className=sinif||""; el.innerHTML="";
+    var sp=document.createElement("span"); sp.className="kayan"; sp.textContent=metin; el.appendChild(sp);
+    uzakKayOlc();
+  }
+  function uzakKayOlc(){
+    var el=E("gUzak"), sp=el.firstChild; if(!sp||!sp.classList) return;
+    sp.classList.remove("kay"); sp.style.removeProperty("--kay"); sp.style.animationDuration="";
+    el._gen=el.clientWidth;
+    var fark=sp.scrollWidth-el.clientWidth;
+    if(fark<=2||!el.clientWidth) return;
+    sp.style.setProperty("--kay",(-fark-6)+"px");
+    sp.style.animationDuration=Math.max(5,Math.round((fark/22)*10)/10+3)+"s";   // ~22 piksel/sn
+    void sp.offsetWidth; sp.classList.add("kay");
+  }
+  window.addEventListener("resize",function(){ clearTimeout(uzakKayOlc._t); uzakKayOlc._t=setTimeout(uzakKayOlc,300); });
   function guncelle(){
     var sunucuVar=istemci&&istemci.connected;
     goster("gSunucu",!kod?"oda kodu yok":(sunucuVar?"çevrimiçi":(sunucuHatasi||"çevrimdışı")),sunucuVar?"iyi":"kotu");
@@ -2205,18 +2314,18 @@
         if(simdi-uzaklar[id].zaman<VARLIK_SURE) aktifler.push(uzaklar[id].cihaz);
         else { yaz("Uzaktan ayrıldı: "+uzaklar[id].cihaz); delete uzaklar[id]; }
       });
-      goster("gUzak",aktifler.length?aktifler.join(", "):"kapalı",aktifler.length?"iyi":"soluk");
+      uzakYaz(aktifler.length?aktifler.join(", "):"kapalı",aktifler.length?"iyi":"soluk");
       padEl.classList.toggle("pasif",!standBagli);
       E("btKutu").classList.add("gizle");
     } else {
       var taze=sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE;
       if(!taze){
-        goster("gUzak","kapalı","kotu");
+        uzakYaz("kapalı","kotu");
         goster("gStand","bilinmiyor","soluk");
         goster("gIzin","bilinmiyor","soluk");
       } else {
         var digerleri=(sonDurum.uzaklar||[]).filter(function(u){ return u.id!==benimKimlik; }).map(function(u){ return u.c; });
-        goster("gUzak",(sonDurum.cihaz||"köprü")+(digerleri.length?" · "+digerleri.join(", "):""),"iyi");
+        uzakYaz((sonDurum.cihaz||"köprü")+(digerleri.length?" · "+digerleri.join(", "):""),"iyi");
         goster("gStand",sonDurum.stand?"bağlı":"kapalı",sonDurum.stand?"iyi":"kotu");
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
@@ -2819,9 +2928,10 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="22 Eki 22:51";
+  var SAYFA_SURUM="23 Eki 21:08";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
+  var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
   var grBeni=false, grKonus=false, grYerel=null, grBenMesgul=false;   // Beni göster / Konuş (bu telefonun kamerası ve sesi)
   var grId="g"+benimKimlik;
   var grVideo=E("kVideo");
@@ -2839,7 +2949,7 @@
     });
   }
   function grBagKapat(haberVer){
-    clearTimeout(grBekleme); clearInterval(grOlcum);
+    clearTimeout(grBekleme); clearInterval(grOlcum); clearTimeout(grYedekTik);
     if(grPc){ try{ grPc.close(); }catch(h){} grPc=null; }
     if(haberVer&&grIstekte) grGonder({t:"bitir",id:grId});
     grIstekte=false; grYet=null; grZ=1; grC={x:0,y:0}; grZc=1; grZHedef=null; grVideo.style.transform="";
@@ -2889,11 +2999,19 @@
   }
   function grGorunur(){ return document.visibilityState!=="hidden"; }
   function grBaglan(){
+    if(kamKapaliMi()&&!yk){
+      if(grPc||grIstekte) grBagKapat(false);
+      if(!grKapaliYazildi){ grKapaliYazildi=true; yaz("Evi izle: ev kamerası kapalı (yönetici kapattı), bağlanılmadı."); }
+      grOrta("Ev kamerası şu an kapalı. Yönetici açınca kendiliğinden bağlanır.",true);
+      return;
+    }
+    grKapaliYazildi=false;
     if(gkKapi()) return;   // gizlilik kuralı: bildirim gitti, bekleniyor (ya da engellendi)
     grDevralindi=false;
     grBagKapat(true);
     grSayfalar={}; grTeklifSayfa=null; grPkCevap=false; grIkiSayfa=false; clearTimeout(grTaniTik);
-    if(!grGonder({t:"istek",id:grId,ad:benimAdim(),cz:cihazNo,cg:cihazTahmini()})){ grOrta("Sunucuya bağlanılıyor…"); return; }   // bağlanınca kendisi tekrar dener
+    clearTimeout(grYedekTik); grYedekOldu=false;
+    if(!grGonder({t:"istek",id:grId,ad:benimAdim(),cz:cihazNo,cg:cihazTahmini(),y:!!yk})){ grOrta("Sunucuya bağlanılıyor…"); return; }   // bağlanınca kendisi tekrar dener
     yaz("Evi izle: istek gönderildi.");
     grIstekte=true;
     grOrta("Eve bağlanılıyor…");
@@ -2904,6 +3022,9 @@
   }
   function grTeklif(m){
     if(m.id!==grId||!grIstekte||!grAcik) return;
+    clearTimeout(grYedekTik);
+    // aynı teklif ikinci kez geldiyse (istek tekrarlanınca Pixel aynısını yeniden gönderir) yok say
+    if(grPc&&grPc.remoteDescription&&grPc.remoteDescription.sdp===m.sdp){ yaz("Evi izle: aynı teklif tekrar geldi, yok sayıldı."); return; }
     var sk=m.sayfa||"?";
     if(grTeklifSayfa&&grTeklifSayfa!==sk){
       grIkiSayfa=true; grSayfalar[sk]=1;
@@ -3097,6 +3218,15 @@
       clearTimeout(grBekleme);
       grOrta("Eve bağlanılıyor…");
       yaz("Evi izle: Pixel uyandırılıyor, 30 sn beklenecek.");
+      // yedek: 12 sn içinde teklif gelmezse istek bir kez daha gönderilir (teklif yolda kaybolmuş olabilir)
+      if(!grYedekOldu){
+        clearTimeout(grYedekTik);
+        grYedekTik=setTimeout(function(){
+          if(grPc||!grIstekte||!grAcik||grYedekOldu) return;
+          grYedekOldu=true;
+          if(grGonder({t:"istek",id:grId,ad:benimAdim(),cz:cihazNo,cg:cihazTahmini(),y:!!yk})) yaz("Evi izle: 12 sn içinde teklif gelmedi, istek tekrarlandı.");
+        },12000);
+      }
       grBekleme=setTimeout(function(){
         if(!grPc){ grIstekte=false; yaz("Evi izle: Pixel uyandı ama 30 sn içinde teklif gelmedi."); grOrta("Kamera cevap vermedi. Pixel'de kamera sayfası bekleme modunda mı? Tekrar denemek için dokunun.",true); }
       },30000);
@@ -3122,6 +3252,13 @@
       if(m.oda) return;   // yeni Pixel sayfası aynı anda birden fazla izleyene gönderir
       // eski Pixel sayfası: başka bir izleyene bağlanıyor: bu ekranı durdur, kendiliğinden geri bağlanıp onu düşürme
       if(grPc||grIstekte){ grBagKapat(false); grDevralindi=true; grOrta("Başka bir cihaz Evi izle'yi açtı. Bu ekran durduruldu, tekrar bağlanmak için dokun.",true); }
+      return;
+    }
+    if(m.t==="kapali"&&m.id===grId){
+      clearTimeout(grYedekTik);
+      yaz("Evi izle: ev kamerası kapalı (yönetici kapattı), Pixel bağlantıyı kabul etmedi.");
+      grBagKapat(false);
+      grOrta("Ev kamerası şu an kapalı. Yönetici açınca kendiliğinden bağlanır.",true);
       return;
     }
     if(m.t==="teklif") grTeklif(m);
