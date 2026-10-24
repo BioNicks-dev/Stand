@@ -1,8 +1,10 @@
 package com.bionicks.stand;
 
+import android.app.ActivityOptions;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import java.io.BufferedReader;
@@ -345,7 +347,21 @@ final class Arama {
 
     private static boolean bas(PendingIntent pi, String ne) {
         if (pi == null) { Kayit.yaz("WhatsApp: bildirimde \"" + ne + "\" düğmesi bulunamadı."); return false; }
-        try { pi.send(); Kayit.yaz("WhatsApp: \"" + ne + "\" düğmesine basıldı."); return true; }
+        // 23 Eki: "Video" düğmesi WhatsApp'ın arama ekranını açan bir etkinlik. Android 14+'da arka plandan
+        // açılabilmesi için gönderen (biz) "Diğer uygulamaların üzerinde göster" iznimizi açıkça kullandırmalıyız;
+        // yoksa Android basışı sessizce yok sayıyor (arama açılmadı).
+        String tur = "";
+        try { tur = Build.VERSION.SDK_INT >= 31 ? (pi.isActivity() ? " (ekran açan düğme)" : pi.isBroadcast() ? " (yayın)" : pi.isService() ? " (servis)" : "") : ""; } catch (Exception e) { }
+        try {
+            Context c = Bekci.baglam();
+            if (Build.VERSION.SDK_INT >= 34 && c != null) {
+                ActivityOptions o = ActivityOptions.makeBasic();
+                o.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                pi.send(c, 0, null, null, null, null, o.toBundle());
+            } else pi.send();
+            Kayit.yaz("WhatsApp: \"" + ne + "\" düğmesine basıldı" + tur + ".");
+            return true;
+        }
         catch (Exception e) { Kayit.yaz("WhatsApp: \"" + ne + "\" düğmesine basılamadı: " + e.getClass().getSimpleName()); return false; }
     }
 
