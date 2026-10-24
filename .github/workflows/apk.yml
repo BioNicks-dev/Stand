@@ -22,9 +22,15 @@ jobs:
           gradle-version: '8.10.2'
       - name: Derle
         working-directory: android
+        env:
+          STAND_IMZA: ${{ secrets.STAND_IMZA }}
+          STAND_IMZA_SIFRE: ${{ secrets.STAND_IMZA_SIFRE }}
         run: |
-          base64 -d imza.b64 > imza.jks
+          # imza GitHub'ın gizli kasasından gelir (Settings > Secrets and variables > Actions)
+          if [ -z "$STAND_IMZA" ] || [ -z "$STAND_IMZA_SIFRE" ]; then echo "Gizli imza bilgileri eksik (STAND_IMZA, STAND_IMZA_SIFRE)"; exit 1; fi
+          echo "$STAND_IMZA" | base64 -d > imza.jks
           gradle assembleRelease --no-daemon --stacktrace
+          rm -f imza.jks
       - name: Yayinla
         env:
           GH_TOKEN: ${{ github.token }}
