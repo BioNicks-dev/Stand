@@ -18,8 +18,8 @@ import java.util.Locale;
 
 // Uygulama 11: Erişilebilirlik hizmeti. WhatsApp'ın gelen arama ekranında parmak gibi SÜRÜKLER / DOKUNUR.
 // (23 Eki: bildirimdeki "Video" düğmesine arka plandan basmak aramayı açmadı; MacroDroid'in çalışan yolu bu.)
-//  - Ekran kapalıyken gelen arama → WhatsApp tam ekran arama sayfası → sağa sürükleme
-//    (sürüklenecek parça adıyla bulunursa onun ortasından; bulunamazsa MacroDroid yolu 546,2065 → 990,2065, 450 ms).
+//  - Ekran kapalıyken gelen arama → WhatsApp tam ekran arama sayfası → "Accept" parçasına erişilebilirlik tıklaması
+//    (24 Eki: tuttu); tutmazsa MacroDroid'in sürüklemesi 546,2065 → 990,2065, 450 ms.
 //  - Ekran açıkken gelen arama → üstteki küçük kutu → "Video" düğmesine dokunma (bulunamazsa 773,397).
 //  - Ne gördüğünü Kayıt > Pixel'e yazar (ilk denemede tutmazsa düzeltmek için; aşama 2 için görüşme ekranı da yazılır).
 // Kendiliğinden hiçbir şey yapmaz: sadece Arama.java "kabul et" deyince çalışır. Bildirim silmez.
@@ -99,19 +99,14 @@ public class Erisim extends AccessibilityService {
         if (wa != null) {
             if (n == 1) s.dok("Arama ekranı (WhatsApp)", wa);
             AccessibilityNodeInfo parca = s.kabulParcasi(wa);
-            if (n == 2 && parca != null && parca.isClickable()) {
-                // ikinci deneme: parçaya ekran okuyucunun yaptığı gibi "tıklandı" de (WhatsApp körler için bunu destekler)
+            if (n % 2 == 1 && parca != null) {
+                // 24 Eki kaydı: tam ekranda ayrı "Accept" parçası var; ekran okuyucu tıklaması aramayı açtı
                 boolean ok = parca.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                Kayit.yaz("WhatsApp: deneme 2: sürüklenecek parçaya erişilebilirlik tıklaması " + (ok ? "gönderildi." : "kabul edilmedi."));
+                Kayit.yaz("WhatsApp: deneme " + n + ": \"" + ad(parca) + "\" parçasına erişilebilirlik tıklaması " + (ok ? "gönderildi." : "kabul edilmedi."));
             } else {
-                int x1 = SX1, y = SY, x2 = SX2;
-                if (parca != null && n != 3) {
-                    Rect b = new Rect(); parca.getBoundsInScreen(b);
-                    if (b.width() > 0 && b.height() > 0) { x1 = b.centerX(); y = b.centerY(); x2 = Math.min(x1 + (SX2 - SX1), s.genislik() - 30); }
-                }
-                boolean ok = s.surukle(x1, y, x2, y, SURE);
-                Kayit.yaz("WhatsApp: deneme " + n + ": sürükleme " + x1 + "," + y + " → " + x2 + "," + y + " (" + SURE + " ms)"
-                        + (parca != null && n != 3 ? ", parça adıyla bulundu" : ", MacroDroid noktaları") + (ok ? "." : " gönderilemedi."));
+                // yedek: MacroDroid'in sürüklemesi, ortadan sağa
+                boolean ok = s.surukle(SX1, SY, SX2, SY, SURE);
+                Kayit.yaz("WhatsApp: deneme " + n + ": sürükleme " + SX1 + "," + SY + " → " + SX2 + "," + SY + " (" + SURE + " ms)" + (ok ? "." : " gönderilemedi."));
             }
         } else {
             // WhatsApp tam ekranda değil: ekran açıkken gelen arama üstte küçük kutu olarak çıkar
