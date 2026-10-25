@@ -521,7 +521,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 25 Eki 00:33</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 25 Eki 00:55</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -786,6 +786,8 @@
           <button class="kucuk" id="gkDenemeBtn">Deneme</button>
         </div>
         <p class="not" id="gkDurum"></p>
+        <div class="satir" style="margin-top:8px"><span>"Stand WhatsApp" kestirmesinin adresi</span><button class="kucuk" id="gsWaAdresBtn" style="width:auto">Kopyala</button></div>
+        <p class="not" style="margin:2px 0 0">iPhone'daki kestirmeye yapıştırılır: Pixel birini WhatsApp'tan çaldırınca, kabul edildiğinde stand sayfası bununla açılır.</p>
       </div>
     </div>
 
@@ -1812,6 +1814,13 @@
     var ok=function(){ gkBildiri("Kopyalandı",2000); };
     if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(k).then(ok,function(){ gkBildiri("Kopyalanamadı: konuyu basılı tutup seç",3500); });
     else gkBildiri("Kopyalanamadı: konuyu basılı tutup seç",3500);
+  };
+  E("gsWaAdresBtn").onclick=function(){
+    var k=gkA().konu; if(!k){ gkBildiri("Önce bildirim konusu oluşturun",3000); return; }
+    var a="https://ntfy.sh/"+k+"-ara/raw?poll=1&since=2m";
+    var ok=function(){ gkBildiri("Kestirme adresi kopyalandı",2500); };
+    if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(a).then(ok,function(){ gkBildiri("Kopyalanamadı",3000); });
+    else gkBildiri("Kopyalanamadı",3000);
   };
   E("gkDenemeBtn").onclick=function(){
     var k=gkA().konu; if(!k) return;
@@ -2928,7 +2937,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="25 Eki 00:33";
+  var SAYFA_SURUM="25 Eki 00:55";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -3579,8 +3588,8 @@
   function gsSekmeEski(){ try{ var v=localStorage.getItem("stand_sekme"); return !!v&&v!==gsSekme; }catch(h){ return false; } }
   // bağlantıyla gelindiyse (?ara= ?red= ?devam=) hatırla, adresten sil
   (function(){
-    var q=new URLSearchParams(location.search), l={ara:q.get("ara"),red:q.get("red"),k:q.get("k"),devam:q.get("devam"),kh:q.get("kh")};
-    if(l.ara||l.red||l.devam){ gsLink=l; try{ history.replaceState(null,"",location.pathname); }catch(h){} }
+    var q=new URLSearchParams(location.search), l={ara:q.get("ara"),red:q.get("red"),k:q.get("k"),devam:q.get("devam"),kh:q.get("kh"),wa:q.get("wa")};
+    if(l.ara||l.red||l.devam||l.wa){ gsLink=l; try{ history.replaceState(null,"",location.pathname); }catch(h){} }
   })();
   var gsAktif=false, gsId="", gsDurum="", gsHedefAd="", gsBasZaman=0, gsAraSon=0;
   var gsKam=true, gsMik=true, gsEv=false, gsEvZ=0, gsEvOnce=false, gsEvDeneme=0;
@@ -3807,7 +3816,8 @@
       }
       if(gsAktif){ gsYayin({t:"mesgul",id:m.id}); return; }
       if(gsReddedilen[m.id]) return;
-      if(gsLink&&(gsLink.ara===m.id||gsLink.red===m.id)) return;   // bu aramayı zaten mesajdaki bağlantıyla açıyorum/reddediyorum
+      if(gsLink&&(gsLink.ara===m.id||gsLink.red===m.id||gsLink.wa===m.id)) return;   // bu aramayı zaten bağlantıyla açıyorum/reddediyorum
+      if(gsWaGelen&&gsWaGelen.id===m.id) return;   // WhatsApp'tan açıldım, Pixel'in kapatmasını bekliyorum
       var yeni=!gsGelen||gsGelen.id!==m.id, sus=!yeni&&gsGelen.sus;
       gsGelen={id:m.id,kimden:m.kimden,ad:ad,ev:!!m.ev,son:Date.now(),sus:sus};
       if(yeni){ yaz("Görüşme: "+ad+" arıyor."); gsGelenGoster(); }
@@ -3824,7 +3834,7 @@
     } else if(m.t==="mesgul"){
       if(gsAktif&&gsId===m.id&&gsDurum==="caliyor") gsBitir(ad+" şu an başka bir görüşmede");
     } else if(m.t==="waDurum"){
-      gsWaDurum(m);
+      gsWaDurum(m); gsWaGelenDurum(m);
     }
   }
   // arayan: karşı taraf açtı
@@ -3874,18 +3884,17 @@
       }
       return;
     }
-    if(l.ara&&gecerli(l.ara)){
-      if(gsGelen&&gsGelen.id===l.ara) gsGelenKapat();
+    if(l.wa&&gecerli(l.wa)){
+      // 25 Eki (santral parça C): WhatsApp'ta kabul edildi, kestirme sayfayı açtı. Pixel WhatsApp'ı kapatınca gir.
       if(gsAktif) return;
-      gsZilDurdur(l.ara,"ac");
-      gsYayin({t:"ac",id:l.ara}); gsAcSon=Date.now();
-      gsHedefAd=kim||"?"; gsOncedenIzliyordum=false; gsLinkten=true;
-      gsBasla(l.ara,false,"baglaniyor");
-      gsEv=false; gsEvZ=0; gsEvOnce=false;   // Ev kararı arayanınki
-      varligimiBildir();
-      yaz("Görüşme: mesajdaki bağlantıyla açıldı"+(kim?" ("+kim+")":"")+".");
+      if(gsGelen&&gsGelen.id===l.wa) gsGelenKapat();
+      gsWaGelen={id:l.wa,kim:kim,bas:Date.now(),son:0,d:"",kapandi:0};
+      grOrta("Bağlanıyor…"); gsHaber("Bağlanıyor… (WhatsApp kapanıyor)",3000);
+      yaz("Görüşme: WhatsApp'tan açıldı"+(kim?" ("+kim+" arıyor)":"")+", WhatsApp'ın kapanması bekleniyor.");
+      gsYayin({t:"waSor",id:l.wa});
       return;
     }
+    if(l.ara&&gecerli(l.ara)){ gsLinkAc(l.ara,kim,"mesajdaki bağlantıyla açıldı"); return; }
     if(l.red&&gecerli(l.red)){
       gsReddedilen[l.red]=1; if(gsGelen&&gsGelen.id===l.red) gsGelenKapat();
       gsZilDurdur(l.red,"red");
@@ -3895,6 +3904,44 @@
       gsBilgiGoster("Arama reddedildi",kim?kim+" bunu görecek.":"",kim);
     }
   }
+  function gsLinkAc(id,kim,neden){
+    if(gsGelen&&gsGelen.id===id) gsGelenKapat();
+    if(gsAktif) return;
+    gsZilDurdur(id,"ac");
+    gsYayin({t:"ac",id:id}); gsAcSon=Date.now();
+    gsHedefAd=kim||"?"; gsOncedenIzliyordum=false; gsLinkten=true;
+    gsBasla(id,false,"baglaniyor");
+    gsEv=false; gsEvZ=0; gsEvOnce=false;   // Ev kararı arayanınki
+    varligimiBildir();
+    yaz("Görüşme: "+neden+(kim?" ("+kim+")":"")+".");
+  }
+  // ---- aranan taraf, WhatsApp'tan açılış (parça C) ----
+  // Pixel'e 2 sn'de bir "WhatsApp kapandı mı?" (waSor) sorulur. "kapandi" gelince (ya da 12 sn dolunca) görüşmeye girilir;
+  // arama kabul edilmeden bittiyse "Bu arama bitti".
+  var gsWaGelen=null;
+  function gsWaGelenDurum(m){
+    var g=gsWaGelen; if(!g||m.id!==g.id) return;
+    g.d=m.d;
+    if(m.d==="kapandi"&&!g.kapandi) g.kapandi=Date.now();
+    else if(m.d==="red"||m.d==="cevapyok"||m.d==="hata"||m.d==="mesgul"||m.d==="iptal"){
+      gsWaGelen=null; grOrta("");
+      yaz("Görüşme: WhatsApp'tan açılan arama çoktan bitmiş ("+m.d+").");
+      gsBilgiGoster("Bu arama bitti",g.kim?g.kim+" seni aramıştı.":"Arama sona ermiş.",g.kim||"");
+    }
+  }
+  function gsWaGelenDenetle(n){
+    var g=gsWaGelen; if(!g) return;
+    if(!istemci||!istemci.connected){ return; }
+    // WhatsApp kapandıktan sonra kamera serbest kalsın diye kısa bir bekleme
+    if((g.kapandi&&n-g.kapandi>700)||n-g.bas>12000){
+      gsWaGelen=null; grOrta("");
+      if(!g.kapandi) yaz("Görüşme: Pixel'den \"WhatsApp kapandı\" haberi gelmedi, yine de giriliyor.");
+      gsLinkAc(g.id,g.kim,"WhatsApp'tan açıldı");
+      return;
+    }
+    if(n-g.son>2000){ g.son=n; gsYayin({t:"waSor",id:g.id}); }
+  }
+
   function gsBilgiGoster(baslik,not,geriAd){
     E("gsBilgiAd").textContent=baslik; E("gsBilgiNot").textContent=not||"";
     E("gsGeriAraBtn").classList.toggle("gizle",!geriAd);
@@ -3935,6 +3982,7 @@
     var n=Date.now();
     if(gsGelen&&n-gsGelen.son>GS_GELEN_BEKLE){ gsGelenKapat(); }   // arayan vazgeçti / sayfası kapandı
     if(gsLink&&istemci&&istemci.connected&&rol==="uzak"&&kod) gsLinkIsle();
+    if(gsWaGelen) gsWaGelenDenetle(n);
     if(gsPixelBeniBekle){   // Pixel'den açıldı: bağlanınca Beni göster + Evi dinle
       if(n-gsPixelBeniBekle>30000) gsPixelBeniBekle=0;
       else if(grPc&&grPc.connectionState==="connected"&&grYet&&grYet.benVar&&!grBenMesgul){

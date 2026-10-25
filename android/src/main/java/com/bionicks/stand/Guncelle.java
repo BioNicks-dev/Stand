@@ -63,7 +63,7 @@ public class Guncelle extends BroadcastReceiver {
                 int yeni = Integer.parseInt(t);
                 int ben = benimSurum(c);
                 if (yeni <= ben) return;
-                Kayit.yaz("Yeni uygulama sürümü var (" + yeni + ", bu " + ben + "), indiriliyor.");
+                Kayit.yaz("Yeni uygulama sürümü var (v" + yeni + ", bu v" + ben + "), indiriliyor.");
                 File f = dosya(c);
                 indirDosya(ADRES + "StandKamera.apk", f);
                 hazirSurum = yeni;
@@ -100,7 +100,7 @@ public class Guncelle extends BroadcastReceiver {
             }
             Intent i = new Intent(c, Guncelle.class).setAction("com.bionicks.stand.KURULUM");
             PendingIntent sonuc = PendingIntent.getBroadcast(c, 4, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-            Kayit.yaz("Uygulama " + surum + " sürümüne güncelleniyor (uygulama birkaç saniye kapanıp açılacak).");
+            Kayit.yaz("Uygulama v" + surum + " sürümüne güncelleniyor (uygulama birkaç saniye kapanıp açılacak).");
             s.commit(sonuc.getIntentSender());
             s.close();
         } catch (Exception e) {

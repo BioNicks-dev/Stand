@@ -58,6 +58,10 @@ final class Santral {
                 String once = sonuclar.get(id);
                 if (once != null) { durumGonder(id, once, ""); return; }      // bitmiş: sonucu yeniden söyle
                 istek(id, m.optString("kime"), m.optString("ad"));
+            } else if ("waSor".equals(t)) {
+                // aranan kişinin sayfası (parça C): "WhatsApp kapandı mı?"
+                if (id.equals(aId)) durumGonder(id, aktifD.isEmpty() ? "ariyor" : aktifD, "");
+                else { String once = sonuclar.get(id); if (once != null) durumGonder(id, once, ""); }
             } else if ("iptal".equals(t) && id.equals(aId)) {
                 yaz("arayan vazgeçti, WhatsApp araması kapatılıyor.");
                 kapatBas(Bekci.baglam(), no);
@@ -77,7 +81,8 @@ final class Santral {
         String wa = esle(c, kime);
         Kayit.yaz("Santral: " + (arayan.isEmpty() ? "?" : arayan) + ", " + kime + " kişisini arıyor; WhatsApp'tan \"" + wa + "\" çaldırılacak.");
         durumGonder(id, "alindi", "");
-        aId = id;
+        aId = id; aktifD = "alindi";
+        notBirak("STAND " + kime + " " + "https://bionicks-dev.github.io/Stand/?wa=" + id + "&k=" + Uri.encode(arayan == null ? "" : arayan));
         ara(c, wa);
     }
 
@@ -91,8 +96,26 @@ final class Santral {
         return ad;
     }
 
+    // Parça C: iPhone'daki "Stand WhatsApp" kestirmesi son 2 dk'daki notlara bakar (ntfy.sh/<konu>-ara/raw).
+    // Not: "STAND <stand adı> <bağlantı>". Arama kabul edilmeden biterse "STAND bitti" yazılır (son satır o olur).
+    private static String aktifD = "";
+    private static void notBirak(final String metin) {
+        final String konu = Arama.ntfyKonu();
+        if (konu.isEmpty()) { Kayit.yaz("Santral: gizlilik bildirim konusu yok; iPhone'daki kestirme için not bırakılamadı (stand sayfası > Ayarlar > Gizlilik > Oluştur)."); return; }
+        new Thread(() -> {
+            try {
+                java.net.HttpURLConnection u = (java.net.HttpURLConnection) new java.net.URL("https://ntfy.sh/" + konu + "-ara").openConnection();
+                u.setConnectTimeout(8000); u.setReadTimeout(8000); u.setRequestMethod("POST"); u.setDoOutput(true);
+                try (java.io.OutputStream o = u.getOutputStream()) { o.write(metin.getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
+                int k = u.getResponseCode(); u.disconnect();
+                if (k != 200) Kayit.yaz("Santral: kestirme notu yazılamadı (ntfy " + k + ").");
+            } catch (Exception e) { Kayit.yaz("Santral: kestirme notu yazılamadı (" + e.getClass().getSimpleName() + ")."); }
+        }, "stand-santral-not").start();
+    }
+
     private static void durumGonder(String id, String d, String m) {
         if (id == null) return;
+        if (id.equals(aId)) aktifD = d;
         try {
             org.json.JSONObject o = new org.json.JSONObject();
             o.put("t", "waDurum"); o.put("id", id); o.put("d", d); if (m != null && !m.isEmpty()) o.put("m", m);
@@ -366,6 +389,7 @@ final class Santral {
             else if ("iptal".equals(sonuc)) d = "iptal";
             else d = "hata";
             if (!"iptal".equals(d)) durumGonder(aId, d, "hata".equals(d) ? son : "");
+            if (!"kapandi".equals(d)) notBirak("STAND bitti");   // kabul edilmedi: kestirme artık sayfayı açmasın
             sonucYaz(aId, d);
             aId = null;
         }

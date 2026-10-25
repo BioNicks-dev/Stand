@@ -188,7 +188,7 @@ public class Bekci extends Service {
             boolean kamera = Santral.kameraMesgul && System.currentTimeMillis() - Santral.mesgulZaman < 15000;
             if (Santral.mesgul() || kamera) { if (bekleyenYazilan != surum) { bekleyenYazilan = surum; Kayit.yaz("Yeni sürüm hazır; Pixel şu an kullanılıyor, boşalınca kurulacak."); } return; }
             uyandirilanSurum = surum;
-            uyandir(b, "Yeni uygulama sürümü (" + surum + ") indi");
+            uyandir(b, "Yeni uygulama sürümü (v" + surum + ") indi");
         });
     }
 

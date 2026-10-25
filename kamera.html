@@ -178,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 23:09</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 25 Eki 00:57</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -337,7 +337,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="24 Eki 23:09";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="25 Eki 00:57";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1912,8 +1912,8 @@
   function gnKur(){
     if(gnKuruluyor) return; gnKuruluyor=true;
     var no=0; try{ if(typeof APP.guncellemeNo==="function") no=APP.guncellemeNo(); }catch(h){}
-    yaz("Uygulama güncelleniyor"+(no?" (uygulama "+no+")":"")+".");
-    gnKatman("Güncelleniyor…",no?"uygulama "+no:"");
+    yaz("Uygulama güncelleniyor"+(no?" (v"+no+")":"")+".");
+    gnKatman("Güncelleniyor…",no?"v"+no:"");
     try{ APP.uyan(); }catch(h){}
     try{ APP.ekran(true); }catch(h){}
     var bas=Date.now();
@@ -1937,7 +1937,7 @@
     try{ if(typeof APP.kameraMesgul==="function") APP.kameraMesgul(izleyenSayisi()>0||!!akis||!!kameraSoz); }catch(h){}
     var b={}; try{ b=JSON.parse(APP.bilgi()); }catch(h){}
     var gn=0; try{ if(APP.guncellemeHazir()) gn=APP.guncellemeNo(); }catch(h){}
-    goster(E("sUyg"),(b.surum||"?")+(gn?" · yeni sürüm "+gn+" indi, kimse izlemiyorken kurulacak":" · güncel"),gn?"uyari":"");
+    goster(E("sUyg"),"v"+(b.surum||"?")+(gn?" · yeni sürüm v"+gn+" indi, kimse izlemiyorken kurulacak":" · güncel"),gn?"uyari":"");
     var e=[]; if(!b.ustte) e.push("üstte göster"); if(!b.pil) e.push("pil"); if(!b.kamera) e.push("kamera/mikrofon"); if(b.yukle===false) e.push("kendini güncelleme");
     goster(E("sIzin"),e.length?"eksik: "+e.join(", "):"tamam",e.length?"kotu":"iyi");
     var wa={}; try{ if(typeof APP.waAyar==="function") wa=JSON.parse(APP.waAyar()); }catch(h){}
@@ -2014,13 +2014,13 @@
   }
   function uygulamaBasla(){
     var s=""; try{ s=APP.surum(); }catch(h){}
-    E("surumYazi").textContent="· "+SURUM+" · uygulama "+s; E("appSurum").textContent=s;
+    E("surumYazi").textContent="· "+SURUM+" · v"+s; E("appSurum").textContent="v"+s;   // 25 Eki: "uygulama 20" yerine "v20"
     E("appKutu").className="bolum";
     E("beklemeNot").textContent="Bekleme modunda ekran kapalı bekler. Biri bağlanınca uygulama ekranı açar, (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Ayarlar için siyah ekrana hızlıca iki kez dokunun; 3 dk dokunulmazsa beklemeye kendisi döner.";
-    yaz("Uygulama içinde açıldı (uygulama sürümü "+s+").");
+    yaz("Uygulama içinde açıldı (v"+s+").");
     // güncellemeden sonra ilk açılış: birkaç sn "Güncellendi"
     var gs=""; try{ if(typeof APP.guncellemeSonuc==="function") gs=APP.guncellemeSonuc(); }catch(h){}
-    if(gs){ yaz("Uygulama güncellendi: uygulama "+gs+"."); gnKatman("Güncellendi","uygulama "+gs,true); setTimeout(gnKatmanKapat,4000); }
+    if(gs){ yaz("Uygulama güncellendi: v"+gs+"."); gnKatman("Güncellendi","v"+gs,true); setTimeout(gnKatmanKapat,4000); }
     E("durumKutu").className="durumKutu"; durumGuncelle(); setInterval(durumGuncelle,3000);
     waKur();
     setInterval(function(){ try{ APP.nabiz(); }catch(h){} },5000);

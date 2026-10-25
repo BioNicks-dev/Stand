@@ -230,6 +230,8 @@ final class Arama {
         } catch (Exception e) { }
         return o;
     }
+    // Uygulama 21 (santral parça C): bekleyen arama notu bu konunun "-ara" ekli kardeşine yazılır
+    static String ntfyKonu() { return a().optString("konu", ""); }
     private static String gkZ() { return gk == null ? "0" : String.valueOf(gk.optLong("z", 0)); }
 
     private static boolean yonSayfaAcik() {
