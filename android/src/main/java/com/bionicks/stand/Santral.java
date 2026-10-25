@@ -16,15 +16,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-// Uygulama 14 (santral, parça A): Pixel rehberdeki birini WhatsApp'tan GÖRÜNTÜLÜ arar,
-// karşı taraf kabul edince 1-2 sn içinde WhatsApp görüşmesini kapatır ("Leave call").
-// Şimdilik sadece Pixel sayfasındaki deneme düğmesiyle çalışır; ekranda gördüklerini Kayıt'a yazar
-// (çalıyor / bağlandı / reddedildi ekranlarını öğrenmek için). Erişilebilirlik ve Kişiler izni gerekir.
+// Santral: Pixel birini WhatsApp'tan GÖRÜNTÜLÜ arar, karşı taraf kabul edince hemen kapatır ("Leave call").
+//  - Uygulama 14-17 (parça A): Pixel sayfasındaki deneme düğmesi. Rehberde yoksa WhatsApp sohbet listesinden.
+//  - Uygulama 18 (parça B): stand sayfası, sayfası kapalı birini ararken comitok/<oda>/arama konusuna
+//    {t:"waAra",id,kime} yazar (3 sn'de bir). Pixel her adımı aynı konuya {t:"waDurum",id,d,m} ile bildirir:
+//    alindi, ariyor, caliyor, baglandi, kapandi, red, cevapyok, mesgul (Pixel kamerada), hata. Arayan vazgeçerse {t:"iptal",id}.
+// Erişilebilirlik ve Kişiler izni gerekir.
 final class Santral {
     private static final Handler h = new Handler(Looper.getMainLooper());
     static final String MIME_VIDEO = "vnd.android.cursor.item/vnd.com.whatsapp.video.call";
     static final String MIME_SOHBET = "vnd.android.cursor.item/vnd.com.whatsapp.profile";
-    private static final int ARALIK = 700, EN_UZUN = 70000, KAPAT_BEKLE = 1200;
+    private static final int ARALIK = 700, EN_UZUN = 70000, KAPAT_BEKLE = 500;
     private static final int KAPAT_X = 876, KAPAT_Y = 2189;   // bölüm 24: görüşme ekranında kapat
 
     private static int no = 0;                 // her yeni arama eskisini geçersiz kılar
@@ -36,6 +38,75 @@ final class Santral {
     private static int dokum = 0, yokSay = 0;
     private static String sonImza = "";
     private static PowerManager.WakeLock kilit = null;
+
+    // ---------- parça B: stand sayfasından gelen istekler ----------
+    private static String aId = null;                        // şu anki isteğin kimliği (deneme düğmesinde null)
+    private static long caliyorBas = 0;
+    private static final java.util.LinkedHashMap<String, String> sonuclar = new java.util.LinkedHashMap<>();   // id -> son durum (tekrar sorulursa)
+    static volatile boolean kameraMesgul = false; static volatile long mesgulZaman = 0;   // sayfa 3 sn'de bir söyler
+
+    static void mesaj(final String govde) {
+        h.post(() -> {
+            org.json.JSONObject m;
+            try { m = new org.json.JSONObject(govde); } catch (Exception e) { return; }
+            String t = m.optString("t"), id = m.optString("id");
+            if (id.isEmpty() || "pixel".equals(m.optString("kimden"))) return;
+            if ("waAra".equals(t)) {
+                if (id.equals(aId)) return;                                   // zaten bunu arıyorum
+                String once = sonuclar.get(id);
+                if (once != null) { durumGonder(id, once, ""); return; }      // bitmiş: sonucu yeniden söyle
+                istek(id, m.optString("kime"), m.optString("ad"));
+            } else if ("iptal".equals(t) && id.equals(aId)) {
+                yaz("arayan vazgeçti, WhatsApp araması kapatılıyor.");
+                kapatBas(Bekci.baglam(), no);
+                bitir(Bekci.baglam(), "iptal");
+            }
+        });
+    }
+
+    private static void istek(String id, String kime, String arayan) {
+        Context c = Bekci.baglam();
+        if (c == null) return;
+        if (kim != null) { durumGonder(id, "hata", "Pixel şu an başka bir WhatsApp araması yapıyor"); sonucYaz(id, "hata"); return; }
+        if (kameraMesgul && System.currentTimeMillis() - mesgulZaman < 15000) {
+            Kayit.yaz("Santral: " + arayan + " → " + kime + " isteği geldi ama Pixel kamerada (Evi izle), çaldırılmadı.");
+            durumGonder(id, "mesgul", ""); sonucYaz(id, "mesgul"); return;
+        }
+        String wa = esle(c, kime);
+        Kayit.yaz("Santral: " + (arayan.isEmpty() ? "?" : arayan) + ", " + kime + " kişisini arıyor; WhatsApp'tan \"" + wa + "\" çaldırılacak.");
+        durumGonder(id, "alindi", "");
+        aId = id;
+        ara(c, wa);
+    }
+
+    // Pixel sayfasındaki eşleştirme: "Seda=Seda, Berat=Ben Türkiye"; listede yoksa aynı ad
+    private static String esle(Context c, String ad) {
+        String l = c.getApplicationContext().getSharedPreferences("stand", Context.MODE_PRIVATE).getString("wa_esle", "");
+        for (String p : l.split(",")) {
+            int i = p.indexOf('=');
+            if (i > 0 && Arama.ad(p.substring(0, i)).equals(Arama.ad(ad))) { String w = p.substring(i + 1).trim(); if (!w.isEmpty()) return w; }
+        }
+        return ad;
+    }
+
+    private static void durumGonder(String id, String d, String m) {
+        if (id == null) return;
+        try {
+            org.json.JSONObject o = new org.json.JSONObject();
+            o.put("t", "waDurum"); o.put("id", id); o.put("d", d); if (m != null && !m.isEmpty()) o.put("m", m);
+            o.put("kimden", "pixel"); o.put("ad", "Pixel");
+            Bekci.gonder("arama", o.toString(), false);
+        } catch (Exception e) { }
+    }
+    private static void bildir(String d) { durumGonder(aId, d, ""); }
+    private static void sonucYaz(String id, String d) { sonuclar.put(id, d); while (sonuclar.size() > 20) sonuclar.remove(sonuclar.keySet().iterator().next()); }
+
+    // başlatırken hata: kayda yaz, arayana söyle
+    private static void hata(String m) {
+        yaz(m);
+        if (aId != null) { durumGonder(aId, "hata", m); sonucYaz(aId, "hata"); aId = null; }
+        birak();
+    }
 
     static boolean rehberIzni(Context c) { return c.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED; }
 
@@ -51,24 +122,25 @@ final class Santral {
     static void ara(final Context c, final String ad) {
         h.post(() -> {
             if (kim != null) { yaz("zaten bir arama sürüyor (" + kim + ")."); return; }
-            if (ad == null || ad.trim().isEmpty()) { yaz("aranacak ad boş."); return; }
-            if (!rehberIzni(c)) { yaz("Kişiler izni yok. Pixel sayfasındaki \"Kişiler izni ver\" düğmesine dokunun."); return; }
-            if (Erisim.ben == null) { yaz("erişilebilirlik kapalı; arama kapatılamaz, başlatılmadı."); return; }
+            if (ad == null || ad.trim().isEmpty()) { hata("aranacak ad boş."); return; }
+            if (!rehberIzni(c)) { hata("Kişiler izni yok. Pixel sayfasındaki \"Kişiler izni ver\" düğmesine dokunun."); return; }
+            if (Erisim.ben == null) { hata("erişilebilirlik kapalı; arama kapatılamaz, başlatılmadı."); return; }
             long[] veri = bul(c, ad.trim());
             ekranAc(c);
             sohbetYolu = false; videoBasildi = false; listeYolu = false; aramaYazildi = false; aramaKutusuAcildi = false;
             if (veri == null) {
                 // uygulama 17: rehberde WhatsApp satırı yok (ör. kişi sadece WhatsApp'a kaydedilmiş): WhatsApp'ı ana ekranından aç
                 Intent l0 = c.getPackageManager().getLaunchIntentForPackage(Erisim.WA);
-                if (l0 == null) { yaz("WhatsApp açılamadı."); birak(); return; }
+                if (l0 == null) { hata("WhatsApp açılamadı."); return; }
                 l0.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 try { c.getApplicationContext().startActivity(l0); }
-                catch (Exception e) { yaz("WhatsApp açılamadı: " + e.getClass().getSimpleName()); birak(); return; }
+                catch (Exception e) { hata("WhatsApp açılamadı: " + e.getClass().getSimpleName()); return; }
                 listeYolu = true;
                 kim = ad.trim(); durum = "sohbet aranıyor"; bas = System.currentTimeMillis(); baglandiZaman = 0;
                 caldiGoruldu = false; onaylandi = false; dokum = 0; yokSay = 0; sonImza = "";
                 final int n0 = ++no;
                 Kayit.yaz("Santral: \"" + kim + "\" rehberde yok; WhatsApp sohbet listesinden aranacak.");
+                bildir("ariyor"); caliyorBas = 0;
                 h.postDelayed(() -> izle(c, n0), 1500);
                 return;
             }
@@ -82,17 +154,18 @@ final class Santral {
                         + (c.checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED ? " (Telefon izni yok)" : ""));
                 // yedek: kişinin WhatsApp sohbetini aç, görüntülü arama simgesine erişilebilirlikle dokun
                 long sohbet = sohbetBul(c, veri[1]);
-                if (sohbet < 0) { yaz("WhatsApp sohbeti de bulunamadı, arama başlatılamadı."); birak(); return; }
+                if (sohbet < 0) { hata("WhatsApp sohbeti de bulunamadı, arama başlatılamadı."); return; }
                 Intent s2 = new Intent(Intent.ACTION_VIEW)
                         .setDataAndType(Uri.withAppendedPath(ContactsContract.Data.CONTENT_URI, String.valueOf(sohbet)), MIME_SOHBET)
                         .setPackage(Erisim.WA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 try { c.getApplicationContext().startActivity(s2); sohbetYolu = true; Kayit.yaz("Santral: yedek yol: WhatsApp sohbeti açıldı, görüntülü arama simgesine dokunulacak."); }
-                catch (Exception e2) { yaz("WhatsApp sohbeti de açılamadı: " + e2.getClass().getSimpleName() + " · " + kisaHata(e2)); birak(); return; }
+                catch (Exception e2) { hata("WhatsApp sohbeti de açılamadı: " + e2.getClass().getSimpleName() + " · " + kisaHata(e2)); return; }
             }
             kim = ad.trim(); durum = "başlatılıyor"; bas = System.currentTimeMillis(); baglandiZaman = 0;
             caldiGoruldu = false; onaylandi = false; dokum = 0; yokSay = 0; sonImza = "";
             final int n = ++no;
             yaz("" + kim + " WhatsApp'tan görüntülü aranıyor.");
+            bildir("ariyor"); caliyorBas = 0;
             h.postDelayed(() -> izle(c, n), 1500);
         });
     }
@@ -206,9 +279,9 @@ final class Santral {
 
         if (baglandiZaman == 0) {
             boolean caliyor = caliyorMu(l);
-            if (caliyor && !caldiGoruldu) { caldiGoruldu = true; durum = "çalıyor"; yaz("" + kim + " çalıyor."); }
+            if (caliyor && !caldiGoruldu) { caldiGoruldu = true; durum = "çalıyor"; caliyorBas = System.currentTimeMillis(); yaz("" + kim + " çalıyor."); bildir("caliyor"); }
             if (kapat != null && baglandiMi(l, caliyor)) {
-                baglandiZaman = System.currentTimeMillis(); durum = "bağlandı";
+                baglandiZaman = System.currentTimeMillis(); durum = "bağlandı"; bildir("baglandi");
                 yaz("" + kim + " kabul etti (" + (t / 1000) + " sn). WhatsApp görüşmesi kapatılacak.");
                 h.postDelayed(() -> kapatBas(c, n), KAPAT_BEKLE);
             }
@@ -257,6 +330,17 @@ final class Santral {
         if (kim == null) return;
         long sure = (System.currentTimeMillis() - bas) / 1000;
         yaz("bitti (" + kim + ", " + sonuc + ", " + sure + " sn" + (baglandiZaman > 0 ? ", bağlantıdan kapanışa " + (System.currentTimeMillis() - baglandiZaman) / 100 / 10.0 + " sn" : "") + ").");
+        if (aId != null) {
+            String d;
+            if ("kapatıldı".equals(sonuc)) d = "kapandi";
+            else if ("kabul etmedi".equals(sonuc)) d = (caliyorBas > 0 && System.currentTimeMillis() - caliyorBas < 25000) ? "red" : "cevapyok";
+            else if ("cevap yok".equals(sonuc)) d = "cevapyok";
+            else if ("iptal".equals(sonuc)) d = "iptal";
+            else d = "hata";
+            if (!"iptal".equals(d)) durumGonder(aId, d, "hata".equals(d) ? son : "");
+            sonucYaz(aId, d);
+            aId = null;
+        }
         kim = null; durum = ""; no++;
         birak();
         // WhatsApp'ın kapanış ekranı kalmasın: bizim sayfaya dön

@@ -61,6 +61,7 @@ final class Arama {
             o.put("acik", p.getBoolean("wa_acik", true));
             o.put("yon", p.getString("wa_yon", "Ben Türkiye"));
             o.put("diger", p.getString("wa_diger", "Seda"));
+            o.put("esle", p.getString("wa_esle", ""));   // uygulama 18: stand adı = WhatsApp adı
         } catch (Exception e) { }
         return o.toString();
     }
@@ -70,7 +71,8 @@ final class Arama {
             JSONObject o = new JSONObject(json);
             ayar(c).edit().putBoolean("wa_acik", o.optBoolean("acik", true))
                     .putString("wa_yon", o.optString("yon", "Ben Türkiye").trim())
-                    .putString("wa_diger", o.optString("diger", "Seda").trim()).apply();
+                    .putString("wa_diger", o.optString("diger", "Seda").trim())
+                    .putString("wa_esle", o.optString("esle", "").trim()).apply();
             Kayit.yaz("WhatsApp ayarı kaydedildi: " + (o.optBoolean("acik", true) ? "açık" : "kapalı")
                     + ", yönetici \"" + o.optString("yon") + "\", diğer \"" + o.optString("diger") + "\".");
         } catch (Exception e) { }

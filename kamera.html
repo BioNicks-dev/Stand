@@ -178,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 22:21</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 23:09</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -252,6 +252,8 @@
         <input id="waYon" autocomplete="off" autocorrect="off" spellcheck="false">
         <label for="waDiger">Diğer kişiler (gizlilik kuralıyla açılır; birden çoksa virgülle)</label>
         <input id="waDiger" autocomplete="off" autocorrect="off" spellcheck="false">
+        <label for="waEsle">Stand sayfasından arayınca Pixel kimi WhatsApp'tan çaldırsın (stand adı = WhatsApp adı, virgülle)</label>
+        <input id="waEsle" placeholder="Berat=Ben Türkiye, Seda=Seda" autocomplete="off" autocorrect="off" spellcheck="false">
         <p class="not">Adlar Pixel'in rehberindeki adla aynı olmalı. Listede olmayan biri ararsa uygulama dokunmaz. Ev kamerası kapalıyken diğer kişilerin araması reddedilir. Sesli aramalar açılmaz. Gizlilik ayarları stand sayfasındakiyle aynıdır (Ayarlar &gt; Gizlilik).</p>
       </div>
       <div id="saKutu" class="gizli">
@@ -335,7 +337,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="24 Eki 22:21";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="24 Eki 23:09";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1931,6 +1933,8 @@
   // ---------- durum kutusu (25 Eki): kameranın altında hep görünür ----------
   function durumGuncelle(){
     if(!APP) return;
+    // uygulama 18: kamera kullanılıyorsa santral WhatsApp'tan çaldırmaz (WhatsApp kamerayı alırdı)
+    try{ if(typeof APP.kameraMesgul==="function") APP.kameraMesgul(izleyenSayisi()>0||!!akis||!!kameraSoz); }catch(h){}
     var b={}; try{ b=JSON.parse(APP.bilgi()); }catch(h){}
     var gn=0; try{ if(APP.guncellemeHazir()) gn=APP.guncellemeNo(); }catch(h){}
     goster(E("sUyg"),(b.surum||"?")+(gn?" · yeni sürüm "+gn+" indi, kimse izlemiyorken kurulacak":" · güncel"),gn?"uyari":"");
@@ -1985,11 +1989,13 @@
     if(typeof APP.waAyar!=="function") return;
     var a={}; try{ a=JSON.parse(APP.waAyar()); }catch(h){}
     E("waKutu").className="";
-    E("waAcik").checked=a.acik!==false; E("waYon").value=a.yon||""; E("waDiger").value=a.diger||"";
+    E("waAcik").checked=a.acik!==false; E("waYon").value=a.yon||""; E("waDiger").value=a.diger||""; E("waEsle").value=a.esle||"";
     function kaydet(){
       var y=E("waYon").value.trim(), d=E("waDiger").value.split(",").map(function(x){ return x.trim(); }).filter(Boolean).join(", ");
       E("waDiger").value=d;
-      try{ APP.waAyarYaz(JSON.stringify({acik:E("waAcik").checked,yon:y,diger:d})); }catch(h){}
+      var es=E("waEsle").value.split(",").map(function(x){ var i=x.indexOf("="); return i>0?x.slice(0,i).trim()+"="+x.slice(i+1).trim():""; }).filter(Boolean).join(", ");
+      E("waEsle").value=es;
+      try{ APP.waAyarYaz(JSON.stringify({acik:E("waAcik").checked,yon:y,diger:d,esle:es})); }catch(h){}
     }
     // uygulama 14: santral denemesi
     if(typeof APP.waAra==="function"){
@@ -2004,7 +2010,7 @@
       };
       setInterval(function(){ var t=""; try{ t=APP.santralDurum(); }catch(h){} if(t||!E("saAra").disabled) E("saDurum").textContent=t; },1000);
     }
-    E("waAcik").addEventListener("change",kaydet); E("waYon").addEventListener("change",kaydet); E("waDiger").addEventListener("change",kaydet);
+    E("waAcik").addEventListener("change",kaydet); E("waEsle").addEventListener("change",kaydet); E("waYon").addEventListener("change",kaydet); E("waDiger").addEventListener("change",kaydet);
   }
   function uygulamaBasla(){
     var s=""; try{ s=APP.surum(); }catch(h){}

@@ -101,6 +101,8 @@ final class Kopru {
     // Uygulama 14 (santral, parça A): deneme araması
     @JavascriptInterface public void waAra(String ad) { Santral.ara(c, ad); }
     @JavascriptInterface public String santralDurum() { return Santral.durum(); }
+    // Uygulama 18: sayfa 3 sn'de bir söyler; kamera kullanılıyorsa santral WhatsApp'tan çaldırmaz
+    @JavascriptInterface public void kameraMesgul(boolean m) { Santral.kameraMesgul = m; Santral.mesgulZaman = System.currentTimeMillis(); }
 
     // WhatsApp aramaları (uygulama 7): kamera sayfasındaki ayar
     @JavascriptInterface public String waAyar() { return Arama.ayarAl(c); }

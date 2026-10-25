@@ -115,13 +115,14 @@ public class Bekci extends Service {
         mqKod = kod; mqSs = ss;
         final String konu = "comitok/" + kod + "/goruntu/k";
         final String onek = "comitok/" + kod + "/";
-        String[] konular = { konu, onek + "gizlilik", onek + "kamkapi", onek + "durum", onek + "var" };
+        String[] konular = { konu, onek + "gizlilik", onek + "kamkapi", onek + "durum", onek + "var", onek + "arama" };   // arama: uygulama 18, santral
         Arama.odaDegisti(kod);
         bKonu = "comitok/" + kod + "/goruntu/b";      // bekçinin durumu: stand sayfası "uykuda · uyandırılabilir" gösterir
         iKonu = "comitok/" + kod + "/goruntu/i";      // iPhone'lara giden mesajlar
         mq = new Mqtt(SUNUCU, 8883, true, KULLANICI, ss, konular, bKonu, "{\"b\":\"yok\"}", new Mqtt.Dinleyici() {
             @Override public void mesaj(String k, String govde) {
                 if (k.equals(konu)) istekBak(govde);
+                else if (k.equals(onek + "arama")) Santral.mesaj(govde);
                 else Arama.mesaj(k.substring(onek.length()), govde);
             }
             @Override public void durum(boolean b, String neden) {

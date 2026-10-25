@@ -521,7 +521,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 23 Eki 21:08</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 24 Eki 23:09</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -649,7 +649,7 @@
     <h2>Kullanım</h2>
     <div class="panel">
       <label style="border-top:none">Adın (diğer telefonlarda ve Pixel'de görünür)<input type="text" id="adInput" maxlength="16" placeholder="ör. Ayşe" autocomplete="off" autocapitalize="words" spellcheck="false"></label>
-      <label>Sayfası kapalı olanı kestirmeyle ara ("Stand Ara")<input type="checkbox" id="gsKestirme" checked></label>
+      <label>Sayfası kapalı olanı nasıl çaldırsın<select id="gsCaldir"><option value="wa">WhatsApp'tan (Pixel arar)</option><option value="kestirme">Kestirmeyle ("Stand Ara", eski)</option><option value="yok">Çaldırma (sayfasını açınca çalar)</option></select></label>
       <label>Sayfadaki yön tuşları: yatay ters (ev kamerasını etkilemez)<input type="checkbox" id="tersX"></label>
       <label>Sayfadaki yön tuşları: dikey ters (ev kamerasını etkilemez)<input type="checkbox" id="tersY"></label>
       <label>Ev kamerası düzeni<select id="kamDuzen"><option value="buyuk">Büyük (kontroller görüntüde)</option><option value="klasik">Klasik</option></select></label>
@@ -2914,7 +2914,7 @@
   E("saatAcik").addEventListener("change",function(){ if(E("saatAcik").checked){ saatBaslat(); yaz("Saat kumandası açıldı."); } else { saatKapat(); yaz("Saat kumandası kapandı."); } });
 
   // ---------- ayarları sakla ----------
-  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim","saatAcik","adInput","sadeGoruntu","kontrolIzle","gsKestirme"].forEach(function(id){
+  ["hizInput","tiltHizInput","sureInput","araInput","tersX","tersY","kamDuzen","takipHedef","takipZoom","kutuGoster","uyanikTut","ekranAcik","aramaZil","aramaTitresim","saatAcik","adInput","sadeGoruntu","kontrolIzle","gsCaldir"].forEach(function(id){
     var el=E(id);
     try{ var v=localStorage.getItem("stand_"+id); if(v!==null){ if(el.type==="checkbox") el.checked=v==="1"; else el.value=v; } }catch(h){}
     el.addEventListener("change",function(){
@@ -2928,7 +2928,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="23 Eki 21:08";
+  var SAYFA_SURUM="24 Eki 23:09";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -3660,7 +3660,7 @@
       b.textContent="📞 "+ad;
       var d=document.createElement("span"); d.className="gsSecDurum";
       if(x.acik) d.textContent="sayfası açık · sayfasında zil çalar";
-      else d.textContent="sayfası kapalı"+(x.z?" (son görülme "+gsOnce(x.z)+")":"")+" · "+(E("gsKestirme").checked?"telefonu mesajla çaldırılır":"sayfasını açınca çalar");
+      else d.textContent="sayfası kapalı"+(x.z?" (son görülme "+gsOnce(x.z)+")":"")+" · "+({wa:"Pixel WhatsApp'tan çaldırır",kestirme:"telefonu mesajla çaldırılır"}[E("gsCaldir").value]||"sayfasını açınca çalar");
       b.appendChild(d);
       b.onclick=function(){ E("gsSec").classList.add("gizle"); gsAra(ad); };
       liste.appendChild(b);
@@ -3686,10 +3686,49 @@
     gsCalmaBasla();
     yaz("Görüşme: "+ad+" aranıyor"+(x.acik?" (sayfası açık).":".")+(gsPixelCal?" Pixel de çalacak.":""));
     if(!x.acik){
-      if(E("gsKestirme").checked) setTimeout(function(){ if(gsAktif&&gsId===id) gsKestirmeAc(id); },500);
-      else gsHaber(ad+" sayfasını açarsa zil çalar (kestirmeyle arama kapalı)",4500);
+      var yol=E("gsCaldir").value;
+      if(yol==="wa") gsWaBasla(id,ad);
+      else if(yol==="kestirme") setTimeout(function(){ if(gsAktif&&gsId===id) gsKestirmeAc(id); },500);
+      else gsHaber(ad+" sayfasını açarsa zil çalar (çaldırma kapalı)",4500);
     }
   }
+  // ---- WhatsApp'tan çaldırma (25 Eki, santral parça B) ----
+  // Sayfası kapalı olanı Pixel WhatsApp'tan görüntülü arar; kabul edilince WhatsApp görüşmesini hemen kapatır.
+  // İstek: {t:"waAra",id,kime} (3 sn'de bir). Pixel'den: {t:"waDurum",id,d} d = alindi, ariyor, caliyor, baglandi,
+  // kapandi, red, cevapyok, mesgul, hata. Aranan kişinin sayfasının kendiliğinden açılması parça C (iPhone otomasyonu).
+  var gsWa=null, GS_WA_ULASIM=10000, GS_WA_CALMA=85000, GS_WA_SAYFA=45000;
+  function gsWaBasla(id,ad){
+    gsWa={id:id,ad:ad,bas:Date.now(),ack:false,d:"",yazi:"Pixel WhatsApp'tan arıyor…",kabul:0,son:0};
+    gsWaGonder();
+    yaz("Görüşme: Pixel'den "+ad+" WhatsApp'tan çaldırılıyor.");
+  }
+  function gsWaGonder(){ if(gsWa){ gsWa.son=Date.now(); gsYayin({t:"waAra",id:gsWa.id,kime:gsWa.ad}); } }
+  function gsWaDurum(m){
+    var w=gsWa; if(!(gsAktif&&w&&w.id===m.id&&gsDurum==="caliyor")) return;
+    w.ack=true; if(m.d===w.d) return; w.d=m.d;
+    var ad=w.ad;
+    if(m.d==="alindi"||m.d==="ariyor") w.yazi="Pixel WhatsApp'tan arıyor…";
+    else if(m.d==="caliyor"){ w.yazi="Telefonu çalıyor: "+ad+" (WhatsApp)…"; yaz("Görüşme: WhatsApp çalıyor ("+ad+")."); }
+    else if(m.d==="baglandi"||m.d==="kapandi"){
+      if(!w.kabul){ w.kabul=Date.now(); gsCalmaDur(); yaz("Görüşme: "+ad+" WhatsApp'ta kabul etti, sayfasının açılması bekleniyor."); }
+      w.yazi=ad+" kabul etti, sayfası açılıyor…";
+    }
+    else if(m.d==="red"){ gsBitir(ad+" reddetti"); return; }
+    else if(m.d==="cevapyok"){ gsBitir("Cevap yok ("+ad+" WhatsApp'ı açmadı)"); return; }
+    else if(m.d==="mesgul"){ gsBitir("Pixel şu an kamerada; WhatsApp'tan çaldırılamadı"); return; }
+    else if(m.d==="hata"){ gsBitir("WhatsApp'tan çaldırılamadı"+(m.m?": "+String(m.m).slice(0,120):"")); return; }
+    gsOrtaSon=""; gsOrtaYaz(gsKatilimcilar());
+  }
+  // saniyede bir (gsGuncelle'den): tekrar gönder, süreleri denetle. true = arama bitti
+  function gsWaDenetle(n){
+    var w=gsWa; if(!w) return false;
+    if(!w.ack&&n-w.bas>GS_WA_ULASIM){ gsBitir("Pixel'e ulaşılamadı; WhatsApp'tan çaldırılamadı"); return true; }
+    if(w.kabul&&n-w.kabul>GS_WA_SAYFA){ gsBitir(w.ad+" WhatsApp'ta kabul etti ama sayfası açılmadı"); return true; }
+    if(!w.kabul&&n-w.bas>GS_WA_CALMA){ gsBitir("Cevap yok"); return true; }
+    if(!w.kabul&&n-w.son>3000) gsWaGonder();
+    return false;
+  }
+
   // "Stand Ara" kestirmesi mesajı iMessage ile gönderir; bitince Safari sayfayı ?devam= ile geri açar
   function gsKestirmeMesaji(id){
     var k=encodeURIComponent(benimAdim());
@@ -3783,12 +3822,14 @@
       if(gsAktif&&gsId===m.id&&gsDurum==="caliyor") gsBitir(ad+" reddetti");
     } else if(m.t==="mesgul"){
       if(gsAktif&&gsId===m.id&&gsDurum==="caliyor") gsBitir(ad+" şu an başka bir görüşmede");
+    } else if(m.t==="waDurum"){
+      gsWaDurum(m);
     }
   }
   // arayan: karşı taraf açtı
   function gsAcildi(yazi){
     if(!(gsAktif&&gsDurum==="caliyor")) return;
-    gsDurum="baglaniyor"; gsBosBas=0; gsCalmaDur();
+    gsDurum="baglaniyor"; gsBosBas=0; gsCalmaDur(); gsWa=null;
     gsZilDurdur(gsId,"ac");
     if(yazi) yaz("Görüşme: "+yazi+".");
     gsArayuz();
@@ -3876,7 +3917,7 @@
     if(gsDurum==="caliyor"){ gsYayin({t:"iptal",id:gsId}); gsZilDurdur(gsId,"iptal"); }
     try{ localStorage.removeItem("stand_gsGiden"); }catch(h){}
     gsLinkten=false;
-    gsAktif=false; gsId=""; gsDurum=""; gsCalmaDur();
+    gsAktif=false; gsId=""; gsDurum=""; gsCalmaDur(); gsWa=null;
     kisiHepsiniKapat();
     if(gsOtoBen&&kisiBuyukId==="ben"){ kisiBuyukId=null; gsOtoBen=false; }
     if(gsOrtaSon){ grOrta(""); gsOrtaSon=""; }
@@ -3904,7 +3945,8 @@
     if(!gsAktif) return;
     var bagli=istemci&&istemci.connected;
     if(gsDurum==="caliyor"){
-      if(n-gsBasZaman>GS_CALMA){ gsBitir("Cevap yok"); return; }
+      if(gsWa&&gsWa.id===gsId){ if(gsWaDenetle(n)) return; }
+      else if(n-gsBasZaman>GS_CALMA){ gsBitir("Cevap yok"); return; }
       if(n-gsAraSon>3000&&bagli&&grGorunur()){ gsAraSon=n; gsYayin({t:"ara",id:gsId,kime:gsHedefAd,ev:gsEvEtkin(),pc:gsPixelCal?1:0}); }
       // mesajla aranan "Aç/Reddet"e bastıysa ntfy'den de öğrenilir (sayfamız o sırada kestirmedeydiyse MQTT mesajı kaçmış olabilir)
       if(n-gsNtfySon>4000&&grGorunur()){ gsNtfySon=n; gsNtfyBak(gsId); }
@@ -3941,7 +3983,7 @@
   function gsOrtaYaz(kat){
     if(gsPixelModu()){ if(gsOrtaSon){ if(E("kOrta").textContent===gsOrtaSon) grOrta(""); gsOrtaSon=""; } return; }
     var t="", anaId=gsAnaId();
-    if(gsDurum==="caliyor") t=gsHedefAd+" aranıyor…";
+    if(gsDurum==="caliyor") t=(gsWa&&gsWa.id===gsId)?gsWa.yazi:gsHedefAd+" aranıyor…";
     else if(!gsKisiBagli()){
       var gelen=kat.filter(function(k){ return k.on; });
       t=(kat.length&&!gelen.length)?kat[0].ad+" görüşmeden ayrıldı gibi, bekleniyor…":"Bağlanıyor…";
