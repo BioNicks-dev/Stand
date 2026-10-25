@@ -68,6 +68,7 @@ public class Guncelle extends BroadcastReceiver {
                 indirDosya(ADRES + "StandKamera.apk", f);
                 hazirSurum = yeni;
                 Kayit.yaz("Yeni uygulama sürümü indirildi; kimse izlemiyorken kurulacak.");
+                Bekci.guncellemeIndi(yeni);   // uygulama 20: Pixel uyuyorsa ekranı açıp sayfaya kurdurur
             } catch (Exception e) {
                 Kayit.yaz("Uygulama güncellemesine bakılamadı: " + e.getClass().getSimpleName());
             } finally { bakiyor = false; }

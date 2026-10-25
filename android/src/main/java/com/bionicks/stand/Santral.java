@@ -115,6 +115,8 @@ final class Santral {
     // Pixel sayfası düğmenin altında gösterir: süren aramanın durumu ya da son 30 sn'deki sonuç
     private static String son = ""; private static long sonZaman = 0;
     private static void yaz(String m) { Kayit.yaz("Santral: " + m); son = m; sonZaman = System.currentTimeMillis(); }
+    static boolean mesgul() { return kim != null; }
+
     static String durum() {
         if (kim != null) return kim + ": " + durum;
         return System.currentTimeMillis() - sonZaman < 30000 ? son : "";
@@ -300,6 +302,19 @@ final class Santral {
             }
         }
 
+        // 25 Eki: reddedilince (ya da cevapsız kalınca) WhatsApp "Cancel / Record video note / Call again" ekranı bırakır:
+        // kesin "kabul etmedi" işareti. Cancel'a basıp WhatsApp'ı temiz bırak.
+        if (baglandiZaman == 0) {
+            AccessibilityNodeInfo iptal = bulIdSonu(l, "cancel_call_back_btn");
+            if (iptal != null || bulIdSonu(l, "call_back_btn") != null) {
+                String y = Bildirim.sonYazi;
+                yaz(kim + " kabul etmedi (reddetti ya da açmadı).");
+                if (iptal != null) { boolean ok = iptal.performAction(AccessibilityNodeInfo.ACTION_CLICK); Kayit.yaz("Santral: WhatsApp'taki \"Cancel\" seçildi" + (ok ? "." : " (tıklama kabul edilmedi).")); }
+                bitir(c, "kabul etmedi");
+                return;
+            }
+        }
+
         // görüşme ekranı kayboldu: bitti
         if (kapat == null && t > 4000 && (!sohbetYolu || videoBasildi)) {
             if (++yokSay >= 3) {
@@ -402,6 +417,11 @@ final class Santral {
         }
         return caliyorMu(l);
     }
+    private static AccessibilityNodeInfo bulIdSonu(List<AccessibilityNodeInfo> l, String son) {
+        for (AccessibilityNodeInfo d : l) if (Erisim.str(d.getViewIdResourceName()).endsWith(":id/" + son)) return d;
+        return null;
+    }
+
     // Kutudaki kapatma düğmesi: "Hang up" / "End" / "Kapat"; yoksa olumsuz düğme (button2). "Continue" asla.
     private static AccessibilityNodeInfo bulKutuKapat(List<AccessibilityNodeInfo> l) {
         for (AccessibilityNodeInfo d : l) {

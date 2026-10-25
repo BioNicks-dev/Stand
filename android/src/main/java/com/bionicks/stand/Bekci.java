@@ -51,6 +51,11 @@ public class Bekci extends Service {
     private BroadcastReceiver ekranAlici, sarjAlici;
     private final ExecutorService ag = Executors.newSingleThreadExecutor();   // ağ işleri ana iş parçacığında yapılmaz
     private long sonPil = 0;
+    // Uygulama 20: yeni sürüme bekçi bakar (sayfanın zamanlayıcıları ekran kapalıyken yavaşlıyor).
+    // Geliştirme modunda 2 dk'da bir, normalde 6 saatte bir.
+    private static volatile long gmBitis = 0;
+    private long sonSurumBakis = 0;
+    private static int uyandirilanSurum = 0, bekleyenYazilan = 0;
     private static final long PIL_ARA = 30 * 60 * 1000L;
 
     static void baslat(Context c) { c.startForegroundService(new Intent(c, Bekci.class)); }
@@ -115,7 +120,7 @@ public class Bekci extends Service {
         mqKod = kod; mqSs = ss;
         final String konu = "comitok/" + kod + "/goruntu/k";
         final String onek = "comitok/" + kod + "/";
-        String[] konular = { konu, onek + "gizlilik", onek + "kamkapi", onek + "durum", onek + "var", onek + "arama" };   // arama: uygulama 18, santral
+        String[] konular = { konu, onek + "gizlilik", onek + "kamkapi", onek + "durum", onek + "var", onek + "arama", onek + "gelistirme" };   // arama: santral; gelistirme: sürüm kontrolü sıklığı
         Arama.odaDegisti(kod);
         bKonu = "comitok/" + kod + "/goruntu/b";      // bekçinin durumu: stand sayfası "uykuda · uyandırılabilir" gösterir
         iKonu = "comitok/" + kod + "/goruntu/i";      // iPhone'lara giden mesajlar
@@ -123,6 +128,7 @@ public class Bekci extends Service {
             @Override public void mesaj(String k, String govde) {
                 if (k.equals(konu)) istekBak(govde);
                 else if (k.equals(onek + "arama")) Santral.mesaj(govde);
+                else if (k.equals(onek + "gelistirme")) { try { gmBitis = new org.json.JSONObject(govde).optLong("bitis", 0); } catch (Exception e) { gmBitis = 0; } }
                 else Arama.mesaj(k.substring(onek.length()), govde);
             }
             @Override public void durum(boolean b, String neden) {
@@ -131,7 +137,7 @@ public class Bekci extends Service {
                     Mqtt m = mq;
                     if (m != null) m.yayinla(bKonu, durumMetni(), true);
                 }
-                if (b) { Kayit.yaz("Bekçi sunucuya bağlandı, istekleri dinliyor."); kopukYazildi = false; }
+                if (b) { Kayit.yaz("Bekçi sunucuya bağlandı, istekleri dinliyor."); kopukYazildi = false; h.post(() -> Arama.rehberYayinla(Bekci.this)); }
                 else if (!kopukYazildi) { Kayit.yaz("Bekçi sunucuya bağlanamadı/koptu: " + neden + " (kendisi yeniden dener)."); kopukYazildi = true; }
             }
         });
@@ -172,6 +178,19 @@ public class Bekci extends Service {
     }
 
     static Context baglam() { return ben; }
+
+    // Guncelle.java: yeni sürüm indi. Kimse kullanmıyorsa ekranı aç; sayfa "Güncelleniyor…" ekranıyla kurar.
+    static void guncellemeIndi(final int surum) {
+        final Bekci b = ben;
+        if (b == null) return;
+        b.h.post(() -> {
+            if (surum == uyandirilanSurum) return;
+            boolean kamera = Santral.kameraMesgul && System.currentTimeMillis() - Santral.mesgulZaman < 15000;
+            if (Santral.mesgul() || kamera) { if (bekleyenYazilan != surum) { bekleyenYazilan = surum; Kayit.yaz("Yeni sürüm hazır; Pixel şu an kullanılıyor, boşalınca kurulacak."); } return; }
+            uyandirilanSurum = surum;
+            uyandir(b, "Yeni uygulama sürümü (" + surum + ") indi");
+        });
+    }
 
     private void istekBak(String govde) {
         String ad = "?", t = "", id = "";
@@ -232,6 +251,9 @@ public class Bekci extends Service {
             if (!calisiyor) return;
             long simdi = SystemClock.elapsedRealtime();
             if (bagli && simdi - sonPil > PIL_ARA) durumGonder();
+            long surumAra = gmBitis > System.currentTimeMillis() ? 2 * 60000L : 6 * 3600000L;
+            if (sonSurumBakis == 0 || simdi - sonSurumBakis > surumAra) { sonSurumBakis = simdi; Guncelle.bak(Bekci.this); }
+            else if (Guncelle.hazirSurum > 0) guncellemeIndi(Guncelle.hazirSurum);   // indiğinde Pixel meşguldüyse boşalınca
             if (Sayfa.w == null) Sayfa.hazirla(Bekci.this);
             else if (simdi - sonNabiz > NABIZ_SINIR) {
                 Kayit.yaz("Sayfa 5 dk ses vermedi, yenileniyor.");

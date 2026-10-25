@@ -521,7 +521,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 24 Eki 23:09</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 25 Eki 00:33</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -2928,7 +2928,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="24 Eki 23:09";
+  var SAYFA_SURUM="25 Eki 00:33";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -3567,7 +3567,7 @@
   function rehberGeldi(anahtar,metin){
     var m; try{ m=JSON.parse(metin); }catch(h){ delete gsRehber[anahtar]; return; }
     if(!m||!m.ad||anahtar===gsCihaz){ delete gsRehber[anahtar]; return; }
-    gsRehber[anahtar]={ad:String(m.ad).slice(0,16),y:!!m.y,z:Number(m.z)||0};
+    gsRehber[anahtar]={ad:String(m.ad).slice(0,16),y:!!m.y,z:Number(m.z)||0,wa:!!m.wa};   // wa: Pixel'in eşleştirme listesinden (25 Eki)
   }
   E("adInput").addEventListener("change",function(){ rehberYayinla(); });
   function gsZilDurdur(id,neden){   // aranan telefondaki kestirme zilini susturur
@@ -3635,8 +3635,9 @@
       l.push({ad:ad,acik:acik,y:y,z:z||0});
     };
     odaDigerleri().forEach(function(k){ if(!(kisiler[k.id]&&kisiler[k.id].bagli)) ekle(k.ad,true,!!k.y); });
-    // sayfası kapalı olanlar: son 60 günde görülen ve kendine ad vermiş kişiler ("Misafir" / "Yönetici" listelenmez)
-    Object.keys(gsRehber).forEach(function(a){ var r=gsRehber[a]; if(n-r.z<60*86400000&&!/^(Misafir|Yönetici)$/.test(r.ad)) ekle(r.ad,false,r.y,r.z); });
+    // sayfası kapalı olanlar: son 60 günde görülen ve kendine ad vermiş kişiler ("Misafir" / "Yönetici" / "Pixel" listelenmez)
+    // + Pixel'in WhatsApp eşleştirme listesindeki adlar (sayfayı hiç açmamış olsalar da; 25 Eki)
+    Object.keys(gsRehber).forEach(function(a){ var r=gsRehber[a]; if((r.wa||n-r.z<60*86400000)&&!/^(Misafir|Yönetici|Pixel|Ev)$/i.test(r.ad)) ekle(r.ad,false,r.y,r.wa?0:r.z); });
     // zaten bağlı olduğum kişiyi listeleme
     return l.filter(function(x){ return !Object.keys(kisiler).some(function(id){ return kisiler[id].bagli&&gsAdEsit(kisiler[id].ad,x.ad); }); });
   }

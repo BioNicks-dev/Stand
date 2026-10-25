@@ -73,6 +73,7 @@ final class Arama {
                     .putString("wa_yon", o.optString("yon", "Ben Türkiye").trim())
                     .putString("wa_diger", o.optString("diger", "Seda").trim())
                     .putString("wa_esle", o.optString("esle", "").trim()).apply();
+            rehberYayinla(c);
             Kayit.yaz("WhatsApp ayarı kaydedildi: " + (o.optBoolean("acik", true) ? "açık" : "kapalı")
                     + ", yönetici \"" + o.optString("yon") + "\", diğer \"" + o.optString("diger") + "\".");
         } catch (Exception e) { }
@@ -85,6 +86,28 @@ final class Arama {
         if (c != null) ayar(c).edit().putString("wa_son", t).apply();
     }
     static String sonAl(Context c) { return ayar(c).getString("wa_son", ""); }
+
+    // Uygulama 20: eşleştirme kutusundaki adlar (stand adı = WhatsApp adı) stand sayfasının Ara listesinde görünsün.
+    // comitok/<oda>/rehber/wa<kod> saklı {ad,y:0,z,wa:1}; listeden çıkarılanların kaydı silinir.
+    static void rehberYayinla(Context c) {
+        if (c == null) return;
+        SharedPreferences p = ayar(c);
+        java.util.LinkedHashMap<String, String> yeni = new java.util.LinkedHashMap<>();
+        for (String x : p.getString("wa_esle", "").split(",")) {
+            int i = x.indexOf('=');
+            String a = (i > 0 ? x.substring(0, i) : "").trim();
+            if (a.isEmpty() || a.length() > 16) continue;
+            yeni.put("wa" + Integer.toHexString(ad(a).hashCode()), a);
+        }
+        long z = System.currentTimeMillis();
+        for (Map.Entry<String, String> e : yeni.entrySet()) {
+            try { Bekci.gonder("rehber/" + e.getKey(), new JSONObject().put("ad", e.getValue()).put("y", 0).put("z", z).put("wa", 1).toString(), true); } catch (Exception ex) { }
+        }
+        for (String eski : p.getString("wa_rehber", "").split(",")) {
+            if (!eski.isEmpty() && !yeni.containsKey(eski)) Bekci.gonder("rehber/" + eski, "", true);   // boş saklı mesaj = sil
+        }
+        p.edit().putString("wa_rehber", String.join(",", yeni.keySet())).apply();
+    }
 
     // ---------- sunucudan gelen mesajlar (bekçinin iş parçacığında gelir, ana iş parçacığına aktarılır) ----------
     static void odaDegisti(String kod) {
