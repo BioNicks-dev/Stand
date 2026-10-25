@@ -58,6 +58,15 @@ final class Santral {
                 String once = sonuclar.get(id);
                 if (once != null) { durumGonder(id, once, ""); return; }      // bitmiş: sonucu yeniden söyle
                 istek(id, m.optString("kime"), m.optString("ad"));
+            } else if ("waSon".equals(t)) {
+                String[] a = sonArama.get(konuAd(m.optString("kime")));
+                boolean taze = a != null && System.currentTimeMillis() - Long.parseLong(a[2]) < 3 * 60000L;
+                try {
+                    org.json.JSONObject o = new org.json.JSONObject().put("t", "waSonCevap").put("id", id).put("kimden", "pixel").put("ad", "Pixel");
+                    if (taze) o.put("arama", a[0]).put("d", a[1]).put("k", a[3]);
+                    Bekci.gonder("arama", o.toString(), false);
+                } catch (Exception e) { }
+                Kayit.yaz("Santral: " + m.optString("kime") + " sayfasını WhatsApp'tan açtı; " + (taze ? "son arama gönderildi (" + a[1] + ")." : "bekleyen arama yok."));
             } else if ("waSor".equals(t)) {
                 // aranan kişinin sayfası (parça C): "WhatsApp kapandı mı?"
                 if (id.equals(aId)) durumGonder(id, aktifD.isEmpty() ? "ariyor" : aktifD, "");
@@ -84,6 +93,7 @@ final class Santral {
         aId = id; aktifD = "alindi";
         // 25 Eki: not sadece bağlantı; her kişinin kendi konusu (…-ara-<ad>), kestirme sadece en son notu ister
         notKime = kime;
+        sonArama.put(konuAd(kime), new String[]{ id, "alindi", String.valueOf(System.currentTimeMillis()), arayan == null ? "" : arayan });
         // "&" yok: ntfy'nin json cevabında \u0026 olarak yazılıyor, kestirme bağlantıyı metinden ayıklıyor
         notBirak(kime, "https://bionicks-dev.github.io/Stand/?wa=" + id + "~" + Uri.encode(arayan == null ? "" : arayan));
         ara(c, wa);
@@ -99,11 +109,13 @@ final class Santral {
         return ad;
     }
 
-    // Parça C: iPhone'daki "Stand WhatsApp" kestirmesi kendi konusunun en son notuna bakar:
-    // ntfy.sh/<konu>-ara-<ad>/json?poll=1&since=latest. Not = stand sayfasının bağlantısı; arama bitince "bitti"
-    // (kabul edilmediyse hemen, kabul edildiyse 90 sn sonra: sayfa o arada açılmış olur).
+    // Parça C: iPhone'daki "Stand WhatsApp" kestirmesi kendi konusunda son 2 dk'da not var mı diye bakar
+    // (ntfy.sh/<konu>-ara-<ad>/json?poll=1&since=2m; cevap boşsa bir şey yapmaz), varsa stand sayfasını ?wa=son ile açar.
     private static String aktifD = "", notKime = null;
     private static final java.util.HashMap<String, Long> sonNot = new java.util.HashMap<>();   // kişi -> son bağlantı notu (geç "bitti" yenisini ezmesin)
+    // 25 Eki: kestirme ntfy cevabını okuyamıyor; sadece "not var mı" diye bakıp ?wa=son açıyor. Sayfa da
+    // {t:"waSon",kime} ile Pixel'e son aramayı sorar: kişi -> {id, durum, zaman}
+    private static final java.util.HashMap<String, String[]> sonArama = new java.util.HashMap<>();
     // stand index.html'deki gsKonuAd ile aynı: küçük harf, Türkçe harfler sadeleşir, sadece a-z 0-9
     static String konuAd(String ad) {
         String k = ad == null ? "" : ad.trim().toLowerCase(new Locale("tr"));
@@ -129,7 +141,7 @@ final class Santral {
 
     private static void durumGonder(String id, String d, String m) {
         if (id == null) return;
-        if (id.equals(aId)) aktifD = d;
+        if (id.equals(aId)) { aktifD = d; if (notKime != null) { String[] a = sonArama.get(konuAd(notKime)); if (a != null && id.equals(a[0])) a[1] = d; } }
         try {
             org.json.JSONObject o = new org.json.JSONObject();
             o.put("t", "waDurum"); o.put("id", id); o.put("d", d); if (m != null && !m.isEmpty()) o.put("m", m);
@@ -403,9 +415,8 @@ final class Santral {
             else if ("iptal".equals(sonuc)) d = "iptal";
             else d = "hata";
             if (!"iptal".equals(d)) durumGonder(aId, d, "hata".equals(d) ? son : "");
-            final String nk = notKime; notKime = null;
-            if (!"kapandi".equals(d)) notBirak(nk, "bitti");   // kabul edilmedi: kestirme artık sayfayı açmasın
-            else { final long ne = System.currentTimeMillis(); h.postDelayed(() -> { Long y = sonNot.get(konuAd(nk)); if (y == null || y <= ne) notBirak(nk, "bitti"); }, 90000); }
+            if (notKime != null) { String[] a = sonArama.get(konuAd(notKime)); if (a != null && a[0].equals(aId)) a[1] = d; }
+            notKime = null;
             sonucYaz(aId, d);
             aId = null;
         }
