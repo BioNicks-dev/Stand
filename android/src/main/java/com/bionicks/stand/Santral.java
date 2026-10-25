@@ -82,7 +82,8 @@ final class Santral {
         Kayit.yaz("Santral: " + (arayan.isEmpty() ? "?" : arayan) + ", " + kime + " kişisini arıyor; WhatsApp'tan \"" + wa + "\" çaldırılacak.");
         durumGonder(id, "alindi", "");
         aId = id; aktifD = "alindi";
-        notBirak("STAND " + kime + " " + "https://bionicks-dev.github.io/Stand/?wa=" + id + "&k=" + Uri.encode(arayan == null ? "" : arayan));
+        // 25 Eki: not sadece bağlantı (kestirmenin "Get URLs" adımı uzun bağlantıyı kesiyordu); kime sonda, kestirme ona bakar
+        notBirak("https://bionicks-dev.github.io/Stand/?wa=" + id + "&k=" + Uri.encode(arayan == null ? "" : arayan) + "&kime=" + Uri.encode(kime == null ? "" : kime));
         ara(c, wa);
     }
 
@@ -97,7 +98,7 @@ final class Santral {
     }
 
     // Parça C: iPhone'daki "Stand WhatsApp" kestirmesi son 2 dk'daki notlara bakar (ntfy.sh/<konu>-ara/raw).
-    // Not: "STAND <stand adı> <bağlantı>". Arama kabul edilmeden biterse "STAND bitti" yazılır (son satır o olur).
+    // Not: stand sayfasının bağlantısı, sonunda "&kime=<stand adı>". Arama kabul edilmeden biterse "STAND bitti" yazılır (son satır o olur).
     private static String aktifD = "";
     private static void notBirak(final String metin) {
         final String konu = Arama.ntfyKonu();
