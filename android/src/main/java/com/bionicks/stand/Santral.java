@@ -31,7 +31,8 @@ final class Santral {
     private static String kim = null, durum = "";
     private static long bas = 0, baglandiZaman = 0;
     private static boolean caldiGoruldu = false, onaylandi = false;
-    private static boolean sohbetYolu = false, videoBasildi = false;   // uygulama 16: yedek yol (sohbeti aç, görüntülü arama simgesine dokun)
+    private static boolean sohbetYolu = false, videoBasildi = false;
+    private static boolean listeYolu = false, aramaYazildi = false, aramaKutusuAcildi = false;   // uygulama 17: rehberde yoksa WhatsApp sohbet listesinden   // uygulama 16: yedek yol (sohbeti aç, görüntülü arama simgesine dokun)
     private static int dokum = 0, yokSay = 0;
     private static String sonImza = "";
     private static PowerManager.WakeLock kilit = null;
@@ -54,9 +55,23 @@ final class Santral {
             if (!rehberIzni(c)) { yaz("Kişiler izni yok. Pixel sayfasındaki \"Kişiler izni ver\" düğmesine dokunun."); return; }
             if (Erisim.ben == null) { yaz("erişilebilirlik kapalı; arama kapatılamaz, başlatılmadı."); return; }
             long[] veri = bul(c, ad.trim());
-            if (veri == null) return;
             ekranAc(c);
-            sohbetYolu = false; videoBasildi = false;
+            sohbetYolu = false; videoBasildi = false; listeYolu = false; aramaYazildi = false; aramaKutusuAcildi = false;
+            if (veri == null) {
+                // uygulama 17: rehberde WhatsApp satırı yok (ör. kişi sadece WhatsApp'a kaydedilmiş): WhatsApp'ı ana ekranından aç
+                Intent l0 = c.getPackageManager().getLaunchIntentForPackage(Erisim.WA);
+                if (l0 == null) { yaz("WhatsApp açılamadı."); birak(); return; }
+                l0.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                try { c.getApplicationContext().startActivity(l0); }
+                catch (Exception e) { yaz("WhatsApp açılamadı: " + e.getClass().getSimpleName()); birak(); return; }
+                listeYolu = true;
+                kim = ad.trim(); durum = "sohbet aranıyor"; bas = System.currentTimeMillis(); baglandiZaman = 0;
+                caldiGoruldu = false; onaylandi = false; dokum = 0; yokSay = 0; sonImza = "";
+                final int n0 = ++no;
+                Kayit.yaz("Santral: \"" + kim + "\" rehberde yok; WhatsApp sohbet listesinden aranacak.");
+                h.postDelayed(() -> izle(c, n0), 1500);
+                return;
+            }
             Intent i = new Intent(Intent.ACTION_VIEW)
                     .setDataAndType(Uri.withAppendedPath(ContactsContract.Data.CONTENT_URI, String.valueOf(veri[0])), MIME_VIDEO)
                     .setPackage(Erisim.WA)
@@ -106,7 +121,7 @@ final class Santral {
                 if (g != null && adlar.size() < 15) adlar.add(g);
             }
         } catch (Exception e) { yaz("rehber okunamadı (" + e.getClass().getSimpleName() + ")."); return null; }
-        yaz("rehberde WhatsApp'ı olan \"" + ad + "\" bulunamadı. WhatsApp'ı olan kişiler: " + (adlar.isEmpty() ? "hiç yok" : String.join(", ", adlar)) + ".");
+        Kayit.yaz("Santral: rehberde WhatsApp'ı olan kişiler: " + (adlar.isEmpty() ? "hiç yok" : String.join(", ", adlar)) + ".");
         return null;
     }
 
@@ -120,10 +135,49 @@ final class Santral {
         List<AccessibilityNodeInfo> l = new ArrayList<>();
         if (kok != null) Erisim.topla(kok, l, 0);
 
-        // ekran değiştiyse kayda dök (öğrenmek için; en fazla 10 kez)
+        // ekran değiştiyse kayda dök (öğrenmek için; en fazla 10 kez). Sadece arama ekranı ve soru kutuları:
+        // sohbet listesi ve sohbetler kayda yazılmaz (mesajlar görünmesin)
         String imza = imza(l);
-        // (sohbet ekranı kayda dökülmez: mesajlar yazılmasın)
-        if ((!sohbetYolu || videoBasildi) && !imza.equals(sonImza) && dokum < 10) { sonImza = imza; dokum++; s.dok("Santral " + (t / 1000) + " sn", kok); }
+        if (aramaEkrani(l) && !imza.equals(sonImza) && dokum < 10) { sonImza = imza; dokum++; s.dok("Santral " + (t / 1000) + " sn", kok); }
+
+        // WhatsApp bir kutu gösterdiyse (ör. "You can't call your own number") yazısını kayda geçir
+        AccessibilityNodeInfo mesaj = bulKutuYazisi(l);
+        if (mesaj != null) {
+            String m = Erisim.str(mesaj.getText());
+            AccessibilityNodeInfo onay = bulOnay(l);
+            if (m.toLowerCase(Locale.ROOT).contains("own number")) {
+                yaz("\"" + kim + "\" Pixel'in kendi WhatsApp numarası, aranamaz. Rehberde bu kişinin numarasını kontrol edin.");
+                if (onay != null) onay.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                bitir(c, "kendi numarası");
+                return;
+            }
+            if (!onaylandi) Kayit.yaz("Santral: WhatsApp kutusu: \"" + kisa(m) + "\"");
+        }
+
+        // rehberde yoksa: sohbet listesinde satırı bul ve sohbete gir
+        if (listeYolu && !sohbetYolu) {
+            AccessibilityNodeInfo satir = bulListeSatiri(l, kim);
+            if (satir != null) {
+                boolean ok = satir.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                if (!ok) { Rect b = new Rect(); satir.getBoundsInScreen(b); ok = s.dokun(b.centerX(), b.centerY()); }
+                sohbetYolu = true; durum = "sohbet açılıyor"; bas = System.currentTimeMillis();
+                Kayit.yaz("Santral: sohbet listesinde \"" + kim + "\" bulundu, sohbet açılıyor" + (ok ? "." : " (dokunma gönderilemedi)."));
+            } else if (!aramaYazildi && t > 2500) {
+                AccessibilityNodeInfo yazi = bulYaziKutusu(l);
+                if (yazi != null) {
+                    android.os.Bundle a = new android.os.Bundle();
+                    a.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, kim);
+                    aramaYazildi = yazi.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, a);
+                    Kayit.yaz("Santral: listede görünmedi, WhatsApp aramasına \"" + kim + "\" yazıldı" + (aramaYazildi ? "." : " (yazılamadı)."));
+                } else if (!aramaKutusuAcildi) {
+                    AccessibilityNodeInfo ara = bulAramaCubugu(l);
+                    if (ara != null) { aramaKutusuAcildi = true; ara.performAction(AccessibilityNodeInfo.ACTION_CLICK); }
+                }
+            }
+            if (!sohbetYolu && t > 12000) { yaz("WhatsApp sohbet listesinde \"" + kim + "\" bulunamadı."); bitir(c, "bulunamadı"); return; }
+            h.postDelayed(() -> izle(c, n), ARALIK);
+            return;
+        }
 
         AccessibilityNodeInfo kapat = bulKapat(l);
         if (sohbetYolu && !videoBasildi && kapat == null) {
@@ -141,7 +195,7 @@ final class Santral {
             }
         }
         // "aransın mı?" sorusu çıkarsa onayla
-        if (kapat == null && !onaylandi) {
+        if (kapat == null && !onaylandi && (!sohbetYolu || videoBasildi)) {
             AccessibilityNodeInfo onay = bulOnay(l);
             if (onay != null) {
                 onaylandi = true;
@@ -232,12 +286,47 @@ final class Santral {
         return null;
     }
 
-    // Sohbet ekranının üstündeki görüntülü arama simgesi
+    // Sohbet ekranının üstündeki görüntülü arama simgesi. Önce kimliğiyle, sonra sadece açıklamasıyla
+    // (sohbetteki "Video call" yazılı eski arama balonuna basılmasın diye yazıya bakılmaz)
     private static AccessibilityNodeInfo bulVideo(List<AccessibilityNodeInfo> l) {
+        for (AccessibilityNodeInfo d : l) if (Erisim.str(d.getViewIdResourceName()).contains("video_call")) return tiklanir(d);
         for (AccessibilityNodeInfo d : l) {
-            String id = Erisim.str(d.getViewIdResourceName()), k = kucuk(d);
-            if (id.contains("video_call") || k.trim().equals("video call") || k.contains("görüntülü arama") || k.contains("görüntülü ara")) return d.isClickable() ? d : tiklanir(d);
+            String cd = Erisim.str(d.getContentDescription()).trim().toLowerCase(Locale.ROOT);
+            if (cd.equals("video call") || cd.equals("görüntülü arama") || cd.equals("görüntülü ara")) return tiklanir(d);
         }
+        return null;
+    }
+
+    // Arama ekranı ya da soru kutusu mu (kayda sadece bunlar dökülür)
+    private static boolean aramaEkrani(List<AccessibilityNodeInfo> l) {
+        for (AccessibilityNodeInfo d : l) {
+            String id = Erisim.str(d.getViewIdResourceName());
+            if (id.endsWith("end_call_button") || id.contains("call_screen") || id.endsWith(":id/message") || id.endsWith(":id/button1")) return true;
+        }
+        return caliyorMu(l);
+    }
+    private static AccessibilityNodeInfo bulKutuYazisi(List<AccessibilityNodeInfo> l) {
+        for (AccessibilityNodeInfo d : l) if (Erisim.str(d.getViewIdResourceName()).endsWith(":id/message") && !Erisim.str(d.getText()).isEmpty()) return d;
+        return null;
+    }
+    private static String kisa(String t) { t = t.replace('\n', ' '); return t.length() > 120 ? t.substring(0, 120) + "…" : t; }
+
+    // Sohbet listesinde (ya da arama sonuçlarında) adı tam tutan satır
+    private static AccessibilityNodeInfo bulListeSatiri(List<AccessibilityNodeInfo> l, String ad) {
+        String a = Arama.ad(ad);
+        for (AccessibilityNodeInfo d : l) {
+            String id = Erisim.str(d.getViewIdResourceName());
+            if (id.contains("contact_name") && a.equals(Arama.ad(Erisim.str(d.getText())))) return tiklanir(d);
+        }
+        return null;
+    }
+    private static AccessibilityNodeInfo bulYaziKutusu(List<AccessibilityNodeInfo> l) {
+        for (AccessibilityNodeInfo d : l) if (d.isEditable()) return d;
+        return null;
+    }
+    private static AccessibilityNodeInfo bulAramaCubugu(List<AccessibilityNodeInfo> l) {
+        for (AccessibilityNodeInfo d : l) { String id = Erisim.str(d.getViewIdResourceName()); if (id.endsWith("search_bar_inner_layout") || id.endsWith("menuitem_search")) return tiklanir(d); }
+        for (AccessibilityNodeInfo d : l) if (kucuk(d).contains("search")) return tiklanir(d);
         return null;
     }
     private static AccessibilityNodeInfo tiklanir(AccessibilityNodeInfo d) {
@@ -246,13 +335,18 @@ final class Santral {
         return d;
     }
 
+    // Sadece bir soru kutusu açıkken: kutunun "tamam/ara" düğmesi (sohbetteki yazılara basılmasın)
     private static AccessibilityNodeInfo bulOnay(List<AccessibilityNodeInfo> l) {
+        boolean kutu = false;
         for (AccessibilityNodeInfo d : l) {
             String id = Erisim.str(d.getViewIdResourceName());
+            if (id.endsWith(":id/button1") && d.isClickable()) return d;
+            if (id.endsWith(":id/buttonPanel") || id.endsWith(":id/alertTitle") || id.endsWith(":id/message")) kutu = true;
+        }
+        if (!kutu) return null;
+        for (AccessibilityNodeInfo d : l) {
             String t = Erisim.str(d.getText()).trim().toLowerCase(Locale.ROOT);
-            if (!d.isClickable()) continue;
-            if (id.endsWith("android:id/button1")) return d;
-            if (t.equals("call") || t.equals("video call") || t.equals("start") || t.equals("ara") || t.equals("görüntülü ara")) return d;
+            if (d.isClickable() && (t.equals("call") || t.equals("start") || t.equals("ok") || t.equals("ara") || t.equals("tamam"))) return d;
         }
         return null;
     }

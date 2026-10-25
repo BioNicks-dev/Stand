@@ -7,11 +7,15 @@ import android.content.Intent;
 import android.content.MutableContextWrapper;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.graphics.Bitmap;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.view.ViewGroup;
 import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -25,6 +29,11 @@ final class Sayfa {
     static WebView w;
     private static MutableContextWrapper baglam;
     private static Context uyg;
+    // Uygulama 17: sayfa hiç yüklenemezse (internet yoksa) 30 sn'de bir tekrar dene; siyah ekranda kalmasın
+    private static final Handler h = new Handler(Looper.getMainLooper());
+    private static boolean tekrarBekliyor = false;
+    private static int hataSayisi = 0;
+    private static final Runnable tekrar = () -> { tekrarBekliyor = false; if (w != null) { Kayit.yaz("Sayfa yeniden yükleniyor."); yukle(); } };
 
     static void hazirla(Context c) {
         if (w != null) return;
@@ -39,6 +48,8 @@ final class Sayfa {
         w.setBackgroundColor(0xFF000000);
         w.addJavascriptInterface(new Kopru(uyg), "StandApp");
         w.setWebChromeClient(new WebChromeClient() {
+            // Uygulama 17: kamera kapalıyken görüntü kutusunda Android'in varsayılan resmi (robot) çıkmasın
+            @Override public Bitmap getDefaultVideoPoster() { return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888); }
             @Override public void onPermissionRequest(PermissionRequest r) {
                 if (izinVar(uyg)) r.grant(r.getResources());
                 else { r.deny(); Kayit.yaz("Kamera/mikrofon izni yok: Stand Kamera'yı açıp izin verin."); }
@@ -50,6 +61,16 @@ final class Sayfa {
                 if (SITE.equals(u.getHost())) return false;
                 try { uyg.startActivity(new Intent(Intent.ACTION_VIEW, u).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception e) { }
                 return true;
+            }
+            @Override public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
+                if (r == null || !r.isForMainFrame()) return;   // sadece sayfanın kendisi
+                hataSayisi++;
+                if (hataSayisi <= 3 || hataSayisi % 20 == 0)
+                    Kayit.yaz("Sayfa yüklenemedi (" + (e == null ? "?" : e.getDescription()) + "), 30 sn sonra tekrar denenecek.");
+                if (!tekrarBekliyor) { tekrarBekliyor = true; h.postDelayed(tekrar, 30000); }
+            }
+            @Override public void onPageFinished(WebView v, String u) {
+                if (hataSayisi > 0 && !tekrarBekliyor) { Kayit.yaz("Sayfa yüklendi (" + hataSayisi + " başarısız denemeden sonra)."); hataSayisi = 0; }
             }
             @Override public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail d) {
                 Kayit.yaz("Sayfa çöktü, yeniden açılıyor.");

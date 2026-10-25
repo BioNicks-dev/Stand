@@ -60,8 +60,15 @@
   .gosterge span{display:block;font-size:12px;color:var(--ink-soft)}
   .gosterge b{font-weight:600}
   .gosterge b.iyi,.ayrinti b.iyi{color:var(--live)} .gosterge b.uyari,.ayrinti b.uyari{color:var(--warn)} .gosterge b.kotu,.ayrinti b.kotu{color:var(--stop)}
-  /* bölümler (25 Eki: artık açılıp kapanmaz, hep açık) */
-  .bolum{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:10px 0;padding:12px}
+  /* bölümler: aşağıdakiler açılır kapanır (kapalı başlar); kameranın altındakiler hep açık */
+  .bolum{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:10px 0;padding:0 12px}
+  .bolum.kart{padding:12px}
+  .bolum > summary{list-style:none;cursor:pointer;padding:13px 0;font-weight:600;display:flex;align-items:center;gap:8px}
+  .bolum > summary::-webkit-details-marker{display:none}
+  .bolum > summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(45deg);transition:transform .2s}
+  .bolum[open] > summary::after{transform:rotate(-135deg)}
+  .bolum[open]{padding-bottom:12px}
+  .bolum > summary .not{font-weight:400}
   .bolum > h2{font-size:16px;margin:0 0 6px;display:flex;align-items:baseline;gap:8px}
   .bolum > h2 .not{font-weight:400}
   .bolum.kart{padding:14px 12px}
@@ -160,7 +167,7 @@
     #sagSutun .ozet{margin:0 0 8px;padding:9px 10px;font-size:15px}
     #sagSutun .gostergeler{gap:6px;margin-bottom:8px}
     #sagSutun .bolum{margin:8px 0}
-    #sagSutun .bolum > h2{font-size:15px}
+    #sagSutun .bolum > summary{padding:10px 0}
     #sagSutun .satir{margin:6px 0;gap:6px}
     #sagSutun button{min-height:42px;padding:8px 6px;font-size:15px}
     #sagSutun .anahtar{margin:8px 0;font-size:14px}
@@ -171,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 21:29</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 22:21</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -234,8 +241,8 @@
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
     <p class="not" id="beklemeNot">Bekleme modunda ekran siyah kalır, kamera kapalı bekler. Biri bağlanınca (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Çıkmak için siyah ekrana hızlıca iki kez dokunun.</p>
 
-    <section id="appKutu" class="bolum gizli">
-      <h2>Pixel uygulaması <span id="appSurum" class="not"></span></h2>
+    <details id="appKutu" class="bolum gizli">
+      <summary>Pixel uygulaması <span id="appSurum" class="not"></span></summary>
       <div class="ic">
       <div id="appIzin"></div>
       <div id="waKutu" class="gizli">
@@ -258,20 +265,20 @@
       <button id="appDurdur" type="button" class="dur">Uygulamayı durdur</button>
       <p class="not">Durdurunca bu sayfa Chrome'dan eskisi gibi kullanılır. Yeniden başlatmak için Stand Kamera simgesine dokunun.</p>
       </div>
-    </section>
+    </details>
 
-    <section class="bolum">
-      <h2>Zil ve ses</h2>
+    <details class="bolum">
+      <summary>Zil ve ses</summary>
       <div class="ic">
       <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal (5 dk içinde tekrar çalmaz)</label>
       <label class="secimSatir" for="mikGucSec">Evin sesi (uzaktakine giden)
         <select id="mikGucSec"><option value="1">Normal</option><option value="2">Yüksek</option><option value="3">Çok yüksek</option></select></label>
       <button id="zilDene">Zili dene</button>
       </div>
-    </section>
+    </details>
 
-    <section class="bolum">
-      <h2>Aktarma (TURN)</h2>
+    <details class="bolum">
+      <summary>Aktarma (TURN)</summary>
       <div class="ic">
       <div id="aktarmaKutu">
         <label for="tKul">Kullanıcı adı</label>
@@ -283,10 +290,10 @@
         <p class="not">Ev içinde iki telefon doğrudan bağlanamazsa görüntü bu sunucu üzerinden gelir; yine şifreli kalır. Bilgiler bu telefonda saklanır ve bağlanan telefona da iletilir.</p>
       </div>
       </div>
-    </section>
+    </details>
 
-    <section class="bolum">
-      <h2>Kayıt</h2>
+    <details class="bolum">
+      <summary>Kayıt</summary>
       <div class="ic">
       <div class="satir">
         <button id="kayitKopyala">Kaydı kopyala</button>
@@ -294,7 +301,7 @@
       </div>
       <div id="kayit"></div>
       </div>
-    </section>
+    </details>
 
     <p class="not alt"><a href="#" id="degistir">Bağlantı bilgilerini değiştir</a></p>
     </div>
@@ -328,7 +335,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="24 Eki 21:29";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="24 Eki 22:21";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1954,6 +1961,7 @@
     if(b.erisim===false) eksik.push("erisim");       // uygulama 11: aramayı ekrandan kabul (bekleme modunu engellemez)
     if(b.rehber===false) eksik.push("rehber");       // uygulama 14: santral (bekleme modunu engellemez)
     var k=E("appIzin"); k.textContent="";
+    if(eksik.length) E("appKutu").open=true;
     if(!eksik.length){ var t=document.createElement("div"); t.className="tamam"; t.textContent="İzinler tamam."; k.appendChild(t); }
     eksik.forEach(function(ne){
       var d=document.createElement("button"); d.type="button"; d.className="ana"; d.textContent=IZIN_ADI[ne];
