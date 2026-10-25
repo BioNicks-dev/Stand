@@ -3593,6 +3593,7 @@
   // bağlantıyla gelindiyse (?ara= ?red= ?devam=) hatırla, adresten sil
   (function(){
     var q=new URLSearchParams(location.search), l={ara:q.get("ara"),red:q.get("red"),k:q.get("k"),devam:q.get("devam"),kh:q.get("kh"),wa:q.get("wa")};
+    if(l.wa&&l.wa.indexOf("~")>0){ var wp=l.wa.split("~"); l.wa=wp[0]; if(!l.k) l.k=wp.slice(1).join("~"); }   // Pixel'in notu: ?wa=<id>~<arayan>
     if(l.ara||l.red||l.devam||l.wa){ gsLink=l; try{ history.replaceState(null,"",location.pathname); }catch(h){} }
   })();
   var gsAktif=false, gsId="", gsDurum="", gsHedefAd="", gsBasZaman=0, gsAraSon=0;

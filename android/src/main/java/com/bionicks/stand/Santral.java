@@ -84,7 +84,8 @@ final class Santral {
         aId = id; aktifD = "alindi";
         // 25 Eki: not sadece bağlantı; her kişinin kendi konusu (…-ara-<ad>), kestirme sadece en son notu ister
         notKime = kime;
-        notBirak(kime, "https://bionicks-dev.github.io/Stand/?wa=" + id + "&k=" + Uri.encode(arayan == null ? "" : arayan));
+        // "&" yok: ntfy'nin json cevabında \u0026 olarak yazılıyor, kestirme bağlantıyı metinden ayıklıyor
+        notBirak(kime, "https://bionicks-dev.github.io/Stand/?wa=" + id + "~" + Uri.encode(arayan == null ? "" : arayan));
         ara(c, wa);
     }
 
