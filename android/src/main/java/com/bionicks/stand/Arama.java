@@ -76,6 +76,14 @@ final class Arama {
         } catch (Exception e) { }
     }
 
+    // ---------- son arama (uygulama 13: Pixel sayfasındaki durum kutusu) ----------
+    static void son(String kim, String ne) {
+        String t = new java.text.SimpleDateFormat("HH:mm", Locale.US).format(new java.util.Date()) + " " + (kim == null || kim.isEmpty() ? "Biri" : kim) + " aradı, " + ne;
+        Context c = Bekci.baglam();
+        if (c != null) ayar(c).edit().putString("wa_son", t).apply();
+    }
+    static String sonAl(Context c) { return ayar(c).getString("wa_son", ""); }
+
     // ---------- sunucudan gelen mesajlar (bekçinin iş parçacığında gelir, ana iş parçacığına aktarılır) ----------
     static void odaDegisti(String kod) {
         h.post(() -> { gk = null; kamKapali = false; xrBagli = false; durumZaman = 0; yoneticiler.clear(); yonCevap.clear(); });
@@ -122,9 +130,9 @@ final class Arama {
         islenen.put(key, n);
         SharedPreferences p = ayar(c);
         String kim = ad == null ? "" : ad;
-        if (!p.getBoolean("wa_acik", true)) { Kayit.yaz("WhatsApp: " + kim + " arıyor; otomatik açma kapalı, dokunulmadı."); return; }
+        if (!p.getBoolean("wa_acik", true)) { Kayit.yaz("WhatsApp: " + kim + " arıyor; otomatik açma kapalı, dokunulmadı."); son(kim, "otomatik açma kapalı"); return; }
         String y = yazi == null ? "" : yazi.toLowerCase(Locale.ROOT);
-        if (!(y.contains("video") || y.contains("görüntülü"))) { Kayit.yaz("WhatsApp: " + kim + " sesli arıyor; sadece görüntülü aramalar açılır, dokunulmadı."); return; }
+        if (!(y.contains("video") || y.contains("görüntülü"))) { Kayit.yaz("WhatsApp: " + kim + " sesli arıyor; sadece görüntülü aramalar açılır, dokunulmadı."); son(kim, "sesli arama, açılmadı"); return; }
         String nk = ad(kim);
         if (!nk.isEmpty() && nk.equals(ad(p.getString("wa_yon", "Ben Türkiye")))) {
             Kayit.yaz("WhatsApp: yönetici (" + kim + ") arıyor, açılıyor.");
@@ -133,11 +141,11 @@ final class Arama {
         }
         boolean diger = false;
         for (String d : p.getString("wa_diger", "Seda").split(",")) if (!nk.isEmpty() && nk.equals(ad(d))) diger = true;
-        if (!diger) { Kayit.yaz("WhatsApp: \"" + kim + "\" arıyor; izinli kişilerden değil, dokunulmadı."); return; }
+        if (!diger) { Kayit.yaz("WhatsApp: \"" + kim + "\" arıyor; izinli kişilerden değil, dokunulmadı."); son(kim, "izinli değil, dokunulmadı"); return; }
 
-        if (kamKapali) { Kayit.yaz("WhatsApp: " + kim + " arıyor ama ev kamerası kapalı (yönetici kapattı), reddediliyor."); bas(red, "Reddet"); return; }
+        if (kamKapali) { Kayit.yaz("WhatsApp: " + kim + " arıyor ama ev kamerası kapalı (yönetici kapattı), reddediliyor."); son(kim, "ev kamerası kapalı, reddedildi"); bas(red, "Reddet"); return; }
         if (n < p.getLong("wa_red_" + nk, 0) && gkZ().equals(p.getString("wa_redZ_" + nk, ""))) {
-            Kayit.yaz("WhatsApp: " + kim + " arıyor; yönetici az önce engellemişti (1 dk), reddediliyor."); bas(red, "Reddet"); return;
+            Kayit.yaz("WhatsApp: " + kim + " arıyor; yönetici az önce engellemişti (1 dk), reddediliyor."); son(kim, "az önce engellenmişti, reddedildi"); bas(red, "Reddet"); return;
         }
         if (n < p.getLong("wa_izin_" + nk, 0) && gkZ().equals(p.getString("wa_izinZ_" + nk, ""))) {
             Kayit.yaz("WhatsApp: " + kim + " arıyor; izin süresi içinde, sormadan açılıyor."); cevapla(key, kim, ac, false); return;
@@ -149,6 +157,7 @@ final class Arama {
             cevapla(key, kim, ac, false);
             return;
         }
+        son(kim, "sana soruldu");
         sor(c, key, kim, ac, red, neden);
     }
 
@@ -164,7 +173,7 @@ final class Arama {
     static void kalkti(String key, boolean baskaVar) {
         islenen.remove(key);
         Bekleyen b = bek;
-        if (b != null && !b.bitti && key.equals(b.key)) { Kayit.yaz("WhatsApp: " + b.ad + " beklerken vazgeçti (arama bitti)."); bitir(); return; }
+        if (b != null && !b.bitti && key.equals(b.key)) { Kayit.yaz("WhatsApp: " + b.ad + " beklerken vazgeçti (arama bitti)."); son(b.ad, "beklerken kapattı"); bitir(); return; }
         if (aktifKey != null && !baskaVar) bitisBak(aktifKey);
     }
 
@@ -182,6 +191,7 @@ final class Arama {
     // Erisim.java: ekrandan kabul tuttu
     static void kabulEdildi(String key) {
         if (aktifKey == null) return;
+        son(aktifAd, "açıldı");
         if (!aktifSurdu) { aktifSurdu = true; Kayit.yaz("WhatsApp: görüşme bağlandı (" + aktifAd + ")."); }
     }
 
@@ -311,6 +321,7 @@ final class Arama {
         bitir();
         if (!izin) {
             Kayit.yaz("WhatsApp: yönetici " + neden + ", " + b.ad + " reddediliyor.");
+            son(b.ad, "engelledin, reddedildi");
             if (c != null) ayar(c).edit().putLong("wa_red_" + nk, System.currentTimeMillis() + RED).putLong("wa_izin_" + nk, 0).putString("wa_redZ_" + nk, gkZ()).apply();
             bas(b.red, "Reddet");
             return;
@@ -331,7 +342,8 @@ final class Arama {
     private static void cevapla(String key, String kim, PendingIntent ac, boolean yon) {
         aktifKey = key; aktifAd = kim; aktifYon = yon; aktifSurdu = false;
         // Uygulama 11: önce ekrandan (erişilebilirlik). Hizmet kapalıysa eski yol: bildirim düğmesi (büyük ihtimalle açmaz).
-        if (!Erisim.kabul(key, kim) && !bas(ac, "Cevapla")) { aktifKey = null; aktifAd = null; return; }
+        son(kim, "açılıyor");
+        if (!Erisim.kabul(key, kim) && !bas(ac, "Cevapla")) { aktifKey = null; aktifAd = null; son(kim, "açılamadı"); return; }
         if (!yon) varlikAktif(key);
     }
 

@@ -25,6 +25,27 @@ public class Guncelle extends BroadcastReceiver {
     private static final String ADRES = "https://github.com/bionicks-dev/Stand/releases/download/apk/";
     private static volatile boolean bakiyor = false;
     static volatile int hazirSurum = 0;
+    // Uygulama 13: kurulum sırasında sayfaya haber (güncelleme ekranı). "" = sorun yok
+    static volatile String durum = "";
+    private static android.content.SharedPreferences ayar(Context c) { return c.getApplicationContext().getSharedPreferences("stand", Context.MODE_PRIVATE); }
+
+    // Kurulumdan sonra uygulama yeniden açılınca bir kez: yeni sürüm numarası ("" = güncelleme olmadı)
+    static String sonuc(Context c) {
+        android.content.SharedPreferences p = ayar(c);
+        int hedef = p.getInt("gunc_hedef", 0);
+        if (hedef == 0) return "";
+        long z = p.getLong("gunc_zaman", 0);
+        p.edit().remove("gunc_hedef").remove("gunc_zaman").apply();
+        int ben = benimSurum(c);
+        if (System.currentTimeMillis() - z > 15 * 60000L) return "";
+        if (ben < hedef) { Kayit.yaz("Güncelleme tamamlanmamış görünüyor (hedef " + hedef + ", şu an " + ben + ")."); return ""; }
+        return String.valueOf(ben);
+    }
+    // Acilis.java: güncellemeden sonra ekranı açıp sayfayı öne getirmeli mi
+    static boolean yeniKuruldu(Context c) {
+        android.content.SharedPreferences p = ayar(c);
+        return p.getInt("gunc_hedef", 0) > 0 && System.currentTimeMillis() - p.getLong("gunc_zaman", 0) < 15 * 60000L;
+    }
 
     static int benimSurum(Context c) {
         try { return (int) c.getPackageManager().getPackageInfo(c.getPackageName(), 0).getLongVersionCode(); }
@@ -61,6 +82,8 @@ public class Guncelle extends BroadcastReceiver {
         }
         final int surum = hazirSurum;
         hazirSurum = 0;
+        durum = "";
+        ayar(c).edit().putInt("gunc_hedef", surum).putLong("gunc_zaman", System.currentTimeMillis()).apply();
         try {
             PackageInstaller pi = c.getPackageManager().getPackageInstaller();
             PackageInstaller.SessionParams p = new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
@@ -81,6 +104,8 @@ public class Guncelle extends BroadcastReceiver {
             s.close();
         } catch (Exception e) {
             Kayit.yaz("Güncelleme başlatılamadı: " + e.getMessage());
+            durum = "hata";
+            ayar(c).edit().remove("gunc_hedef").apply();
         }
     }
 
@@ -92,6 +117,9 @@ public class Guncelle extends BroadcastReceiver {
             Intent onay = Build.VERSION.SDK_INT >= 33 ? i.getParcelableExtra(Intent.EXTRA_INTENT, Intent.class) : eskiAl(i);
             if (onay == null) return;
             onay.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            Guncelle.durum = "onay";
+            // ekran zaten açık (güncelleme ekranı): soruyu doğrudan göster; olmazsa bildirim kalır
+            try { c.startActivity(onay); } catch (Exception e) { }
             Kayit.yaz("Android güncelleme için onay istiyor: Pixel'deki \"Stand Kamera güncellemesi\" bildirimine dokunun.");
             NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
             nm.createNotificationChannel(new NotificationChannel("guncelle", "Uygulama güncellemesi", NotificationManager.IMPORTANCE_HIGH));
@@ -104,6 +132,8 @@ public class Guncelle extends BroadcastReceiver {
             nm.notify(2, n);
         } else if (durum != PackageInstaller.STATUS_SUCCESS) {
             Kayit.yaz("Güncelleme kurulamadı: " + i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE));
+            Guncelle.durum = "hata";
+            ayar(c).edit().remove("gunc_hedef").apply();
         }
     }
 

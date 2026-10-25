@@ -92,6 +92,7 @@ public class Erisim extends AccessibilityService {
         }
         if (n > DENEME) {
             Kayit.yaz("WhatsApp: " + DENEME + " denemede kabul edilemedi. Yukarıdaki ekran satırlarını Claude'a gönderin.");
+            Arama.son(kim, "açılamadı");
             isKey = null;
             return;
         }

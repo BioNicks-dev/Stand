@@ -30,6 +30,7 @@
   }
   *,*::before,*::after{box-sizing:inherit}
   html,body{margin:0}
+  *{-webkit-tap-highlight-color:transparent}   /* 25 Eki: bekleme modunu başlatırken çıkan mavi şerit (dokunma vurgusu) */
   body{background:var(--bg);color:var(--ink);font-family:Archivo,"Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.45}
   .wrap{max-width:480px;margin:0 auto;padding:12px 14px 20px}
   h1{font-size:19px;font-weight:600;margin:0 0 10px}
@@ -59,23 +60,38 @@
   .gosterge span{display:block;font-size:12px;color:var(--ink-soft)}
   .gosterge b{font-weight:600}
   .gosterge b.iyi,.ayrinti b.iyi{color:var(--live)} .gosterge b.uyari,.ayrinti b.uyari{color:var(--warn)} .gosterge b.kotu,.ayrinti b.kotu{color:var(--stop)}
-  /* kapalı başlıklar */
-  .bolum{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:10px 0;padding:0 12px}
+  /* bölümler (25 Eki: artık açılıp kapanmaz, hep açık) */
+  .bolum{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:10px 0;padding:12px}
+  .bolum > h2{font-size:16px;margin:0 0 6px;display:flex;align-items:baseline;gap:8px}
+  .bolum > h2 .not{font-weight:400}
   .bolum.kart{padding:14px 12px}
-  .bolum > summary{list-style:none;cursor:pointer;padding:13px 0;font-weight:600;display:flex;align-items:center;gap:8px}
-  .bolum > summary::-webkit-details-marker{display:none}
-  .bolum > summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(45deg);transition:transform .2s}
-  .bolum[open] > summary::after{transform:rotate(-135deg)}
-  .bolum[open]{padding-bottom:12px}
   .bolum .ic{display:block;width:100%}
-  .bolum, .bolum *{box-sizing:border-box}   /* details içinde box-sizing miras kalmıyor */
-  .bolum > summary .not{font-weight:400}
+  .bolum, .bolum *{box-sizing:border-box}
   .secimSatir{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0;font-size:15px;color:var(--ink)}
   .secimSatir select{font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line-strong);background:var(--panel);color:var(--ink)}
   .ayrinti{font-size:15px}
+  /* kameranın altındaki durum kutusu (25 Eki) */
+  .durumKutu{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0 0 10px;font-size:14px}
+  .durumKutu div{display:flex;gap:8px;padding:2px 0}
+  .durumKutu span{color:var(--ink-soft);flex:none;width:92px}
+  .durumKutu b{font-weight:600;min-width:0;overflow-wrap:anywhere}
+  .durumKutu b.iyi{color:var(--live)} .durumKutu b.uyari{color:var(--warn)} .durumKutu b.kotu{color:var(--stop)}
+  .kamKontrol{margin:0 0 10px}
+  .kamKontrol .satir{margin:0 0 8px}
+  .kamKontrol .anahtar{margin:8px 0}
+  /* güncelleme ekranı (25 Eki) */
+  #gnKatman{position:fixed;inset:0;z-index:1010;background:#000;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:8vw;gap:4vh}
+  #gnKatman.gizli{display:none}
+  #gnDon{width:15vw;height:15vw;max-width:80px;max-height:80px;border-radius:50%;border:4px solid #2b3a35;border-top-color:#57c48c;animation:gnDon 1s linear infinite}
+  #gnKatman.bitti #gnDon{animation:none;border-color:#57c48c;position:relative}
+  #gnKatman.bitti #gnDon::after{content:"";position:absolute;left:30%;top:18%;width:25%;height:45%;border-right:5px solid #57c48c;border-bottom:5px solid #57c48c;transform:rotate(45deg)}
+  #gnBaslik{font-size:7vw;font-weight:600}
+  #gnAlt{font-size:4.4vw;color:#9aa5a3;max-width:600px}
+  @keyframes gnDon{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){ #gnDon{animation-duration:3s} }
   .not.alt{text-align:center;margin:14px 0 4px}
   /* görüşme ekranı simgeleri */
-  #gorDugmeler svg{width:46%;height:46%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  #gorDugmeler svg{display:block;width:46%;height:46%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
   #gorDugmeler #gKapat svg{fill:currentColor;stroke:none;width:52%;height:52%}
   .pxIkon svg{width:16vw;height:16vw;max-width:90px;max-height:90px;fill:none;stroke:#7fe0aa;stroke-width:1.6;stroke-linejoin:round;margin-bottom:3vh}
   #appIzin button{margin:6px 0}
@@ -108,7 +124,8 @@
   #gorDugmeler{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 6vh);display:flex;justify-content:center;gap:5vw;
     opacity:0;transition:opacity .3s;pointer-events:none}
   #gorKatman.acik #gorDugmeler{opacity:1;pointer-events:auto}
-  #gorDugmeler button{width:17vw;height:17vw;max-width:84px;max-height:84px;min-height:0;padding:0;border-radius:50%;
+  #gorDugmeler button{display:flex;align-items:center;justify-content:center;flex:none;   /* 25 Eki: simge tam ortada */
+    width:17vw;height:17vw;max-width:84px;max-height:84px;min-height:0;padding:0;border-radius:50%;
     background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.45);color:#fff;font-size:7vw}
   #gorDugmeler button.kapali{background:rgba(150,30,30,.75);border-color:#ff9a9a}
   #gorDugmeler button.acik{background:rgba(30,110,70,.75);border-color:#7fe0aa}
@@ -143,7 +160,7 @@
     #sagSutun .ozet{margin:0 0 8px;padding:9px 10px;font-size:15px}
     #sagSutun .gostergeler{gap:6px;margin-bottom:8px}
     #sagSutun .bolum{margin:8px 0}
-    #sagSutun .bolum > summary{padding:10px 0}
+    #sagSutun .bolum > h2{font-size:15px}
     #sagSutun .satir{margin:6px 0;gap:6px}
     #sagSutun button{min-height:42px;padding:8px 6px;font-size:15px}
     #sagSutun .anahtar{margin:8px 0;font-size:14px}
@@ -154,7 +171,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 19:48</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 20:17</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -185,11 +202,40 @@
       <div class="gosterge"><span>İzleyen</span><b id="dIzleyen">yok</b></div>
       <div class="gosterge"><span>Aktarma</span><b id="dAktarma">girilmedi</b></div>
     </div>
+    <div id="durumKutu" class="durumKutu gizli">
+      <div><span>Uygulama</span><b id="sUyg">-</b></div>
+      <div><span>İzinler</span><b id="sIzin">-</b></div>
+      <div><span>WhatsApp</span><b id="sWa">-</b></div>
+      <div><span>Son arama</span><b id="sWaSon">yok</b></div>
+      <div><span>Şarj</span><b id="sPil">-</b></div>
+    </div>
+
+    <div class="kamKontrol">
+      <div class="satir">
+        <button id="onBtn">Ön kamera</button>
+        <button id="arkaBtn">Arka kamera</button>
+      </div>
+      <div class="satir">
+        <button id="baslat">Kamerayı aç</button>
+        <button id="kamKapat">Kamerayı kapat</button>
+      </div>
+      <label class="anahtar"><input type="checkbox" id="takipKutu"> Takip: standı kendisi çevirsin</label>
+      <label class="anahtar"><input type="checkbox" id="taniAcik"> Bu ekranda tanıma kutularını göster</label>
+      <div class="ayrinti">
+        Gelen (Beni göster / Konuş): <b id="dGelen">yok</b><br>
+        <span id="dBostaSatir" class="gizli">Boşta kapanma: <b id="dBosta" class="uyari"></b><br></span>
+        Tanıma: <b id="dTani">kapalı</b><br>
+        Pixel: <b id="dIsi">rahat</b><br>
+        Kalibrasyon: <b id="dKal">-</b> · <a href="#" id="kalSifirla">sıfırla</a><br>
+        <span id="dOzellik" class="not"></span>
+      </div>
+    </div>
+
     <button class="ana" id="beklemeBtn">Bekleme modunu başlat</button>
     <p class="not" id="beklemeNot">Bekleme modunda ekran siyah kalır, kamera kapalı bekler. Biri bağlanınca (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Çıkmak için siyah ekrana hızlıca iki kez dokunun.</p>
 
-    <details id="appKutu" class="bolum gizli">
-      <summary>Pixel uygulaması <span id="appSurum" class="not"></span></summary>
+    <section id="appKutu" class="bolum gizli">
+      <h2>Pixel uygulaması <span id="appSurum" class="not"></span></h2>
       <div class="ic">
       <div id="appIzin"></div>
       <div id="waKutu" class="gizli">
@@ -204,34 +250,20 @@
       <button id="appDurdur" type="button" class="dur">Uygulamayı durdur</button>
       <p class="not">Durdurunca bu sayfa Chrome'dan eskisi gibi kullanılır. Yeniden başlatmak için Stand Kamera simgesine dokunun.</p>
       </div>
-    </details>
+    </section>
 
-    <details class="bolum">
-      <summary>Zil ve ses</summary>
+    <section class="bolum">
+      <h2>Zil ve ses</h2>
       <div class="ic">
       <label class="anahtar"><input type="checkbox" id="zilAcik"> Biri bağlanınca 3 saniye çal (5 dk içinde tekrar çalmaz)</label>
       <label class="secimSatir" for="mikGucSec">Evin sesi (uzaktakine giden)
         <select id="mikGucSec"><option value="1">Normal</option><option value="2">Yüksek</option><option value="3">Çok yüksek</option></select></label>
       <button id="zilDene">Zili dene</button>
       </div>
-    </details>
+    </section>
 
-    <details class="bolum">
-      <summary>Kamera ve takip</summary>
-      <div class="ic">
-      <div class="satir">
-        <button id="onBtn">Ön kamera</button>
-        <button id="arkaBtn">Arka kamera</button>
-      </div>
-      <button id="baslat">Kamerayı elle aç</button>
-      <label class="anahtar"><input type="checkbox" id="takipKutu"> Takip: standı kendisi çevirsin</label>
-      <label class="anahtar"><input type="checkbox" id="taniAcik"> Bu ekranda tanıma kutularını göster</label>
-      <p class="not">Kalibrasyon: <b id="dKal">-</b> · <a href="#" id="kalSifirla">sıfırla</a></p>
-      </div>
-    </details>
-
-    <details class="bolum">
-      <summary>Aktarma (TURN)</summary>
+    <section class="bolum">
+      <h2>Aktarma (TURN)</h2>
       <div class="ic">
       <div id="aktarmaKutu">
         <label for="tKul">Kullanıcı adı</label>
@@ -243,23 +275,10 @@
         <p class="not">Ev içinde iki telefon doğrudan bağlanamazsa görüntü bu sunucu üzerinden gelir; yine şifreli kalır. Bilgiler bu telefonda saklanır ve bağlanan telefona da iletilir.</p>
       </div>
       </div>
-    </details>
+    </section>
 
-    <details class="bolum">
-      <summary>Ayrıntılar</summary>
-      <div class="ic">
-      <div class="ayrinti">
-        Gelen (Beni göster / Konuş): <b id="dGelen">yok</b><br>
-        <span id="dBostaSatir" class="gizli">Boşta kapanma: <b id="dBosta" class="uyari"></b><br></span>
-        Tanıma: <b id="dTani">kapalı</b><br>
-        Pixel: <b id="dIsi">rahat</b><br>
-        <span id="dOzellik" class="not"></span>
-      </div>
-      </div>
-    </details>
-
-    <details class="bolum">
-      <summary>Kayıt</summary>
+    <section class="bolum">
+      <h2>Kayıt</h2>
       <div class="ic">
       <div class="satir">
         <button id="kayitKopyala">Kaydı kopyala</button>
@@ -267,13 +286,14 @@
       </div>
       <div id="kayit"></div>
       </div>
-    </details>
+    </section>
 
     <p class="not alt"><a href="#" id="degistir">Bağlantı bilgilerini değiştir</a></p>
     </div>
   </div>
 </div>
 
+<div id="gnKatman" class="gizli" role="status" aria-live="polite"><div id="gnDon"></div><div id="gnBaslik">Güncelleniyor…</div><div id="gnAlt"></div></div>
 <div id="siyah" class="gizli"><div id="siyahYazi"></div><button id="siyahUyari" type="button" class="gizli"></button></div>
 <div id="benKutu"></div>
 <div id="pxArama" class="gizli" role="alertdialog" aria-labelledby="pxAramaAd">
@@ -300,7 +320,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="24 Eki 19:48";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="24 Eki 20:17";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -706,6 +726,13 @@
     }).then(function(){ donuyor=false; });
   }
   E("baslat").onclick=function(){ kameraAc().then(bildir).catch(function(){}); };
+  // 25 Eki: kamerayı bekleme moduna girmeden kapatmak (biri izliyorsa kapatmaz)
+  E("kamKapat").onclick=function(){
+    if(izleyenSayisi()){ yaz("Biri izliyor; kamera görüşme bitince kendisi kapanır."); return; }
+    if(takipAcik) takipAyarla(false);
+    if(!akis){ yaz("Kamera zaten kapalı."); return; }
+    kameraKapat(); bildir();
+  };
   E("onBtn").onclick=function(){ kameraCevir("user"); };
   E("arkaBtn").onclick=function(){ kameraCevir("environment"); };
 
@@ -1855,9 +1882,54 @@
     if(Date.now()-gnSon>=aralik){ gnSon=Date.now(); yazLS("stand_surumBakis",String(gnSon)); gnBak(); }
     else gnYenile();
     // uygulamanın yeni sürümü indirildiyse kimse izlemiyorken kur
-    if(APP&&typeof APP.guncellemeHazir==="function"&&gnBosta()){ try{ if(APP.guncellemeHazir()) APP.guncellemeKur(); }catch(h){} }
+    if(APP&&typeof APP.guncellemeHazir==="function"&&gnBosta()){ try{ if(APP.guncellemeHazir()) gnKur(); }catch(h){} }
   },30000);
   setTimeout(function(){ var o=oku("stand_yenilendi").split("|"); if(o[0]&&o[0]===SURUM&&Date.now()-Number(o[1]||0)<600000) yaz("Yeni sürüme yenilendi ("+SURUM+")."); },1000);
+
+  // ---------- güncelleme ekranı (25 Eki) ----------
+  // Yeni uygulama sürümü indiyse ve kimse izlemiyorsa: ekran açılır, "Güncelleniyor…", kurulur, uygulama kendisi
+  // yeniden açılır ve birkaç sn "Güncellendi" gösterir. Olmazsa 2 dk sonra ekran kapanır, ertesi gün yine denenir.
+  var gnKuruluyor=false;
+  function gnKatman(baslik,alt,bitti){ E("gnBaslik").textContent=baslik; E("gnAlt").textContent=alt||""; E("gnKatman").className=bitti?"bitti":""; }
+  function gnKatmanKapat(){ E("gnKatman").className="gizli"; }
+  function gnKur(){
+    if(gnKuruluyor) return; gnKuruluyor=true;
+    var no=0; try{ if(typeof APP.guncellemeNo==="function") no=APP.guncellemeNo(); }catch(h){}
+    yaz("Uygulama güncelleniyor"+(no?" (uygulama "+no+")":"")+".");
+    gnKatman("Güncelleniyor…",no?"uygulama "+no:"");
+    try{ APP.uyan(); }catch(h){}
+    try{ APP.ekran(true); }catch(h){}
+    var bas=Date.now();
+    setTimeout(function(){ try{ APP.guncellemeKur(); }catch(h){} },1500);
+    var t=setInterval(function(){
+      var d=""; try{ if(typeof APP.guncellemeDurum==="function") d=APP.guncellemeDurum(); }catch(h){}
+      if(d==="onay") gnKatman("Güncelleniyor…","Android onay istiyor: ekrandaki soruda Güncelle'ye dokunun.");
+      if(d==="hata"||Date.now()-bas>120000){
+        clearInterval(t); gnKuruluyor=false; gnKatmanKapat();
+        yaz(d==="hata"?"Güncelleme kurulamadı; yarın tekrar denenecek.":"Güncelleme 2 dk içinde bitmedi; yarın tekrar denenecek.");
+        try{ APP.ekran(false); }catch(h){}
+        if(!beklemede&&!izleyenSayisi()) beklemeBaslat();
+      }
+    },2000);
+  }
+
+  // ---------- durum kutusu (25 Eki): kameranın altında hep görünür ----------
+  function durumGuncelle(){
+    if(!APP) return;
+    var b={}; try{ b=JSON.parse(APP.bilgi()); }catch(h){}
+    var gn=0; try{ if(APP.guncellemeHazir()) gn=APP.guncellemeNo(); }catch(h){}
+    goster(E("sUyg"),(b.surum||"?")+(gn?" · yeni sürüm "+gn+" indi, kimse izlemiyorken kurulacak":" · güncel"),gn?"uyari":"");
+    var e=[]; if(!b.ustte) e.push("üstte göster"); if(!b.pil) e.push("pil"); if(!b.kamera) e.push("kamera/mikrofon"); if(b.yukle===false) e.push("kendini güncelleme");
+    goster(E("sIzin"),e.length?"eksik: "+e.join(", "):"tamam",e.length?"kotu":"iyi");
+    var wa={}; try{ if(typeof APP.waAyar==="function") wa=JSON.parse(APP.waAyar()); }catch(h){}
+    var w=[wa.acik===false?"otomatik açma kapalı":"otomatik açma açık"];
+    if(b.bildirim===false) w.push("bildirim erişimi yok");
+    if(b.erisim===false) w.push("erişilebilirlik kapalı");
+    goster(E("sWa"),w.join(" · "),(wa.acik!==false&&b.bildirim!==false&&b.erisim!==false)?"iyi":"uyari");
+    var son=""; try{ if(typeof APP.waSon==="function") son=APP.waSon(); }catch(h){}
+    E("sWaSon").textContent=son||"yok";
+    goster(E("sPil"),pil?("%"+pil.y+(pil.s?" · şarjda":" · şarjda değil")):"-",pil&&!pil.s&&pil.y<30?"uyari":"");
+  }
 
   // ---------- Pixel uygulaması (22 Eki) ----------
   var appSonBagli=Date.now(), appIzinBekle=false, appDurTik=null;
@@ -1871,7 +1943,6 @@
     if(b.erisim===false) eksik.push("erisim");       // uygulama 11: aramayı ekrandan kabul (bekleme modunu engellemez)
     var k=E("appIzin"); k.textContent="";
     if(!eksik.length){ var t=document.createElement("div"); t.className="tamam"; t.textContent="İzinler tamam."; k.appendChild(t); }
-    if(eksik.length) E("appKutu").open=true;
     eksik.forEach(function(ne){
       var d=document.createElement("button"); d.type="button"; d.className="ana"; d.textContent=IZIN_ADI[ne];
       d.onclick=function(){ try{ APP.ayarAc(ne==="kamera"?"uygulama":ne); }catch(h){} };
@@ -1908,6 +1979,10 @@
     E("appKutu").className="bolum";
     E("beklemeNot").textContent="Bekleme modunda ekran kapalı bekler. Biri bağlanınca uygulama ekranı açar, (zil açıksa önce çalar) kamera açılır, görüşme bitince kapanır. Ayarlar için siyah ekrana hızlıca iki kez dokunun; 3 dk dokunulmazsa beklemeye kendisi döner.";
     yaz("Uygulama içinde açıldı (uygulama sürümü "+s+").");
+    // güncellemeden sonra ilk açılış: birkaç sn "Güncellendi"
+    var gs=""; try{ if(typeof APP.guncellemeSonuc==="function") gs=APP.guncellemeSonuc(); }catch(h){}
+    if(gs){ yaz("Uygulama güncellendi: uygulama "+gs+"."); gnKatman("Güncellendi","uygulama "+gs,true); setTimeout(gnKatmanKapat,4000); }
+    E("durumKutu").className="durumKutu"; durumGuncelle(); setInterval(durumGuncelle,3000);
     waKur();
     setInterval(function(){ try{ APP.nabiz(); }catch(h){} },5000);
     setInterval(function(){ try{ JSON.parse(APP.kayitAl()).forEach(function(m){ yaz("Uygulama: "+m); }); }catch(h){} bekleyenIstekBak(); },3000);

@@ -91,6 +91,12 @@ final class Kopru {
     @JavascriptInterface public void guncellemeBak() { Guncelle.bak(c); }
     @JavascriptInterface public boolean guncellemeHazir() { return Guncelle.hazirSurum > 0; }
     @JavascriptInterface public void guncellemeKur() { h.post(() -> Guncelle.kur(c)); }
+    // Uygulama 13: güncelleme ekranı
+    @JavascriptInterface public int guncellemeNo() { return Guncelle.hazirSurum; }
+    @JavascriptInterface public String guncellemeDurum() { return Guncelle.durum; }          // "", "onay", "hata"
+    @JavascriptInterface public String guncellemeSonuc() { return Guncelle.sonuc(c); }       // bir kez: yeni sürüm no
+    // Uygulama 13: durum kutusu için son WhatsApp araması ("19:58 Ben Türkiye aradı, açıldı")
+    @JavascriptInterface public String waSon() { return Arama.sonAl(c); }
 
     // WhatsApp aramaları (uygulama 7): kamera sayfasındaki ayar
     @JavascriptInterface public String waAyar() { return Arama.ayarAl(c); }
