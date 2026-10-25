@@ -82,8 +82,9 @@ final class Santral {
         Kayit.yaz("Santral: " + (arayan.isEmpty() ? "?" : arayan) + ", " + kime + " kişisini arıyor; WhatsApp'tan \"" + wa + "\" çaldırılacak.");
         durumGonder(id, "alindi", "");
         aId = id; aktifD = "alindi";
-        // 25 Eki: not sadece bağlantı (kestirmenin "Get URLs" adımı uzun bağlantıyı kesiyordu); kime sonda, kestirme ona bakar
-        notBirak("https://bionicks-dev.github.io/Stand/?wa=" + id + "&k=" + Uri.encode(arayan == null ? "" : arayan) + "&kime=" + Uri.encode(kime == null ? "" : kime));
+        // 25 Eki: not sadece bağlantı; her kişinin kendi konusu (…-ara-<ad>), kestirme sadece en son notu ister
+        notKime = kime;
+        notBirak(kime, "https://bionicks-dev.github.io/Stand/?wa=" + id + "&k=" + Uri.encode(arayan == null ? "" : arayan));
         ara(c, wa);
     }
 
@@ -97,15 +98,26 @@ final class Santral {
         return ad;
     }
 
-    // Parça C: iPhone'daki "Stand WhatsApp" kestirmesi son 2 dk'daki notlara bakar (ntfy.sh/<konu>-ara/raw).
-    // Not: stand sayfasının bağlantısı, sonunda "&kime=<stand adı>". Arama kabul edilmeden biterse "STAND bitti" yazılır (son satır o olur).
-    private static String aktifD = "";
-    private static void notBirak(final String metin) {
-        final String konu = Arama.ntfyKonu();
+    // Parça C: iPhone'daki "Stand WhatsApp" kestirmesi kendi konusunun en son notuna bakar:
+    // ntfy.sh/<konu>-ara-<ad>/json?poll=1&since=latest. Not = stand sayfasının bağlantısı; arama bitince "bitti"
+    // (kabul edilmediyse hemen, kabul edildiyse 90 sn sonra: sayfa o arada açılmış olur).
+    private static String aktifD = "", notKime = null;
+    private static final java.util.HashMap<String, Long> sonNot = new java.util.HashMap<>();   // kişi -> son bağlantı notu (geç "bitti" yenisini ezmesin)
+    // stand index.html'deki gsKonuAd ile aynı: küçük harf, Türkçe harfler sadeleşir, sadece a-z 0-9
+    static String konuAd(String ad) {
+        String k = ad == null ? "" : ad.trim().toLowerCase(new Locale("tr"));
+        k = k.replace('ç', 'c').replace('ğ', 'g').replace('ı', 'i').replace('ö', 'o').replace('ş', 's').replace('ü', 'u');
+        return k.replaceAll("[^a-z0-9]", "");
+    }
+    private static void notBirak(String kime, final String metin) {
+        final String ka = konuAd(kime);
+        if (ka.isEmpty()) return;
+        if (!"bitti".equals(metin)) sonNot.put(ka, System.currentTimeMillis());
+        final String konu = Arama.ntfyKonu().isEmpty() ? "" : Arama.ntfyKonu() + "-ara-" + ka;
         if (konu.isEmpty()) { Kayit.yaz("Santral: gizlilik bildirim konusu yok; iPhone'daki kestirme için not bırakılamadı (stand sayfası > Ayarlar > Gizlilik > Oluştur)."); return; }
         new Thread(() -> {
             try {
-                java.net.HttpURLConnection u = (java.net.HttpURLConnection) new java.net.URL("https://ntfy.sh/" + konu + "-ara").openConnection();
+                java.net.HttpURLConnection u = (java.net.HttpURLConnection) new java.net.URL("https://ntfy.sh/" + konu).openConnection();
                 u.setConnectTimeout(8000); u.setReadTimeout(8000); u.setRequestMethod("POST"); u.setDoOutput(true);
                 try (java.io.OutputStream o = u.getOutputStream()) { o.write(metin.getBytes(java.nio.charset.StandardCharsets.UTF_8)); }
                 int k = u.getResponseCode(); u.disconnect();
@@ -390,7 +402,9 @@ final class Santral {
             else if ("iptal".equals(sonuc)) d = "iptal";
             else d = "hata";
             if (!"iptal".equals(d)) durumGonder(aId, d, "hata".equals(d) ? son : "");
-            if (!"kapandi".equals(d)) notBirak("STAND bitti");   // kabul edilmedi: kestirme artık sayfayı açmasın
+            final String nk = notKime; notKime = null;
+            if (!"kapandi".equals(d)) notBirak(nk, "bitti");   // kabul edilmedi: kestirme artık sayfayı açmasın
+            else { final long ne = System.currentTimeMillis(); h.postDelayed(() -> { Long y = sonNot.get(konuAd(nk)); if (y == null || y <= ne) notBirak(nk, "bitti"); }, 90000); }
             sonucYaz(aId, d);
             aId = null;
         }

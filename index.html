@@ -521,7 +521,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 25 Eki 00:55</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 25 Eki 02:01</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -787,7 +787,7 @@
         </div>
         <p class="not" id="gkDurum"></p>
         <div class="satir" style="margin-top:8px"><span>"Stand WhatsApp" kestirmesinin adresi</span><button class="kucuk" id="gsWaAdresBtn" style="width:auto">Kopyala</button></div>
-        <p class="not" style="margin:2px 0 0">iPhone'daki kestirmeye yapıştırılır: Pixel birini WhatsApp'tan çaldırınca, kabul edildiğinde stand sayfası bununla açılır.</p>
+        <p class="not" style="margin:2px 0 0">Bu telefondaki adın için (<span id="gsWaAdresAd">-</span>). iPhone'daki kestirmeye yapıştırılır. Başka biri için adresin sonundaki <b>-ara-…</b> kısmına onun adını küçük harfle yaz (ör. -ara-seda).</p>
       </div>
     </div>
 
@@ -1815,9 +1815,13 @@
     if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(k).then(ok,function(){ gkBildiri("Kopyalanamadı: konuyu basılı tutup seç",3500); });
     else gkBildiri("Kopyalanamadı: konuyu basılı tutup seç",3500);
   };
+  // Pixel'deki Santral.konuAd ile aynı
+  function gsKonuAd(ad){ return String(ad||"").trim().toLocaleLowerCase("tr").replace(/ç/g,"c").replace(/ğ/g,"g").replace(/ı/g,"i").replace(/ö/g,"o").replace(/ş/g,"s").replace(/ü/g,"u").replace(/[^a-z0-9]/g,""); }
+  setInterval(function(){ var e=E("gsWaAdresAd"); if(e) e.textContent=benimAdim()||"-"; },3000);
   E("gsWaAdresBtn").onclick=function(){
     var k=gkA().konu; if(!k){ gkBildiri("Önce bildirim konusu oluşturun",3000); return; }
-    var a="https://ntfy.sh/"+k+"-ara/raw?poll=1&since=2m";
+    var ka=gsKonuAd(benimAdim()); if(!ka){ gkBildiri("Önce Ayarlar > Kullanım > Adın",3000); return; }
+    var a="https://ntfy.sh/"+k+"-ara-"+ka+"/json?poll=1&since=latest";
     var ok=function(){ gkBildiri("Kestirme adresi kopyalandı",2500); };
     if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(a).then(ok,function(){ gkBildiri("Kopyalanamadı",3000); });
     else gkBildiri("Kopyalanamadı",3000);
@@ -2937,7 +2941,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="25 Eki 00:55";
+  var SAYFA_SURUM="25 Eki 02:01";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
