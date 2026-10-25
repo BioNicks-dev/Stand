@@ -26,7 +26,9 @@ final class Santral {
     private static final Handler h = new Handler(Looper.getMainLooper());
     static final String MIME_VIDEO = "vnd.android.cursor.item/vnd.com.whatsapp.video.call";
     static final String MIME_SOHBET = "vnd.android.cursor.item/vnd.com.whatsapp.profile";
-    private static final int ARALIK = 700, EN_UZUN = 70000, KAPAT_BEKLE = 500;
+    // 25 Eki: 0,5 sn'de kapatınca WhatsApp "just answered your call. Continue?" diye soruyor; 1,2 sn'de sormuyordu
+    private static final int ARALIK = 700, EN_UZUN = 70000, KAPAT_BEKLE = 1200;
+    private static String sonKutu = "";
     private static final int KAPAT_X = 876, KAPAT_Y = 2189;   // bölüm 24: görüşme ekranında kapat
 
     private static int no = 0;                 // her yeni arama eskisini geçersiz kılar
@@ -127,7 +129,7 @@ final class Santral {
             if (Erisim.ben == null) { hata("erişilebilirlik kapalı; arama kapatılamaz, başlatılmadı."); return; }
             long[] veri = bul(c, ad.trim());
             ekranAc(c);
-            sohbetYolu = false; videoBasildi = false; listeYolu = false; aramaYazildi = false; aramaKutusuAcildi = false;
+            sohbetYolu = false; videoBasildi = false; listeYolu = false; aramaYazildi = false; aramaKutusuAcildi = false; sonKutu = "";
             if (veri == null) {
                 // uygulama 17: rehberde WhatsApp satırı yok (ör. kişi sadece WhatsApp'a kaydedilmiş): WhatsApp'ı ana ekranından aç
                 Intent l0 = c.getPackageManager().getLaunchIntentForPackage(Erisim.WA);
@@ -224,7 +226,18 @@ final class Santral {
                 bitir(c, "kendi numarası");
                 return;
             }
-            if (!onaylandi) Kayit.yaz("Santral: WhatsApp kutusu: \"" + kisa(m) + "\"");
+            if (!m.equals(sonKutu)) { sonKutu = m; Kayit.yaz("Santral: WhatsApp kutusu: \"" + kisa(m) + "\""); }
+            // kabul edildikten sonra çıkan her kutu (ör. "...just answered your call. Do you want to continue the call?"): kapat
+            String mk = m.toLowerCase(Locale.ROOT);
+            if (baglandiZaman > 0 || mk.contains("just answered") || mk.contains("continue the call")) {
+                AccessibilityNodeInfo kapa = bulKutuKapat(l);
+                if (kapa != null) {
+                    boolean ok = kapa.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                    Kayit.yaz("Santral: kutuda \"" + Erisim.ad(kapa) + "\" seçildi" + (ok ? "." : " (tıklama kabul edilmedi)."));
+                }
+                h.postDelayed(() -> izle(c, n), ARALIK);
+                return;
+            }
         }
 
         // rehberde yoksa: sohbet listesinde satırı bul ve sohbete gir
@@ -388,6 +401,15 @@ final class Santral {
             if (id.endsWith("end_call_button") || id.contains("call_screen") || id.endsWith(":id/message") || id.endsWith(":id/button1")) return true;
         }
         return caliyorMu(l);
+    }
+    // Kutudaki kapatma düğmesi: "Hang up" / "End" / "Kapat"; yoksa olumsuz düğme (button2). "Continue" asla.
+    private static AccessibilityNodeInfo bulKutuKapat(List<AccessibilityNodeInfo> l) {
+        for (AccessibilityNodeInfo d : l) {
+            String t = Erisim.str(d.getText()).trim().toLowerCase(Locale.ROOT);
+            if (d.isClickable() && (t.equals("hang up") || t.equals("end call") || t.equals("end") || t.equals("kapat") || t.equals("aramayı bitir"))) return d;
+        }
+        for (AccessibilityNodeInfo d : l) if (Erisim.str(d.getViewIdResourceName()).endsWith(":id/button2") && d.isClickable()) return d;
+        return null;
     }
     private static AccessibilityNodeInfo bulKutuYazisi(List<AccessibilityNodeInfo> l) {
         for (AccessibilityNodeInfo d : l) if (Erisim.str(d.getViewIdResourceName()).endsWith(":id/message") && !Erisim.str(d.getText()).isEmpty()) return d;
