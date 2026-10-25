@@ -23,6 +23,7 @@ import java.util.Locale;
 final class Santral {
     private static final Handler h = new Handler(Looper.getMainLooper());
     static final String MIME_VIDEO = "vnd.android.cursor.item/vnd.com.whatsapp.video.call";
+    static final String MIME_SOHBET = "vnd.android.cursor.item/vnd.com.whatsapp.profile";
     private static final int ARALIK = 700, EN_UZUN = 70000, KAPAT_BEKLE = 1200;
     private static final int KAPAT_X = 876, KAPAT_Y = 2189;   // bölüm 24: görüşme ekranında kapat
 
@@ -30,6 +31,7 @@ final class Santral {
     private static String kim = null, durum = "";
     private static long bas = 0, baglandiZaman = 0;
     private static boolean caldiGoruldu = false, onaylandi = false;
+    private static boolean sohbetYolu = false, videoBasildi = false;   // uygulama 16: yedek yol (sohbeti aç, görüntülü arama simgesine dokun)
     private static int dokum = 0, yokSay = 0;
     private static String sonImza = "";
     private static PowerManager.WakeLock kilit = null;
@@ -51,18 +53,26 @@ final class Santral {
             if (ad == null || ad.trim().isEmpty()) { yaz("aranacak ad boş."); return; }
             if (!rehberIzni(c)) { yaz("Kişiler izni yok. Pixel sayfasındaki \"Kişiler izni ver\" düğmesine dokunun."); return; }
             if (Erisim.ben == null) { yaz("erişilebilirlik kapalı; arama kapatılamaz, başlatılmadı."); return; }
-            long veri = bul(c, ad.trim());
-            if (veri < 0) return;
+            long[] veri = bul(c, ad.trim());
+            if (veri == null) return;
             ekranAc(c);
+            sohbetYolu = false; videoBasildi = false;
             Intent i = new Intent(Intent.ACTION_VIEW)
-                    .setDataAndType(Uri.withAppendedPath(ContactsContract.Data.CONTENT_URI, String.valueOf(veri)), MIME_VIDEO)
+                    .setDataAndType(Uri.withAppendedPath(ContactsContract.Data.CONTENT_URI, String.valueOf(veri[0])), MIME_VIDEO)
                     .setPackage(Erisim.WA)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try { c.getApplicationContext().startActivity(i); }
             catch (Exception e) {
-                // yedek: uygulama adı vermeden (Android uygun uygulamayı kendisi bulsun)
-                try { i.setPackage(null); c.getApplicationContext().startActivity(i); Kayit.yaz("Santral: WhatsApp'a doğrudan açılamadı, Android'in seçimiyle açıldı."); }
-                catch (Exception e2) { yaz("WhatsApp araması başlatılamadı (" + e2.getClass().getSimpleName() + ")."); birak(); return; }
+                Kayit.yaz("Santral: doğrudan görüntülü arama açılamadı: " + e.getClass().getSimpleName() + " · " + kisaHata(e)
+                        + (c.checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED ? " (Telefon izni yok)" : ""));
+                // yedek: kişinin WhatsApp sohbetini aç, görüntülü arama simgesine erişilebilirlikle dokun
+                long sohbet = sohbetBul(c, veri[1]);
+                if (sohbet < 0) { yaz("WhatsApp sohbeti de bulunamadı, arama başlatılamadı."); birak(); return; }
+                Intent s2 = new Intent(Intent.ACTION_VIEW)
+                        .setDataAndType(Uri.withAppendedPath(ContactsContract.Data.CONTENT_URI, String.valueOf(sohbet)), MIME_SOHBET)
+                        .setPackage(Erisim.WA).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try { c.getApplicationContext().startActivity(s2); sohbetYolu = true; Kayit.yaz("Santral: yedek yol: WhatsApp sohbeti açıldı, görüntülü arama simgesine dokunulacak."); }
+                catch (Exception e2) { yaz("WhatsApp sohbeti de açılamadı: " + e2.getClass().getSimpleName() + " · " + kisaHata(e2)); birak(); return; }
             }
             kim = ad.trim(); durum = "başlatılıyor"; bas = System.currentTimeMillis(); baglandiZaman = 0;
             caldiGoruldu = false; onaylandi = false; dokum = 0; yokSay = 0; sonImza = "";
@@ -72,21 +82,32 @@ final class Santral {
         });
     }
 
-    // Rehberde WhatsApp görüntülü arama satırını ada göre bul
-    private static long bul(Context c, String ad) {
+    private static String kisaHata(Exception e) { String m = e.getMessage(); if (m == null) return ""; m = m.replace('\n', ' '); return m.length() > 220 ? m.substring(0, 220) + "…" : m; }
+
+    // Kişinin WhatsApp sohbet satırı (aynı kişi kimliği)
+    private static long sohbetBul(Context c, long kisi) {
+        try (Cursor k = c.getContentResolver().query(ContactsContract.Data.CONTENT_URI, new String[]{ ContactsContract.Data._ID },
+                ContactsContract.Data.MIMETYPE + "=? AND " + ContactsContract.Data.CONTACT_ID + "=?", new String[]{ MIME_SOHBET, String.valueOf(kisi) }, null)) {
+            if (k != null && k.moveToFirst()) return k.getLong(0);
+        } catch (Exception e) { }
+        return -1;
+    }
+
+    // Rehberde WhatsApp görüntülü arama satırını ada göre bul: {satır, kişi}
+    private static long[] bul(Context c, String ad) {
         String aranan = Arama.ad(ad);
         List<String> adlar = new ArrayList<>();
         try (Cursor k = c.getContentResolver().query(ContactsContract.Data.CONTENT_URI,
-                new String[]{ ContactsContract.Data._ID, ContactsContract.Data.DISPLAY_NAME },
+                new String[]{ ContactsContract.Data._ID, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.CONTACT_ID },
                 ContactsContract.Data.MIMETYPE + "=?", new String[]{ MIME_VIDEO }, null)) {
             if (k != null) while (k.moveToNext()) {
                 String g = k.getString(1);
-                if (aranan.equals(Arama.ad(g))) return k.getLong(0);
+                if (aranan.equals(Arama.ad(g))) return new long[]{ k.getLong(0), k.getLong(2) };
                 if (g != null && adlar.size() < 15) adlar.add(g);
             }
-        } catch (Exception e) { yaz("rehber okunamadı (" + e.getClass().getSimpleName() + ")."); return -1; }
+        } catch (Exception e) { yaz("rehber okunamadı (" + e.getClass().getSimpleName() + ")."); return null; }
         yaz("rehberde WhatsApp'ı olan \"" + ad + "\" bulunamadı. WhatsApp'ı olan kişiler: " + (adlar.isEmpty() ? "hiç yok" : String.join(", ", adlar)) + ".");
-        return -1;
+        return null;
     }
 
     // ---------- izleme döngüsü ----------
@@ -101,9 +122,24 @@ final class Santral {
 
         // ekran değiştiyse kayda dök (öğrenmek için; en fazla 10 kez)
         String imza = imza(l);
-        if (!imza.equals(sonImza) && dokum < 10) { sonImza = imza; dokum++; s.dok("Santral " + (t / 1000) + " sn", kok); }
+        // (sohbet ekranı kayda dökülmez: mesajlar yazılmasın)
+        if ((!sohbetYolu || videoBasildi) && !imza.equals(sonImza) && dokum < 10) { sonImza = imza; dokum++; s.dok("Santral " + (t / 1000) + " sn", kok); }
 
         AccessibilityNodeInfo kapat = bulKapat(l);
+        if (sohbetYolu && !videoBasildi && kapat == null) {
+            AccessibilityNodeInfo v = bulVideo(l);
+            if (v != null) {
+                videoBasildi = true;
+                boolean ok = v.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                if (!ok) { Rect b = new Rect(); v.getBoundsInScreen(b); ok = s.dokun(b.centerX(), b.centerY()); }
+                Kayit.yaz("Santral: sohbetteki \"" + Erisim.ad(v) + "\" simgesine dokunuldu" + (ok ? "." : " (gönderilemedi)."));
+                bas = System.currentTimeMillis();   // süreler aramanın başladığı andan
+            } else if (t > 8000) {
+                yaz("sohbette görüntülü arama simgesi bulunamadı (ekran satırlarına bakın).");
+                bitir(c, "başlatılamadı");
+                return;
+            }
+        }
         // "aransın mı?" sorusu çıkarsa onayla
         if (kapat == null && !onaylandi) {
             AccessibilityNodeInfo onay = bulOnay(l);
@@ -125,7 +161,7 @@ final class Santral {
         }
 
         // görüşme ekranı kayboldu: bitti
-        if (kapat == null && t > 4000) {
+        if (kapat == null && t > 4000 && (!sohbetYolu || videoBasildi)) {
             if (++yokSay >= 3) {
                 if (baglandiZaman > 0) bitir(c, "kapatıldı");
                 else {
@@ -194,6 +230,20 @@ final class Santral {
             if (d.isClickable() && (k.contains("leave call") || k.contains("end call") || k.contains("hang up") || k.contains("aramayı bitir") || k.contains("görüşmeden ayrıl"))) return d;
         }
         return null;
+    }
+
+    // Sohbet ekranının üstündeki görüntülü arama simgesi
+    private static AccessibilityNodeInfo bulVideo(List<AccessibilityNodeInfo> l) {
+        for (AccessibilityNodeInfo d : l) {
+            String id = Erisim.str(d.getViewIdResourceName()), k = kucuk(d);
+            if (id.contains("video_call") || k.trim().equals("video call") || k.contains("görüntülü arama") || k.contains("görüntülü ara")) return d.isClickable() ? d : tiklanir(d);
+        }
+        return null;
+    }
+    private static AccessibilityNodeInfo tiklanir(AccessibilityNodeInfo d) {
+        AccessibilityNodeInfo k = d;
+        for (int i = 0; i < 5 && k != null; i++) { if (k.isClickable()) return k; k = k.getParent(); }
+        return d;
     }
 
     private static AccessibilityNodeInfo bulOnay(List<AccessibilityNodeInfo> l) {
