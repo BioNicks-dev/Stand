@@ -36,15 +36,21 @@ final class Santral {
 
     static boolean rehberIzni(Context c) { return c.checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED; }
 
-    static String durum() { return kim == null ? "" : kim + ": " + durum; }
+    // Pixel sayfası düğmenin altında gösterir: süren aramanın durumu ya da son 30 sn'deki sonuç
+    private static String son = ""; private static long sonZaman = 0;
+    private static void yaz(String m) { Kayit.yaz("Santral: " + m); son = m; sonZaman = System.currentTimeMillis(); }
+    static String durum() {
+        if (kim != null) return kim + ": " + durum;
+        return System.currentTimeMillis() - sonZaman < 30000 ? son : "";
+    }
 
     // ---------- başlat ----------
     static void ara(final Context c, final String ad) {
         h.post(() -> {
-            if (kim != null) { Kayit.yaz("Santral: zaten bir arama sürüyor (" + kim + ")."); return; }
-            if (ad == null || ad.trim().isEmpty()) { Kayit.yaz("Santral: aranacak ad boş."); return; }
-            if (!rehberIzni(c)) { Kayit.yaz("Santral: Kişiler izni yok. Pixel sayfasındaki \"Kişiler izni ver\" düğmesine dokunun."); return; }
-            if (Erisim.ben == null) { Kayit.yaz("Santral: erişilebilirlik kapalı; arama kapatılamaz, başlatılmadı."); return; }
+            if (kim != null) { yaz("zaten bir arama sürüyor (" + kim + ")."); return; }
+            if (ad == null || ad.trim().isEmpty()) { yaz("aranacak ad boş."); return; }
+            if (!rehberIzni(c)) { yaz("Kişiler izni yok. Pixel sayfasındaki \"Kişiler izni ver\" düğmesine dokunun."); return; }
+            if (Erisim.ben == null) { yaz("erişilebilirlik kapalı; arama kapatılamaz, başlatılmadı."); return; }
             long veri = bul(c, ad.trim());
             if (veri < 0) return;
             ekranAc(c);
@@ -53,11 +59,15 @@ final class Santral {
                     .setPackage(Erisim.WA)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             try { c.getApplicationContext().startActivity(i); }
-            catch (Exception e) { Kayit.yaz("Santral: WhatsApp araması başlatılamadı (" + e.getClass().getSimpleName() + ")."); birak(); return; }
+            catch (Exception e) {
+                // yedek: uygulama adı vermeden (Android uygun uygulamayı kendisi bulsun)
+                try { i.setPackage(null); c.getApplicationContext().startActivity(i); Kayit.yaz("Santral: WhatsApp'a doğrudan açılamadı, Android'in seçimiyle açıldı."); }
+                catch (Exception e2) { yaz("WhatsApp araması başlatılamadı (" + e2.getClass().getSimpleName() + ")."); birak(); return; }
+            }
             kim = ad.trim(); durum = "başlatılıyor"; bas = System.currentTimeMillis(); baglandiZaman = 0;
             caldiGoruldu = false; onaylandi = false; dokum = 0; yokSay = 0; sonImza = "";
             final int n = ++no;
-            Kayit.yaz("Santral: " + kim + " WhatsApp'tan görüntülü aranıyor.");
+            yaz("" + kim + " WhatsApp'tan görüntülü aranıyor.");
             h.postDelayed(() -> izle(c, n), 1500);
         });
     }
@@ -74,8 +84,8 @@ final class Santral {
                 if (aranan.equals(Arama.ad(g))) return k.getLong(0);
                 if (g != null && adlar.size() < 15) adlar.add(g);
             }
-        } catch (Exception e) { Kayit.yaz("Santral: rehber okunamadı (" + e.getClass().getSimpleName() + ")."); return -1; }
-        Kayit.yaz("Santral: rehberde WhatsApp'ı olan \"" + ad + "\" bulunamadı. WhatsApp'ı olan kişiler: " + (adlar.isEmpty() ? "hiç yok" : String.join(", ", adlar)) + ".");
+        } catch (Exception e) { yaz("rehber okunamadı (" + e.getClass().getSimpleName() + ")."); return -1; }
+        yaz("rehberde WhatsApp'ı olan \"" + ad + "\" bulunamadı. WhatsApp'ı olan kişiler: " + (adlar.isEmpty() ? "hiç yok" : String.join(", ", adlar)) + ".");
         return -1;
     }
 
@@ -84,7 +94,7 @@ final class Santral {
         if (n != no || kim == null) return;
         Erisim s = Erisim.ben;
         long t = System.currentTimeMillis() - bas;
-        if (s == null) { Kayit.yaz("Santral: erişilebilirlik kapandı, izleme bitti."); bitir(c, "yarıda kaldı"); return; }
+        if (s == null) { yaz("erişilebilirlik kapandı, izleme bitti."); bitir(c, "yarıda kaldı"); return; }
         AccessibilityNodeInfo kok = s.waKok();
         List<AccessibilityNodeInfo> l = new ArrayList<>();
         if (kok != null) Erisim.topla(kok, l, 0);
@@ -100,16 +110,16 @@ final class Santral {
             if (onay != null) {
                 onaylandi = true;
                 boolean ok = onay.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                Kayit.yaz("Santral: WhatsApp onay istedi, \"" + Erisim.ad(onay) + "\" seçildi" + (ok ? "." : " (tıklama kabul edilmedi)."));
+                yaz("WhatsApp onay istedi, \"" + Erisim.ad(onay) + "\" seçildi" + (ok ? "." : " (tıklama kabul edilmedi)."));
             }
         }
 
         if (baglandiZaman == 0) {
             boolean caliyor = caliyorMu(l);
-            if (caliyor && !caldiGoruldu) { caldiGoruldu = true; durum = "çalıyor"; Kayit.yaz("Santral: " + kim + " çalıyor."); }
+            if (caliyor && !caldiGoruldu) { caldiGoruldu = true; durum = "çalıyor"; yaz("" + kim + " çalıyor."); }
             if (kapat != null && baglandiMi(l, caliyor)) {
                 baglandiZaman = System.currentTimeMillis(); durum = "bağlandı";
-                Kayit.yaz("Santral: " + kim + " kabul etti (" + (t / 1000) + " sn). WhatsApp görüşmesi kapatılacak.");
+                yaz("" + kim + " kabul etti (" + (t / 1000) + " sn). WhatsApp görüşmesi kapatılacak.");
                 h.postDelayed(() -> kapatBas(c, n), KAPAT_BEKLE);
             }
         }
@@ -120,7 +130,7 @@ final class Santral {
                 if (baglandiZaman > 0) bitir(c, "kapatıldı");
                 else {
                     String y = Bildirim.sonYazi;
-                    Kayit.yaz("Santral: " + kim + " kabul etmedi (reddetti ya da açmadı). Son bildirim: \"" + y + "\".");
+                    yaz("" + kim + " kabul etmedi (reddetti ya da açmadı). Son bildirim: \"" + y + "\".");
                     bitir(c, "kabul etmedi");
                 }
                 return;
@@ -128,7 +138,7 @@ final class Santral {
         } else yokSay = 0;
 
         if (t > EN_UZUN && baglandiZaman == 0) {
-            Kayit.yaz("Santral: " + (EN_UZUN / 1000) + " sn'de açılmadı, arama kapatılıyor (cevap yok).");
+            yaz("" + (EN_UZUN / 1000) + " sn'de açılmadı, arama kapatılıyor (cevap yok).");
             kapatBas(c, n);
             bitir(c, "cevap yok");
             return;
@@ -149,14 +159,14 @@ final class Santral {
             // düğmeler gizlendiyse önce ekrana bir kez dokun, sonra kapat noktasına
             s.dokun(540, 1000);
             h.postDelayed(() -> { Erisim e = Erisim.ben; if (e != null) e.dokun(KAPAT_X, KAPAT_Y); }, 500);
-            Kayit.yaz("Santral: \"Leave call\" düğmesi bulunamadı, ekrandan kapat noktasına dokunuldu (" + KAPAT_X + "," + KAPAT_Y + ").");
-        } else Kayit.yaz("Santral: WhatsApp görüşmesi \"" + Erisim.ad(k) + "\" ile kapatıldı.");
+            yaz("\"Leave call\" düğmesi bulunamadı, ekrandan kapat noktasına dokunuldu (" + KAPAT_X + "," + KAPAT_Y + ").");
+        } else yaz("WhatsApp görüşmesi \"" + Erisim.ad(k) + "\" ile kapatıldı.");
     }
 
     private static void bitir(Context c, String sonuc) {
         if (kim == null) return;
         long sure = (System.currentTimeMillis() - bas) / 1000;
-        Kayit.yaz("Santral: bitti (" + kim + ", " + sonuc + ", " + sure + " sn" + (baglandiZaman > 0 ? ", bağlantıdan kapanışa " + (System.currentTimeMillis() - baglandiZaman) / 100 / 10.0 + " sn" : "") + ").");
+        yaz("bitti (" + kim + ", " + sonuc + ", " + sure + " sn" + (baglandiZaman > 0 ? ", bağlantıdan kapanışa " + (System.currentTimeMillis() - baglandiZaman) / 100 / 10.0 + " sn" : "") + ").");
         kim = null; durum = ""; no++;
         birak();
         // WhatsApp'ın kapanış ekranı kalmasın: bizim sayfaya dön

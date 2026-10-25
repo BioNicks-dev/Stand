@@ -171,7 +171,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 20:35</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 24 Eki 21:29</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -252,6 +252,7 @@
         <label for="saAd">Pixel kimi WhatsApp'tan arasın (rehberdeki ad)</label>
         <input id="saAd" autocomplete="off" autocorrect="off" spellcheck="false">
         <button id="saAra" type="button">WhatsApp'tan görüntülü ara</button>
+        <p id="saDurum" class="not" style="color:var(--ink);font-weight:600" aria-live="polite"></p>
         <p class="not">Pixel bu kişiyi arar; kabul edilince 1-2 sn içinde WhatsApp görüşmesini kapatır. Ne olduğu Kayıt'a yazılır.</p>
       </div>
       <button id="appDurdur" type="button" class="dur">Uygulamayı durdur</button>
@@ -327,7 +328,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="24 Eki 20:35";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="24 Eki 21:29";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1987,9 +1988,13 @@
       E("saKutu").className=""; E("saAd").value=a.yon||"";
       E("saAra").onclick=function(){
         var ad=E("saAd").value.trim(); if(!ad) return;
+        var b=E("saAra"); if(b.disabled) return;
+        b.disabled=true; setTimeout(function(){ b.disabled=false; },5000);   // art arda basılmasın
+        E("saDurum").textContent="Aranıyor…";
         yaz("Santral denemesi: "+ad+" aranıyor."); try{ APP.waAra(ad); }catch(h){}
         sonDokunma=Date.now();
       };
+      setInterval(function(){ var t=""; try{ t=APP.santralDurum(); }catch(h){} if(t||!E("saAra").disabled) E("saDurum").textContent=t; },1000);
     }
     E("waAcik").addEventListener("change",kaydet); E("waYon").addEventListener("change",kaydet); E("waDiger").addEventListener("change",kaydet);
   }

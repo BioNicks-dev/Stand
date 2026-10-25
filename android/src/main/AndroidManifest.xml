@@ -20,6 +20,11 @@
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- Uygulama 15: Android 11+ başka uygulamayı ancak burada adı geçerse görür (santral WhatsApp'ı açabilsin) -->
+    <queries>
+        <package android:name="com.whatsapp" />
+    </queries>
+
     <application
         android:label="Stand Kamera"
         android:icon="@android:drawable/ic_menu_camera"
