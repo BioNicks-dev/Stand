@@ -56,7 +56,8 @@ final class Kopru {
             o.put("bekci", Bekci.bagli);
             NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
             o.put("bildirim", nm.isNotificationListenerAccessGranted(new ComponentName(c, Bildirim.class)));
-            o.put("erisim", Erisim.izinVar(c));   // uygulama 11: WhatsApp aramasını ekrandan kabul
+            o.put("erisim", Erisim.izinVar(c));
+            o.put("rehber", Santral.rehberIzni(c));   // uygulama 14: santral (WhatsApp'tan arama)   // uygulama 11: WhatsApp aramasını ekrandan kabul
         } catch (Exception e) { }
         return o.toString();
     }
@@ -97,6 +98,9 @@ final class Kopru {
     @JavascriptInterface public String guncellemeSonuc() { return Guncelle.sonuc(c); }       // bir kez: yeni sürüm no
     // Uygulama 13: durum kutusu için son WhatsApp araması ("19:58 Ben Türkiye aradı, açıldı")
     @JavascriptInterface public String waSon() { return Arama.sonAl(c); }
+    // Uygulama 14 (santral, parça A): deneme araması
+    @JavascriptInterface public void waAra(String ad) { Santral.ara(c, ad); }
+    @JavascriptInterface public String santralDurum() { return Santral.durum(); }
 
     // WhatsApp aramaları (uygulama 7): kamera sayfasındaki ayar
     @JavascriptInterface public String waAyar() { return Arama.ayarAl(c); }

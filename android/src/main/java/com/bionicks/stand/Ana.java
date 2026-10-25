@@ -67,6 +67,7 @@ public class Ana extends Activity {
         ArrayList<String> l = new ArrayList<>();
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.CAMERA);
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.RECORD_AUDIO);
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.READ_CONTACTS);   // uygulama 14: santral
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
             l.add(Manifest.permission.POST_NOTIFICATIONS);
         if (!l.isEmpty()) requestPermissions(l.toArray(new String[0]), 7);

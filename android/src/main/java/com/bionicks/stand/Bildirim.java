@@ -20,6 +20,7 @@ public class Bildirim extends NotificationListenerService {
     static final String WA = "com.whatsapp";
     static volatile boolean bagli = false;
     static volatile Bildirim ben = null;
+    static volatile String sonYazi = ""; static volatile long sonZaman = 0;   // son WhatsApp arama bildiriminin yazısı
     private final Handler h = new Handler(Looper.getMainLooper());
     private final Map<String, Long> yazilan = new HashMap<>();
 
@@ -70,6 +71,7 @@ public class Bildirim extends NotificationListenerService {
         String ozet = "WhatsApp bildirimi: \"" + baslik + "\" · \"" + yazi + "\" · düğmeler: " + (dug.length() > 0 ? dug : "yok")
                 + ((n.flags & Notification.FLAG_ONGOING_EVENT) != 0 ? " · sürekli" : "");
         long simdi = System.currentTimeMillis();
+        sonYazi = yazi; sonZaman = simdi;   // uygulama 14: santral bağlandı mı diye bakar ("Ongoing video call")
         Long once = yazilan.get(ozet);
         if (once == null || simdi - once > 20000) { yazilan.put(ozet, simdi); Kayit.yaz(ozet); }
         if (yazilan.size() > 40) yazilan.clear();

@@ -129,7 +129,7 @@ public class Erisim extends AccessibilityService {
     }
 
     // ---------- ekranı okuma ----------
-    private AccessibilityNodeInfo waKok() {
+    AccessibilityNodeInfo waKok() {
         try {
             for (AccessibilityWindowInfo w : getWindows()) {
                 AccessibilityNodeInfo r = w.getRoot();
@@ -189,18 +189,18 @@ public class Erisim extends AccessibilityService {
         return k;
     }
 
-    private static void topla(AccessibilityNodeInfo d, List<AccessibilityNodeInfo> l, int derin) {
+    static void topla(AccessibilityNodeInfo d, List<AccessibilityNodeInfo> l, int derin) {
         if (d == null || derin > 30 || l.size() > 400) return;
         l.add(d);
         for (int i = 0; i < d.getChildCount(); i++) topla(d.getChild(i), l, derin + 1);
     }
 
-    private static String str(CharSequence c) { return c == null ? "" : c.toString(); }
-    private static String ad(AccessibilityNodeInfo d) { String t = str(d.getText()); return t.isEmpty() ? str(d.getContentDescription()) : t; }
+    static String str(CharSequence c) { return c == null ? "" : c.toString(); }
+    static String ad(AccessibilityNodeInfo d) { String t = str(d.getText()); return t.isEmpty() ? str(d.getContentDescription()) : t; }
 
     // Kayda ekran dökümü: yazısı, açıklaması ya da kimliği olan parçalar (en fazla 30)
     private void dok(String baslik) { AccessibilityNodeInfo r = waKok(); if (r != null) dok(baslik + " (WhatsApp)", r); else dok(baslik + ": WhatsApp ekranda değil", null); }
-    private void dok(String baslik, AccessibilityNodeInfo kok) {
+    void dok(String baslik, AccessibilityNodeInfo kok) {
         StringBuilder s = new StringBuilder("Ekran · ").append(baslik).append(":");
         try {
             if (kok == null) {
@@ -238,7 +238,7 @@ public class Erisim extends AccessibilityService {
         Path p = new Path(); p.moveTo(x1, y1); p.lineTo(x2, y2);
         return hareket(p, ms);
     }
-    private boolean dokun(int x, int y) {
+    boolean dokun(int x, int y) {
         Path p = new Path(); p.moveTo(x, y);
         return hareket(p, 60);
     }
