@@ -521,7 +521,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 25 Eki 17:10</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Eki 23:01</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1146,6 +1146,7 @@
     istemci.on("connect",function(){
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
+      setTimeout(gmOtomatik,3000);
       istemci.subscribe("comitok/"+kod+"/goruntu/i");
       if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/goruntu/b"); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); istemci.subscribe("comitok/"+kod+"/kamkapi"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
       if(rol==="evde"){
@@ -1802,6 +1803,31 @@
     istemci.publish("comitok/"+kod+"/gelistirme",JSON.stringify({bitis:bitis}),{qos:0,retain:true});
     gmBitis=bitis; gmArayuz(); yaz("Geliştirme modu "+(bitis?"açıldı (2 saat): Pixel her dakika yeni sürüme bakacak.":"kapatıldı."));
   };
+  // ---------- #gelistirme (27 Eki): Stand Yükle betiği sayfayı bu ekle açar ----------
+  // Yöneticiyse geliştirme modunu 2 saate açar/tamamlar (asla kapatmaz). Ek adresten silinir;
+  // sayfa arada kendini yenilerse istek 10 dk boyunca bu sekmede saklı kalır.
+  (function(){
+    if(location.hash!=="#gelistirme") return;
+    try{ sessionStorage.setItem("stand_gmIstek",String(Date.now())); }catch(h){}
+    try{ history.replaceState(null,"",location.pathname+location.search); }catch(h){}
+  })();
+  function gmOtomatik(){
+    var z=0; try{ z=Number(sessionStorage.getItem("stand_gmIstek"))||0; }catch(h){}
+    if(!z) return;
+    if(Date.now()-z>600000){ try{ sessionStorage.removeItem("stand_gmIstek"); }catch(h){} return; }
+    if(!(istemci&&istemci.connected)) return; // bağlanınca tekrar denenir
+    try{ sessionStorage.removeItem("stand_gmIstek"); }catch(h){}
+    if(!yonetici()){
+      yaz("Geliştirme modu (Stand Yükle): yönetici kodu yok, açılmadı.");
+      gkBildiri("Geliştirme modu için yönetici kodu gerekli (Ayarlar > Bağlantı bilgilerini değiştir)",10000);
+      return;
+    }
+    var bitis=Date.now()+2*3600000;
+    istemci.publish("comitok/"+kod+"/gelistirme",JSON.stringify({bitis:bitis}),{qos:0,retain:true});
+    gmBitis=bitis; gmArayuz();
+    yaz("Geliştirme modu açıldı (2 saat, Stand Yükle): Pixel her dakika yeni sürüme bakacak.");
+    gkBildiri("Geliştirme modu açıldı (2 saat). Bu sekmeyi kapatabilirsin.",15000);
+  }
   E("gkOlusturBtn").onclick=function(){
     if(gkA().konu&&!confirm("Yeni konu oluşturulursa ntfy uygulamasında yeni konuya tekrar abone olman gerekir. Devam edilsin mi?")) return;
     var b=new Uint8Array(16), harf="abcdefghijklmnopqrstuvwxyz0123456789", k="stand-";
@@ -2941,7 +2967,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="25 Eki 17:10";
+  var SAYFA_SURUM="27 Eki 23:01";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
