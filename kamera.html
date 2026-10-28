@@ -46,6 +46,8 @@
   #kayit{font-size:13px;color:var(--ink-soft);white-space:pre-wrap;max-height:30vh;overflow:auto}
   .not{font-size:14px;color:var(--ink-soft)}
   .gizli{display:none}
+  .ikiVideo{display:flex;gap:8px;margin-top:8px}
+  .ikiVideo video{width:50%;aspect-ratio:4/3;max-height:none;object-fit:cover}
   h2{font-size:17px;font-weight:600;margin:0 0 6px}
   a{color:var(--live)}
   button.dur{border-color:var(--stop);color:var(--stop)}
@@ -295,6 +297,16 @@
     </details>
 
     <details class="bolum">
+      <summary>Deneme: iki kamera</summary>
+      <div class="ic">
+      <p class="not">Terbiyeci için: ön ve arka kamera aynı anda açılabiliyor mu? Yaklaşık 20 saniye sürer. Kamera kapalıyken ve kimse izlemiyorken deneyin. Sonuç Kayıt'a da yazılır.</p>
+      <button id="ikiBtn" type="button">Denemeyi başlat</button>
+      <div class="ikiVideo"><video id="ikiArka" muted playsinline autoplay></video><video id="ikiOn" muted playsinline autoplay></video></div>
+      <pre id="ikiSonuc" class="not" style="white-space:pre-wrap;margin:8px 0 0;font-family:inherit"></pre>
+      </div>
+    </details>
+
+    <details class="bolum">
       <summary>Kayıt</summary>
       <div class="ic">
       <div class="satir">
@@ -337,7 +349,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="25 Eki 00:57";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="28 Eki 14:30";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -635,6 +647,7 @@
       .then(function(s){ return s.getVideoTracks()[0]; });
   }
   function kameraAc(){
+    if(ikiD) ikiBitir("kamera açılıyor (biri bağlanıyor olabilir), deneme durduruldu.");
     if(akis) return Promise.resolve();
     goster(E("dKamera"),"açılıyor","uyari");
     var ses;
@@ -1952,6 +1965,106 @@
     E("sWaSon").textContent=son||"yok";
     goster(E("sPil"),pil?("%"+pil.y+(pil.s?" · şarjda":" · şarjda değil")):"-",pil&&!pil.s&&pil.y<30?"uyari":"");
   }
+
+  // ---------- Deneme: iki kamera (28 Eki; Terbiyeci için, deneme bitince kaldırılacak) ----------
+  var ikiD=null;
+  function ikiYaz(m){ E("ikiSonuc").textContent+=m+"\n"; yaz("İki kamera denemesi: "+m); }
+  function ikiTemizle(){
+    if(!ikiD) return;
+    ikiD.akislar.forEach(function(s){ s.getTracks().forEach(function(t){ try{ t.stop(); }catch(h){} }); });
+    ikiD.akislar=[];
+    E("ikiArka").srcObject=null; E("ikiOn").srcObject=null;
+  }
+  function ikiBitir(m){ if(!ikiD) return; ikiD.iptal=true; ikiTemizle(); ikiD=null; if(m) ikiYaz(m); E("ikiBtn").disabled=false; }
+  function ikiKontrol(){ if(!ikiD||ikiD.iptal) throw {iptal:true}; }
+  function ikiBekle(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+  function ikiBoyut(s){ try{ var a=s.getVideoTracks()[0].getSettings(); return a.width+"×"+a.height; }catch(h){ return "?"; } }
+  function ikiHata(h){ return ((h&&h.name)||"")+" "+((h&&h.message)||""); }
+  function ikiIlkKare(v,ms){
+    return new Promise(function(r){
+      var bitti=false, t=setTimeout(function(){ if(!bitti){ bitti=true; r(false); } },ms);
+      function oldu(){ if(!bitti){ bitti=true; clearTimeout(t); r(true); } }
+      if(v.requestVideoFrameCallback) v.requestVideoFrameCallback(oldu);
+      else { var b=v.currentTime; (function k(){ if(bitti) return; if(v.videoWidth&&v.currentTime>b) oldu(); else setTimeout(k,50); })(); }
+    });
+  }
+  function ikiKareSay(v,ms){
+    return new Promise(function(r){
+      var n=0, son=Date.now()+ms;
+      if(v.requestVideoFrameCallback){ (function k(){ v.requestVideoFrameCallback(function(){ n++; if(Date.now()<son) k(); }); })(); setTimeout(function(){ r(n); },ms); }
+      else { var b=v.currentTime; setTimeout(function(){ r(v.currentTime>b?Math.round((v.currentTime-b)*15):0); },ms); }
+    });
+  }
+  function ikiAc(yon,g,y,vid){
+    var t0=Date.now();
+    return navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:yon},width:{ideal:g},height:{ideal:y},frameRate:{ideal:15}}})
+      .then(function(s){
+        if(!ikiD||ikiD.iptal){ s.getTracks().forEach(function(t){ t.stop(); }); throw {iptal:true}; }
+        ikiD.akislar.push(s); vid.srcObject=s;
+        var p=vid.play(); if(p&&p.catch) p.catch(function(){});
+        return ikiIlkKare(vid,4000).then(function(ok){ ikiKontrol(); return {s:s,ms:Date.now()-t0,ok:ok}; });
+      });
+  }
+  function ikiCift(g,y){
+    ikiYaz("— "+g+"×"+y+": arka kamera açılıyor…");
+    var arka;
+    return ikiAc("environment",g,y,E("ikiArka")).then(function(a){
+      arka=a;
+      if(!a.ok){ ikiYaz("arka kamera açıldı ama görüntü vermedi."); return false; }
+      ikiYaz("arka açıldı ("+ikiBoyut(a.s)+", "+a.ms+" ms). Arka açıkken ön açılıyor…");
+      return ikiAc("user",g,y,E("ikiOn")).then(function(o){
+        ikiYaz(o.ok?("ön açıldı ("+ikiBoyut(o.s)+", "+o.ms+" ms). 3 sn ikisi birlikte sayılıyor…"):"ön kamera açıldı ama görüntü vermedi.");
+        return Promise.all([ikiKareSay(E("ikiArka"),3000),ikiKareSay(E("ikiOn"),3000)]);
+      },function(h){ if(h&&h.iptal) throw h; ikiYaz("ön kamera açılamadı: "+ikiHata(h)); return null; })
+      .then(function(n){
+        ikiKontrol();
+        var aKapandi=arka.s.getVideoTracks()[0].readyState!=="live";
+        if(n) ikiYaz("3 sn'deki kare sayısı: arka "+n[0]+", ön "+n[1]+".");
+        if(aKapandi) ikiYaz("ön açılınca arka kamera kapandı.");
+        var ok=!!n&&n[0]>=10&&n[1]>=10&&!aKapandi;
+        ikiYaz(ok?("✓ İKİ KAMERA AYNI ANDA ÇALIŞIYOR ("+g+"×"+y+")."):("✗ İkisi birlikte çalışmadı ("+g+"×"+y+")."));
+        return ok;
+      });
+    },function(h){ if(h&&h.iptal) throw h; ikiYaz("arka kamera açılamadı: "+ikiHata(h)); return false; })
+    .then(function(ok){ ikiTemizle(); return ikiBekle(800).then(function(){ ikiKontrol(); return ok; }); });
+  }
+  function ikiGecis(){
+    ikiYaz("— Sırayla geçiş: kamera değiştirince ilk görüntüye kadar geçen süre ölçülüyor…");
+    var l=[];
+    function bir(yon,vid){
+      return ikiAc(yon,640,480,vid).then(function(r){ l.push((yon==="user"?"ön ":"arka ")+(r.ok?r.ms+" ms":"görüntü yok")); ikiTemizle(); });
+    }
+    return bir("environment",E("ikiArka"))
+      .then(function(){ return bir("user",E("ikiOn")); })
+      .then(function(){ return bir("environment",E("ikiArka")); })
+      .then(function(){ return bir("user",E("ikiOn")); })
+      .then(function(){ ikiYaz("geçiş süreleri: "+l.join(", ")+"."); },
+            function(h){ if(h&&h.iptal) throw h; ikiYaz("geçiş ölçülemedi: "+ikiHata(h)); });
+  }
+  function ikiDene(){
+    if(ikiD) return;
+    if(akis||kameraSoz||Object.keys(izleyenler).length){
+      E("ikiSonuc").textContent="Kamera açık ya da biri izliyor. Önce Kamerayı kapat'a basın, kimse izlemiyorken tekrar deneyin.\n"; return;
+    }
+    ikiD={akislar:[],iptal:false}; E("ikiBtn").disabled=true; E("ikiSonuc").textContent="";
+    ikiYaz("başladı ("+SURUM+", "+(APP?"uygulamada":"Chrome'da")+").");
+    navigator.mediaDevices.enumerateDevices().then(function(d){
+      ikiKontrol();
+      ikiYaz("görünen kamera sayısı: "+d.filter(function(x){ return x.kind==="videoinput"; }).length+".");
+      return ikiCift(640,480);
+    }).then(function(ok){
+      if(ok) return ok;
+      return ikiCift(320,240);
+    }).then(function(ok){
+      return ikiGecis().then(function(){ return ok; });
+    }).then(function(ok){
+      ikiBitir("BİTTİ. Sonuç: "+(ok?"iki kamera aynı anda çalışıyor.":"aynı anda çalışmıyor, sırayla geçiş kullanılır.")+" Kaydı kopyalayıp gönderin.");
+    }).catch(function(h){
+      if(h&&h.iptal) return;
+      ikiBitir("beklenmedik hata: "+ikiHata(h));
+    });
+  }
+  E("ikiBtn").onclick=ikiDene;
 
   // ---------- Pixel uygulaması (22 Eki) ----------
   var appSonBagli=Date.now(), appIzinBekle=false, appDurTik=null;
