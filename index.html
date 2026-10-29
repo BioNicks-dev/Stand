@@ -120,6 +120,9 @@
   .satir{display:flex;justify-content:space-between;gap:8px;font-size:14px;color:var(--ink-soft);padding:5px 0}
   .satir b{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
   .not{font-size:13px;color:var(--ink-soft);margin:6px 0 0}
+  .tbIkili{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .tbIkili b{font-size:13px;font-weight:600}
+  .tbIkili canvas{width:100%;display:block;border-radius:8px;background:#000;touch-action:none;margin:4px 0 6px}
 
   /* gelen arama kutusu: her ekranin ustunde */
   #aramaKutu{position:fixed;left:0;right:0;top:0;z-index:50;background:var(--panel);
@@ -792,6 +795,31 @@
     </div>
 
     <div class="sadeceYonetici">
+      <h2>Terbiyeci</h2>
+      <div class="panel">
+        <p class="not" style="margin:0 0 6px">Kedi tezgaha ya da masaya çıkınca Pixel fotoğraf ve 10 sn video çekip Gizlilik'teki bildirim konusuna gönderir. Sadece Pixel bekleme modundayken, kimse izlemiyorken ve ev kamerası açıkken çalışır. Şimdilik ses çalmaz (sessiz gözlem).</p>
+        <label style="border-top:none">Terbiyeci<input type="checkbox" id="tbAcik"></label>
+        <label>Ön kamerada çok yakın kedi de sayılsın (masada)<input type="checkbox" id="tbBuyuk"></label>
+        <div class="satir"><span>Durum</span><b id="tbDurum">-</b></div>
+        <div class="satir"><span>Bugün</span><b id="tbBugunY">-</b></div>
+        <p class="not" id="tbUyari"></p>
+        <div class="izgara2" style="margin-top:6px">
+          <button class="kucuk" id="tbFotoBtn">Görüntüleri al</button>
+          <button class="kucuk" id="tbDenemeBtn">Deneme bildirimi</button>
+        </div>
+        <div id="tbCizim" class="gizle">
+          <p class="not">Görüntünün üstünde parmağını sürükleyerek kırmızı alan çiz. Kedinin ayaklarının olduğu yer bu alanın içine düşerse sayılır. Tezgah için tezgahın üst yüzeyini, masa için masanın kenarı boyunca ince bir şeridi çiz.</p>
+          <div class="tbIkili">
+            <div><b>Tezgah (arka kamera)</b><canvas id="tbCanEnv"></canvas><button class="kucuk genis" id="tbSilEnv">Alanı sil</button></div>
+            <div><b>Masa (ön kamera)</b><canvas id="tbCanUser"></canvas><button class="kucuk genis" id="tbSilUser">Alanı sil</button></div>
+          </div>
+          <button class="genis" id="tbKaydetBtn" style="margin-top:8px">Alanları kaydet</button>
+        </div>
+        <p class="not" id="tbNot"></p>
+      </div>
+    </div>
+
+    <div class="sadeceYonetici">
       <h2>Güncelleme</h2>
       <div class="panel">
         <p class="not" style="margin:0 0 6px">Pixel günde bir kez GitHub'daki kamera sayfasının yeni sürümüne bakar, kimse izlemiyorken kendini yeniler. Geliştirme modunda her dakika bakar; 2 saat sonra kendisi kapanır.</p>
@@ -1147,8 +1175,11 @@
       sunucuHatasi="";
       yaz("Sunucuya bağlanıldı.");
       setTimeout(gmOtomatik,3000);
-      istemci.subscribe("comitok/"+kod+"/goruntu/i");
-      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/goruntu/p"); istemci.subscribe("comitok/"+kod+"/goruntu/d"); istemci.subscribe("comitok/"+kod+"/goruntu/b"); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); istemci.subscribe("comitok/"+kod+"/kamkapi"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
+      // EMQX ücretsiz planı: bir cihaz en çok 10 konuya abone olabilir, fazlası sessizce reddedilir (28 Eki).
+      // Bu yüzden telefonda goruntu/i, p, d, b tek "goruntu/+" aboneliğinde; Terbiyeci de tek "terbiyeci/#".
+      // Yönetici telefonda toplam tam 10 abonelik var: yeni konu eklemeden önce birleştirmek gerekir.
+      istemci.subscribe("comitok/"+kod+(rol==="uzak"?"/goruntu/+":"/goruntu/i"));
+      if(rol==="uzak"){ istemci.subscribe("comitok/"+kod+"/arama"); istemci.subscribe("comitok/"+kod+"/rehber/+"); rehberYayinla(); istemci.subscribe("comitok/"+kod+"/gizlilik"); istemci.subscribe("comitok/"+kod+"/gelistirme"); istemci.subscribe("comitok/"+kod+"/kamkapi"); if(yk) istemci.subscribe("comitok/"+kod+"/terbiyeci/#"); setTimeout(function(){ gkHazir=true; gkArayuz(); },3000); }
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
@@ -1189,6 +1220,7 @@
       if(konu.slice(-8)==="/kamkapi"){ var kk=null; try{ kk=JSON.parse(veri.toString()); }catch(h){} kamKapiGeldi(kk); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       if(konu.slice(-6)==="/arama"){ gsMesaj(veri.toString()); return; }
+      if(konu.indexOf("/terbiyeci")>0){ var tbm=null; try{ tbm=JSON.parse(veri.toString()); }catch(h){} tbMesaj(konu.slice(konu.indexOf("/terbiyeci")+10),tbm); return; }
       if(konu.indexOf("/rehber/")>0){ rehberGeldi(konu.split("/").pop(),veri.toString()); return; }
       var m; try{ m=JSON.parse(veri.toString()); }catch(h){ return; }
       if(konu.slice(-9)==="/gizlilik"){ gkAyarGeldi(m); return; }
@@ -2964,10 +2996,116 @@
   saatYazi();
 
 
+  // ---------- Terbiyeci (28 Eki, paket 1: sessiz gözlem) ----------
+  // Pixel kedi tezgaha (arka kamera) ya da masaya (ön kamera) çıkınca fotoğraf + video gönderir (Gizlilik'teki ntfy konusu).
+  // Ayar: comitok/<oda>/terbiyeci (saklı). Pixel'in durumu: /terbiyeci/durum (saklı). Görüntü isteği: /terbiyeci/istek → /foto, /cevap.
+  // Alan: kedinin ayaklarının (kutunun alt ortası) düşmesi gereken dikdörtgen, görüntüye göre 0-1 arası [x,y,g,y].
+  var tbAyar=null, tbDurumM=null, tbFotoId="", tbDenemeId="", tbFotoTik=null, tbDenemeTik=null;
+  var tbAlan={environment:null,user:null}, tbResim={environment:null,user:null}, tbDegisti=false;
+  var TB_CAN={environment:"tbCanEnv",user:"tbCanUser"};
+  function tbA(){ var a=tbAyar||{}; return {acik:!!a.acik,buyuk:a.buyuk!==false,alan:{environment:(a.alan&&a.alan.environment)||null,user:(a.alan&&a.alan.user)||null}}; }
+  function tbNot(t){ var n=E("tbNot"); if(n) n.textContent=t||""; }
+  function tbMesaj(ek,m){
+    if(!m||typeof m!=="object") return;
+    if(ek===""){ tbAyar=m; if(!tbDegisti){ var a=tbA(); tbAlan={environment:a.alan.environment,user:a.alan.user}; tbCizHepsi(); } tbArayuz(); return; }
+    if(ek==="/durum"){ tbDurumM=m; tbArayuz(); return; }
+    if(ek==="/foto"&&m.id===tbFotoId){
+      clearTimeout(tbFotoTik); tbFotoId=""; E("tbFotoBtn").disabled=false;
+      if(m.hata||!m.g){ tbNot("Görüntü alınamadı: "+(m.hata||"bilinmeyen hata")+"."); return; }
+      var sayi=0;
+      ["environment","user"].forEach(function(y){
+        if(!m.g[y]){ tbResim[y]=null; return; }
+        var r=new Image(); r.onload=function(){ tbResim[y]=r; tbCiz(y); }; r.src=m.g[y]; sayi++;
+      });
+      E("tbCizim").classList.remove("gizle");
+      tbNot(sayi?"Görüntüler geldi. Alanları çizip Kaydet'e bas.":"Görüntü gelmedi.");
+      return;
+    }
+    if(ek==="/cevap"&&m.id===tbDenemeId){ clearTimeout(tbDenemeTik); tbDenemeId=""; E("tbDenemeBtn").disabled=false; tbNot(m.m||(m.ok?"Gönderildi.":"Olmadı.")); }
+  }
+  function tbYayinla(degis){
+    if(!yonetici()){ tbNot("Bu ayarı sadece yönetici değiştirebilir."); return false; }
+    if(!(istemci&&istemci.connected&&kod)){ tbNot("Sunucuya bağlı değil, biraz sonra tekrar dene."); return false; }
+    var a=tbA(); Object.keys(degis||{}).forEach(function(k){ a[k]=degis[k]; });
+    a.z=Date.now(); a.ad=benimAdim();
+    istemci.publish("comitok/"+kod+"/terbiyeci",JSON.stringify(a),{retain:true});
+    tbAyar=a; yaz("Terbiyeci ayarı gönderildi: "+(a.acik?"açık":"kapalı")+".");
+    tbArayuz(); return true;
+  }
+  function tbSaat(z){ var d=new Date(z); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); }
+  function tbArayuz(){
+    if(!E("tbAcik")) return;
+    var a=tbA(), d=tbDurumM;
+    E("tbAcik").checked=a.acik; E("tbBuyuk").checked=a.buyuk;
+    var t="-", c="";
+    if(d){
+      var eski=Date.now()-(Number(d.z)||0)>15*60000;
+      if(d.calisiyor){ t="izliyor"+(d.karanlik?" · karanlık, kör":""); c=d.karanlik?"uyari":"iyi"; }
+      else { t=d.neden==="kapalı"?"kapalı":("bekliyor: "+d.neden); c=d.neden==="kapalı"?"":"uyari"; }
+      if(eski){ t+=" (Pixel'den "+tbSaat(d.z)+"'den beri haber yok)"; c="uyari"; }
+    }
+    E("tbDurum").textContent=t; E("tbDurum").className=c;
+    E("tbBugunY").textContent=d?(d.bugun+" kez"+(d.son&&d.son.z?" · son: "+tbSaat(d.son.z)+" "+(d.son.yer==="user"?"masa":"tezgah"):"")):"-";
+    var uyari=[];
+    if(!gkA().konu) uyari.push("Bildirim için önce Gizlilik'te \"Oluştur\"a bas ve ntfy'de o konuya abone ol.");
+    if(a.acik&&!a.alan.environment&&!a.alan.user) uyari.push("Henüz alan çizilmedi: \"Görüntüleri al\"a bas.");
+    E("tbUyari").textContent=uyari.join(" ");
+    E("tbKaydetBtn").textContent=tbDegisti?"Alanları kaydet (kaydedilmedi)":"Alanları kaydet";
+  }
+  function tbCiz(y){
+    var c=E(TB_CAN[y]), r=tbResim[y]; if(!c) return;
+    var x=c.getContext("2d");
+    if(r){ c.width=r.naturalWidth; c.height=r.naturalHeight; x.drawImage(r,0,0); }
+    else { c.width=300; c.height=400; x.fillStyle="#222"; x.fillRect(0,0,c.width,c.height); x.fillStyle="#aaa"; x.font="20px sans-serif"; x.fillText("görüntü yok",90,200); }
+    var al=tbAlan[y];
+    if(al){
+      x.fillStyle="rgba(255,59,48,0.25)"; x.strokeStyle="#ff3b30"; x.lineWidth=Math.max(2,c.width/120);
+      x.fillRect(al[0]*c.width,al[1]*c.height,al[2]*c.width,al[3]*c.height);
+      x.strokeRect(al[0]*c.width,al[1]*c.height,al[2]*c.width,al[3]*c.height);
+    }
+  }
+  function tbCizHepsi(){ tbCiz("environment"); tbCiz("user"); }
+  // Parmakla sürükleyerek dikdörtgen çizme
+  ["environment","user"].forEach(function(y){
+    var c=E(TB_CAN[y]); if(!c) return;
+    var bas=null;
+    function nokta(e){ var b=c.getBoundingClientRect(); return [Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))]; }
+    function alanYap(p,q){ return [Math.min(p[0],q[0]),Math.min(p[1],q[1]),Math.abs(p[0]-q[0]),Math.abs(p[1]-q[1])].map(function(v){ return +v.toFixed(3); }); }
+    c.addEventListener("pointerdown",function(e){ if(!tbResim[y]) return; e.preventDefault(); bas=nokta(e); try{ c.setPointerCapture(e.pointerId); }catch(h){} });
+    c.addEventListener("pointermove",function(e){ if(!bas) return; e.preventDefault(); tbAlan[y]=alanYap(bas,nokta(e)); tbCiz(y); });
+    function bitir(e){ if(!bas) return; var a=alanYap(bas,nokta(e)); bas=null; tbAlan[y]=(a[2]>0.02&&a[3]>0.02)?a:tbAlan[y]; tbDegisti=true; tbCiz(y); tbArayuz(); }
+    c.addEventListener("pointerup",bitir); c.addEventListener("pointercancel",function(){ bas=null; });
+  });
+  E("tbSilEnv").onclick=function(){ tbAlan.environment=null; tbDegisti=true; tbCiz("environment"); tbArayuz(); };
+  E("tbSilUser").onclick=function(){ tbAlan.user=null; tbDegisti=true; tbCiz("user"); tbArayuz(); };
+  E("tbKaydetBtn").onclick=function(){
+    if(tbYayinla({alan:{environment:tbAlan.environment,user:tbAlan.user}})){ tbDegisti=false; tbArayuz(); tbNot("Alanlar kaydedildi. Terbiyeci açıksa Pixel yeni alanlarla yeniden başlar."); }
+  };
+  E("tbAcik").onchange=function(){ if(!tbYayinla({acik:E("tbAcik").checked})) E("tbAcik").checked=tbA().acik; };
+  E("tbBuyuk").onchange=function(){ if(!tbYayinla({buyuk:E("tbBuyuk").checked})) E("tbBuyuk").checked=tbA().buyuk; };
+  function tbIste(t){
+    if(!(istemci&&istemci.connected&&kod)){ tbNot("Sunucuya bağlı değil."); return null; }
+    var id=Math.random().toString(36).slice(2,10);
+    istemci.publish("comitok/"+kod+"/terbiyeci/istek",JSON.stringify({t:t,id:id}));
+    return id;
+  }
+  E("tbFotoBtn").onclick=function(){
+    var id=tbIste("foto"); if(!id) return;
+    tbFotoId=id; E("tbFotoBtn").disabled=true; tbNot("Pixel'den görüntü isteniyor…");
+    clearTimeout(tbFotoTik); tbFotoTik=setTimeout(function(){ if(tbFotoId===id){ tbFotoId=""; E("tbFotoBtn").disabled=false; tbNot("Pixel cevap vermedi. Pixel'de uygulama açık mı, kimse izlemiyor mu?"); } },25000);
+  };
+  E("tbDenemeBtn").onclick=function(){
+    var id=tbIste("deneme"); if(!id) return;
+    tbDenemeId=id; E("tbDenemeBtn").disabled=true; tbNot("Pixel'den deneme bildirimi isteniyor…");
+    clearTimeout(tbDenemeTik); tbDenemeTik=setTimeout(function(){ if(tbDenemeId===id){ tbDenemeId=""; E("tbDenemeBtn").disabled=false; tbNot("Pixel cevap vermedi."); } },30000);
+  };
+  setInterval(tbArayuz,60000);
+  tbCizHepsi();
+
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="28 Eki 20:55 geri";
+  var SAYFA_SURUM="28 Eki 21:02";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
