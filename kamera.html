@@ -178,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 25 Eki 00:57</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 29 Eki 21:40</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -338,7 +338,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="28 Eki 20:15";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="29 Eki 21:40";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -391,9 +391,34 @@
   // Pil durumu (Chrome Android okuyabiliyor); görüşme sırasında izleyene gider
   var pil=null;
   if(navigator.getBattery) navigator.getBattery().then(function(b){
-    function oku_(){ var yeni={y:Math.round(b.level*100),s:!!b.charging}; var degisti=!pil||pil.y!==yeni.y||pil.s!==yeni.s; pil=yeni; if(degisti) bildir(); }
+    function oku_(){ var yeni={y:Math.round(b.level*100),s:!!b.charging}; var degisti=!pil||pil.y!==yeni.y||pil.s!==yeni.s; pil=yeni; if(degisti){ pilOrnekle(); bildir(); } }
     oku_(); b.addEventListener("levelchange",oku_); b.addEventListener("chargingchange",oku_);
   }).catch(function(){});
+  // Pil tüketim hızı (29 Eki): şarjda değilken pilin düşüşü kaydedilir; son 1 saatten saatte yüzde hesaplanır.
+  // Şarja takılınca kayıt silinir. En az 30 dk veri yoksa "ölçülüyor".
+  var pilOrnek=[]; try{ pilOrnek=JSON.parse(oku("stand_pilOrnek")||"[]")||[]; }catch(h){ pilOrnek=[]; }
+  function pilOrnekle(){
+    if(!pil) return;
+    var simdi=Date.now();
+    if(pil.s){ if(pilOrnek.length){ pilOrnek=[]; yazLS("stand_pilOrnek","[]"); } return; }
+    var son=pilOrnek[pilOrnek.length-1];
+    if(son&&son.y<pil.y) pilOrnek=[];   // pil arttı (şarjdan yeni çıktı): baştan
+    son=pilOrnek[pilOrnek.length-1];
+    if(!son||son.y!==pil.y||simdi-son.z>600000) pilOrnek.push({z:simdi,y:pil.y});
+    pilOrnek=pilOrnek.filter(function(o){ return simdi-o.z<=7200000; }).slice(-60);
+    yazLS("stand_pilOrnek",JSON.stringify(pilOrnek));
+  }
+  function pilHizi(){   // {h: saatte yüzde} ya da {o:true} (ölçülüyor) ya da null (şarjda / bilinmiyor)
+    if(!pil||pil.s) return null;
+    var simdi=Date.now();
+    if(!pilOrnek.length||simdi-pilOrnek[0].z<1800000) return {o:true};
+    var ilk=null;
+    for(var i=0;i<pilOrnek.length;i++){ if(simdi-pilOrnek[i].z<=3600000){ ilk=pilOrnek[i]; break; } }
+    if(!ilk||simdi-ilk.z<1800000){ ilk=pilOrnek.filter(function(o){ return simdi-o.z>=1800000; }).pop()||pilOrnek[0]; }
+    var saat_=(simdi-ilk.z)/3600000, dusus=Math.max(0,ilk.y-pil.y);
+    return {h:Math.round(dusus/saat_*10)/10};
+  }
+  setInterval(pilOrnekle,300000);
 
   function konu(son){ return "comitok/"+kod+"/goruntu/"+son; }
   // Bağlantı yokken gönderilenler kaybolmasın (23 Eki kaydı: Pixel uyanınca sunucu bağlantısı 5 sn koptu,
@@ -1522,7 +1547,7 @@
     else if(akis||kameraSoz) m={d:"kamera"};
     else if(beklemede) m={d:"hazir"};
     else m={d:"ekran"};
-    if(pil) m.pil={y:pil.y,s:pil.s};   // stand sayfasındaki Pixel kutusunda şarj (23 Eki)
+    if(pil){ m.pil={y:pil.y,s:pil.s}; var ph=pilHizi(); if(ph&&ph.o) m.pil.o=true; else if(ph) m.pil.h=Math.round(ph.h); }   // şarj (23 Eki), tüketim hızı (29 Eki)
     return m;
   }
   function pixelDurumYayinla(){
@@ -1977,15 +2002,25 @@
   function tbAyarGeldi(m){
     if(!m||typeof m!=="object") return;
     function al(a){ if(!Array.isArray(a)||a.length!==4) return null; var s=a.map(function(x){ return Math.max(0,Math.min(1,Number(x)||0)); }); return (s[2]>0.01&&s[3]>0.01)?s:null; }
-    var yeni={acik:!!m.acik,buyuk:m.buyuk!==false,alan:{environment:al(m.alan&&m.alan.environment),user:al(m.alan&&m.alan.user)}};
+    var pk=(m.pil===undefined||m.pil===null)?30:Math.max(0,Math.min(60,Math.round(Number(m.pil)||0)));   // pil koruması: 0 = kapalı (29 Eki)
+    var yeni={acik:!!m.acik,buyuk:m.buyuk!==false,pil:pk,alan:{environment:al(m.alan&&m.alan.environment),user:al(m.alan&&m.alan.user)}};
     var eski=JSON.stringify(tbAyar||{}), y=JSON.stringify(yeni);
     tbAyar=yeni; yazLS("stand_tbAyar",y);
-    if(eski!==y) yaz("Terbiyeci ayarı geldi: "+(yeni.acik?"açık":"kapalı")+" · tezgah alanı "+(yeni.alan.environment?"var":"yok")+" · masa alanı "+(yeni.alan.user?"var":"yok")+" · yakın kedi "+(yeni.buyuk?"sayılır":"sayılmaz")+".");
+    if(eski!==y) yaz("Terbiyeci ayarı geldi: "+(yeni.acik?"açık":"kapalı")+" · tezgah alanı "+(yeni.alan.environment?"var":"yok")+" · masa alanı "+(yeni.alan.user?"var":"yok")+" · yakın kedi "+(yeni.buyuk?"sayılır":"sayılmaz")+" · pil koruması "+(yeni.pil?"%"+yeni.pil:"kapalı")+".");
+    if(eski!==y){ tbKaranlikMola=false; tbKaranlikBas=0; }   // yeni ayarla ışığa yeniden bakılsın
     if(tb&&eski!==y) tbDur("ayar değişti");   // yeni alanlarla yeniden başlasın
     tbKontrol();
   }
   // Terbiyeci açık ve beklemedeyse ekran açık kalsın (uygulamada ekran kapalıyken kamera açılamıyor)
-  function tbEkranGerekli(){ return !!(tbAyar&&tbAyar.acik&&beklemede&&!kamKapaliMi()); }
+  // Pil korumasında ve karanlık molasında ekran bırakılır: Pixel normal bekleme gibi uyur (29 Eki)
+  function tbEkranGerekli(){ return !!(tbAyar&&tbAyar.acik&&beklemede&&!kamKapaliMi()&&!tbPilKoruma()&&!tbKaranlikMola); }
+  // ---------- Terbiyeci tasarrufu (29 Eki, Aşama 1) ----------
+  // Pil: şarjda değilken pil ayardaki yüzdenin altına inerse durur, şarja takınca devam eder.
+  // Karanlık: iki kamera 2 dk boyunca karanlıksa kameralar kapanır; ekran her uyandığında (en çok dakikada bir) ışığa bakılır.
+  // Isı: Pixel "çok zorlanıyor" olursa 5 dk mola.
+  var tbKaranlikMola=false, tbKaranlikBas=0, tbIsikSon=0, tbIsiMolaSon=0, tbPilUyarildi=false;
+  var TB_KARANLIK_SURE=120000, TB_ISIK_ARA=60000, TB_ISI_MOLA=300000, TB_AI_YOKLAMA=30000, TB_HAREKET_SURE=8000;
+  function tbPilKoruma(){ return !!(tbAyar&&tbAyar.pil&&pil&&!pil.s&&pil.y<tbAyar.pil); }
   function tbNeden(){
     if(!tbAyar||!tbAyar.acik) return "kapalı";
     if(!tbAyar.alan.environment&&!tbAyar.alan.user) return "alan çizilmedi";
@@ -1993,6 +2028,13 @@
     if(kamKapaliMi()) return "ev kamerası kapalı";
     if(!beklemede) return "bekleme modu kapalı";
     if(!gnBosta()) return "biri izliyor";
+    if(tbPilKoruma()) return "pil koruması";
+    if(Date.now()<tbIsiMolaSon) return "mola: ısındı";
+    if(tbKaranlikMola){
+      // ekran kapalıysa 10 dk'da bir uyandırılır, uyanınca ışığa bakılır
+      if(document.visibilityState!=="visible"&&APP&&Date.now()-tbUyanSon>600000){ tbUyanSon=Date.now(); try{ APP.uyan(); }catch(h){} }
+      return "mola: karanlık";
+    }
     if(document.visibilityState!=="visible"){
       if(APP&&Date.now()-tbUyanSon>300000){ tbUyanSon=Date.now(); try{ APP.uyan(); }catch(h){} }
       return "ekran kapalı";
@@ -2002,9 +2044,31 @@
     if(Date.now()<tbHataSonu) return "kamera açılamadı, 1 dk sonra tekrar";
     return "";
   }
+  // Karanlık molasında: kameraları kısa süre açıp ışığa bak (pozlama otursun diye 2,5 sn bekler)
+  function tbIsikBak(){
+    if(tbGecici||tbAciliyor||tb) return;
+    tbIsikSon=Date.now();
+    var nesil=++tbNesil, k={}, yonler=tbYonler(), olc={}; tbGecici=k;
+    var zincir=Promise.resolve();
+    yonler.forEach(function(y){ zincir=zincir.then(function(){
+      if(nesil!==tbNesil) throw {iptal:true};
+      return tbKamAc(y).then(function(o){ k[y]=o; return tbIlkKare(o.v,4000); })
+        .then(function(){ return new Promise(function(r){ setTimeout(r,2500); }); })
+        .then(function(){ olc[y]=tbParlaklik(k[y].v); tbKapat({x:k[y]}); delete k[y]; });
+    }); });
+    zincir.then(function(){
+      if(tbGecici===k) tbGecici=null;
+      if(nesil!==tbNesil) return;
+      var aydin=Object.keys(olc).some(function(y){ return olc[y]!=null&&olc[y]>=TB_KARANLIK+6; });
+      if(aydin){ tbKaranlikMola=false; tbKaranlikBas=0; yaz("Terbiyeci: ışık geldi, izlemeye dönüyor."); tbKontrol(); }
+    }).catch(function(){ tbKapat(k); if(tbGecici===k) tbGecici=null; });
+  }
   function tbKontrol(){
     var n=tbNeden();
     if(n!==tbNedenSon){ if(n&&n!=="kapalı"&&tbNedenSon!=="") yaz("Terbiyeci bekliyor: "+n+"."); tbNedenSon=n; }
+    if(n==="pil koruması"&&!tbPilUyarildi){ tbPilUyarildi=true; yaz("Terbiyeci: pil %"+pil.y+", pil koruması (sınır %"+tbAyar.pil+"). Şarja takınca devam eder."); tbMetinYolla("Terbiyeci durdu: pil %"+pil.y,"Pixel'in pili azaldı. Şarja takınca Terbiyeci kendiliğinden devam eder.","battery"); }
+    if(pil&&pil.s) tbPilUyarildi=false;
+    if(n==="mola: karanlık"&&document.visibilityState==="visible"&&Date.now()-tbIsikSon>=TB_ISIK_ARA) tbIsikBak();
     if(tbEkranGerekli()) ekranAcikTut(); else ekranBirak();
     if(n){ if(tb||tbAciliyor) tbDur(n); }
     else if(!tb&&!tbAciliyor) tbBaslat();
@@ -2012,13 +2076,14 @@
   }
   setInterval(tbKontrol,3000);
   function tbKamAc(y){
-    return navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:y},width:{ideal:640},height:{ideal:480},frameRate:{ideal:15}}})
+    // İzlerken saniyede 5 kare (29 Eki, tasarruf); video çekerken 15'e çıkar
+    return navigator.mediaDevices.getUserMedia({video:{facingMode:{exact:y},width:{ideal:640},height:{ideal:480},frameRate:{ideal:5}}})
       .then(function(s){
         var v=document.createElement("video"); v.muted=true; v.playsInline=true; v.autoplay=true;
         v.style.cssText="position:fixed;left:0;top:0;width:4px;height:4px;opacity:0.01;pointer-events:none";
         document.body.appendChild(v); v.srcObject=s;
         var p=v.play(); if(p&&p.catch) p.catch(function(){});
-        return {s:s,v:v,ilk:0,yok:0,kutu:null,isik:null,isikSon:0};
+        return {s:s,v:v,ilk:0,yok:0,kutu:null,isik:null,isikSon:0,kucuk:null,hareketSon:Date.now(),aiSon:0};
       });
   }
   function tbKapat(k){
@@ -2046,7 +2111,7 @@
     zincir.then(function(){
       tbAciliyor=false;
       if(nesil!==tbNesil||tbNeden()){ tbKapat(k); return; }
-      tb={k:k}; tbKaranlik=false;
+      tb={k:k}; tbKaranlik=false; tbKaranlikBas=0;
       yaz("Terbiyeci başladı: "+yonler.map(function(y){ return TB_AD[y]; }).join(" + ")+" izleniyor (sessiz gözlem).");
       clearTimeout(tbZaman); tbZaman=setTimeout(tbDongu,TB_ARALIK);
       tbDurumYaz();
@@ -2083,12 +2148,31 @@
       return Math.round(t/256);
     }catch(h){ return null; }
   }
+  // Ucuz hareket kontrolü (29 Eki): görüntü 64×48 gri küçültülür, önceki kareyle karşılaştırılır.
+  // Yapay zekâ sadece hareketten sonraki 8 sn, kedi sayılırken ve güvenlik için 30 sn'de bir çalışır.
+  function tbHareket(o){
+    try{
+      var c=tbHareket.c||(tbHareket.c=document.createElement("canvas")); c.width=64; c.height=48;
+      var x=c.getContext("2d",{willReadFrequently:true}); x.imageSmoothingEnabled=true; x.imageSmoothingQuality="medium";
+      x.drawImage(o.v,0,0,64,48);
+      var d=x.getImageData(0,0,64,48).data, g=new Uint8Array(3072), fark=0;
+      for(var i=0,j=0;j<3072;i+=4,j++) g[j]=(d[i]*77+d[i+1]*150+d[i+2]*29)>>8;
+      if(o.kucuk){ for(j=0;j<3072;j++){ if(Math.abs(g[j]-o.kucuk[j])>24) fark++; } }
+      o.kucuk=g;
+      return fark>=10;
+    }catch(h){ return true; }
+  }
   function tbBak(){
     if(!tb||tbKayit) return;   // video çekerken bakılmaz
-    var simdi=Date.now();
+    var simdi=Date.now(), aiCalisti=false;
     Object.keys(tb.k).forEach(function(y){
       var o=tb.k[y], v=o.v;
       if(v.readyState<2||!v.videoWidth) return;
+      if(simdi-o.isikSon>10000){ o.isikSon=simdi; o.isik=tbParlaklik(v); }
+      if(tbHareket(o)) o.hareketSon=simdi;
+      if(tbKaranlik&&!o.ilk) return;   // karanlıkta tanıma kör, boşuna çalışmasın
+      if(!(o.ilk||simdi-o.hareketSon<TB_HAREKET_SURE||simdi-o.aiSon>=TB_AI_YOKLAMA)) return;
+      o.aiSon=simdi; aiCalisti=true;
       var t=performance.now(); if(t<=tbTs) t=tbTs+1; tbTs=t;
       var r; try{ r=bulucu.detectForVideo(v,t); }catch(h){ return; }
       taniSure=Math.round(performance.now()-t);
@@ -2107,11 +2191,21 @@
         o.yok=0; o.kutu={b:kedi.boundingBox,skor:kedi.categories[0].score,neden:neden};
         if(simdi-o.ilk>=TB_SURE&&simdi-tbSonOlay>=TB_BEKLE) tbTetik(y,o);
       } else if(o.ilk){ o.yok++; if(o.yok>=2){ o.ilk=0; o.kutu=null; } }
-      if(simdi-o.isikSon>10000){ o.isikSon=simdi; o.isik=tbParlaklik(v); }
     });
-    isiOlc();
+    if(aiCalisti){
+      isiOlc();
+      if(isiDurum==="çok zorlanıyor"){
+        tbIsiMolaSon=Date.now()+TB_ISI_MOLA; sureler.length=0;
+        yaz("Terbiyeci: Pixel çok zorlandı, 5 dk mola veriyor."); tbKontrol(); return;
+      }
+    }
     var kar=Object.keys(tb.k).every(function(y){ return tb.k[y].isik!=null&&tb.k[y].isik<TB_KARANLIK; });
-    if(kar!==tbKaranlik){ tbKaranlik=kar; yaz(kar?"Terbiyeci: ev karanlık, tanıma zayıf (kör sayılır).":"Terbiyeci: ışık yeterli, normal izliyor."); tbDurumYaz(); }
+    if(kar!==tbKaranlik){ tbKaranlik=kar; tbKaranlikBas=kar?simdi:0; yaz(kar?"Terbiyeci: ev karanlık, tanıma duraklatıldı.":"Terbiyeci: ışık yeterli, normal izliyor."); tbDurumYaz(); }
+    if(tbKaranlik&&tbKaranlikBas&&simdi-tbKaranlikBas>=TB_KARANLIK_SURE){
+      tbKaranlikMola=true; tbIsikSon=simdi;
+      yaz("Terbiyeci: 2 dk'dır karanlık, kameralar kapanıyor (karanlık molası). Ekran uyandıkça ışığa bakılacak.");
+      tbKontrol();
+    }
   }
   // Fotoğraf: üstünde kırmızı alan ve sarı kedi kutusu
   function tbFoto(v,alan,kutu,genislik,kalite){
@@ -2132,6 +2226,12 @@
       .then(function(c){ if(!c.ok) throw new Error("ntfy "+c.status); yaz("Terbiyeci: "+ad+" gönderildi ("+Math.round(blob.size/1024)+" KB)."); return true; })
       .catch(function(h){ yaz("Terbiyeci: "+ad+" gönderilemedi ("+((h&&h.message)||h)+")."); return false; });
   }
+  function tbMetinYolla(baslik,mesaj,etiket){
+    var konu=tbKonu(); if(!konu) return;
+    fetch("https://ntfy.sh/"+encodeURIComponent(konu)+"?title="+encodeURIComponent(baslik)+"&tags="+encodeURIComponent(etiket||"cat")+"&priority=3",{method:"POST",body:mesaj})
+      .then(function(c){ if(!c.ok) throw new Error("ntfy "+c.status); yaz("Terbiyeci: bildirim gönderildi ("+baslik+")."); })
+      .catch(function(h){ yaz("Terbiyeci: bildirim gönderilemedi ("+((h&&h.message)||h)+")."); });
+  }
   function tbTetik(y,o){
     tbSonOlay=Date.now(); o.ilk=0;
     var gun=tbBugunGuncel(); gun.n++; yazLS("stand_tbBugun",JSON.stringify(gun));
@@ -2149,11 +2249,13 @@
     var tur=["video/mp4;codecs=avc1","video/mp4","video/webm;codecs=vp8","video/webm"].filter(function(t){ try{ return MediaRecorder.isTypeSupported(t); }catch(h){ return false; } })[0];
     var rec; try{ rec=new MediaRecorder(o.s,tur?{mimeType:tur,videoBitsPerSecond:1200000}:{videoBitsPerSecond:1200000}); }
     catch(h){ yaz("Terbiyeci: video kaydı başlamadı ("+((h&&h.message)||h)+")."); return; }
-    var parca=[], bas=Date.now();
+    var parca=[], bas=Date.now(), iz=o.s.getVideoTracks()[0];
+    function hiz(n){ try{ if(iz&&iz.readyState==="live") iz.applyConstraints({width:{ideal:640},height:{ideal:480},frameRate:{ideal:n}}).catch(function(){}); }catch(h){} }
+    hiz(15);
     tbKayit=rec;
     rec.ondataavailable=function(e){ if(e.data&&e.data.size) parca.push(e.data); };
     rec.onstop=function(){
-      clearTimeout(tbKayitZaman); if(tbKayit===rec) tbKayit=null;
+      clearTimeout(tbKayitZaman); if(tbKayit===rec) tbKayit=null; hiz(5);
       var b=new Blob(parca,{type:(rec.mimeType||tur||"video/webm").split(";")[0]});
       var sn=Math.round((Date.now()-bas)/1000);
       if(b.size<2000){ yaz("Terbiyeci: video boş çıktı."); return; }
@@ -2165,10 +2267,11 @@
   // Durum: telefon sayfası görür (saklı); değişince ve 5 dk'da bir
   function tbDurumYaz(){
     var n=tb?"":(tbAciliyor?"kameralar açılıyor":tbNeden());
-    var m={calisiyor:!!tb,neden:n,karanlik:!!(tb&&tbKaranlik),isik:tb?{environment:tb.k.environment?tb.k.environment.isik:null,user:tb.k.user?tb.k.user.isik:null}:null,
+    var m={calisiyor:!!tb,neden:n,karanlik:!!(tb&&tbKaranlik),pil:pil?pil.y:null,isik:tb?{environment:tb.k.environment?tb.k.environment.isik:null,user:tb.k.user?tb.k.user.isik:null}:null,
       bugun:tbBugunGuncel().n,son:tbOlay,surum:SURUM};
-    var yazi=tb?("izliyor"+(m.karanlik?" · karanlık, kör":"")):(n==="kapalı"?"kapalı":"bekliyor: "+n);
-    var d=E("dTb"); if(d) goster(d,yazi,tb?(m.karanlik?"uyari":"iyi"):"");
+    var mola=/^mola|^pil/.test(n);
+    var yazi=tb?("izliyor"+(m.karanlik?" · karanlık, duraklatıldı":"")):(n==="kapalı"?"kapalı":(mola?n:"bekliyor: "+n));
+    var d=E("dTb"); if(d) goster(d,yazi,tb?(m.karanlik?"uyari":"iyi"):(mola?"uyari":""));
     var j=JSON.stringify(m);
     if(j===tbDurumSon&&Date.now()-tbDurumZaman<300000) return;
     if(!(istemci&&istemci.connected)) return;
