@@ -178,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 30 Eki 00:30</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 30 Eki 20:15</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -338,7 +338,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="30 Eki 00:30";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="30 Eki 20:15";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2289,8 +2289,9 @@
     var q="?filename="+encodeURIComponent(ad)+"&title="+encodeURIComponent(baslik)+"&message="+encodeURIComponent(mesaj)+"&tags="+encodeURIComponent(etiket||"cat")+"&priority=4";
     return fetch("https://ntfy.sh/"+encodeURIComponent(konu)+q,{method:"PUT",body:blob})
       .then(function(c){ if(!c.ok) throw new Error("ntfy "+c.status); yaz("Terbiyeci: "+ad+" gönderildi ("+Math.round(blob.size/1024)+" KB)."); return true; })
-      .catch(function(h){ yaz("Terbiyeci: "+ad+" gönderilemedi ("+((h&&h.message)||h)+")."); return false; });
+      .catch(function(h){ tbSonHata=(h&&h.message)||String(h); yaz("Terbiyeci: "+ad+" gönderilemedi ("+tbSonHata+")."); return false; });
   }
+  var tbSonHata="";
   function tbMetinYolla(baslik,mesaj,etiket){
     var konu=tbKonu(); if(!konu) return;
     fetch("https://ntfy.sh/"+encodeURIComponent(konu)+"?title="+encodeURIComponent(baslik)+"&tags="+encodeURIComponent(etiket||"cat")+"&priority=3",{method:"POST",body:mesaj})
@@ -2400,6 +2401,9 @@
     if(m.t==="gunluk"){ tbYayin("gunluk",{id:m.id,satirlar:tbGunlukSatirlar()}); return; }
     if(m.t==="gunlukSil"){ tbGunluk=[]; yazLS("stand_tbGunluk","[]"); yaz("Terbiyeci günlüğü telefondan temizlendi."); tbGun("günlük temizlendi"); tbYayin("gunluk",{id:m.id,satirlar:tbGunlukSatirlar()}); return; }
     yaz("Terbiyeci: telefon sayfasından istek ("+(m.t==="foto"?"görüntüler":"deneme bildirimi")+").");
+    // 30 Eki: Deneme'nin her adımı telefona haber verilir (telefonda üstte görünür)
+    var adim=function(t){ if(m.t==="deneme"){ yaz("Terbiyeci deneme: "+t); tbYayin("adim",{id:m.id,m:t}); } };
+    adim(tb?"istek alındı, Terbiyeci çalışıyor, fotoğraf çekiliyor…":"istek alındı, kameralar açılıyor…");
     tbGoruntuAl().then(function(k){
       var gecici=k.gecici; delete k.gecici;
       function bitir(){ if(gecici){ tbKapat(k); if(tbGecici===k) tbGecici=null; } }
@@ -2413,16 +2417,20 @@
         })).then(function(){ bitir(); tbYayin("foto",{id:m.id,g:g}); yaz("Terbiyeci: görüntüler telefona gönderildi."); });
       }
       var y=k.environment?"environment":"user";
-      return tbFoto(k[y].v,tbAyar&&tbAyar.alan[y],null).then(function(b){
+      return tbFoto(k[y].v,tbAyar&&tbAyar.alan&&tbAyar.alan[y],null).then(function(b){
         bitir();
-        if(!tbKonu()){ tbYayin("cevap",{id:m.id,ok:false,m:"Bildirim konusu yok: Terbiyeci > Bildirimler > Oluştur."}); return; }
+        var konu=tbKonu();
+        if(!konu){ tbYayin("cevap",{id:m.id,ok:false,m:"Bildirim konusu yok: Ayarlar > Bildirimler > Terbiyeci > Oluştur."}); return; }
+        var kendi=!!(tbAyar&&tbAyar.konu&&tbAyar.konu===konu);
+        adim("fotoğraf çekildi ("+Math.round(((b&&b.size)||0)/1024)+" KB), "+(kendi?"Terbiyeci":"Gizlilik")+" konusuna gönderiliyor ("+konu.slice(0,12)+"…)…");
+        tbSonHata="";
         return tbYolla(b,"deneme.jpg","Terbiyeci deneme","Bildirim ve fotoğraf çalışıyor ("+saat().slice(0,5)+").","test_tube")
-          .then(function(ok){ tbYayin("cevap",{id:m.id,ok:ok,m:ok?"Deneme bildirimi gönderildi, telefonuna bak.":"Gönderilemedi, Pixel'in Kayıt'ına bakın."}); });
+          .then(function(ok){ tbYayin("cevap",{id:m.id,ok:ok,m:ok?"Deneme bildirimi gönderildi ("+(kendi?"Terbiyeci":"Gizlilik")+" konusu), telefonuna bak.":"ntfy'ye gönderilemedi: "+(tbSonHata||"bilinmeyen hata")+"."}); });
       });
     }).catch(function(h){
       var t=(h&&h.message)||String(h);
       yaz("Terbiyeci isteği yapılamadı: "+t+".");
-      tbYayin(m.t==="foto"?"foto":"cevap",{id:m.id,ok:false,hata:t,m:t});
+      tbYayin(m.t==="foto"?"foto":"cevap",{id:m.id,ok:false,hata:t,m:m.t==="deneme"?"Pixel deneme yapamadı: "+t+".":t});
     });
   }
 
