@@ -178,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 30 Eki 20:15</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 31 Eki 01:08</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -338,7 +338,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="30 Eki 20:15";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="31 Eki 01:08";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -391,7 +391,7 @@
   // Pil durumu (Chrome Android okuyabiliyor); görüşme sırasında izleyene gider
   var pil=null;
   if(navigator.getBattery) navigator.getBattery().then(function(b){
-    function oku_(){ var yeni={y:Math.round(b.level*100),s:!!b.charging}; var degisti=!pil||pil.y!==yeni.y||pil.s!==yeni.s; pil=yeni; if(degisti){ pilOrnekle(); bildir(); } }
+    function oku_(){ var yeni={y:Math.round(b.level*100),s:!!b.charging}; var degisti=!pil||pil.y!==yeni.y||pil.s!==yeni.s; pil=yeni; if(degisti){ pilOrnekle(); bildir(); try{ pmSarjDegisti(); pmPilDegisti(); }catch(h){} } }
     oku_(); b.addEventListener("levelchange",oku_); b.addEventListener("chargingchange",oku_);
   }).catch(function(){});
   // Pil tüketim hızı (29 Eki): şarjda değilken pilin düşüşü kaydedilir; son 1 saatten saatte yüzde hesaplanır.
@@ -2007,32 +2007,133 @@
   // Bildirim konusu: Terbiyeci'nin kendi konusu, yoksa Gizlilik'teki (30 Eki)
   function tbKonu(){ return (tbAyar&&tbAyar.konu)||(gkAyarP&&gkAyarP.konu)||""; }
   function tbMaks(){ return (tbAyar&&tbAyar.bildirim)||3; }
-  // ---------- Terbiyeci günlüğü (30 Eki): Pixel'de son 7 gün; telefon sayfası ister (terbiyeci/istek → /gunluk) ----------
+  // ---------- Terbiyeci günlüğü (30 Eki; 31 Eki: 14 gün): Pixel'de son 14 gün; telefon sayfası ister (terbiyeci/istek → /gunluk) ----------
   var tbGunluk=[]; try{ tbGunluk=JSON.parse(oku("stand_tbGunluk")||"[]")||[]; }catch(h){ tbGunluk=[]; }
   function tbGun(t){
     var z=Date.now();
     tbGunluk.push({z:z,t:String(t)});
-    if(tbGunluk.length>1500||(tbGunluk.length&&z-tbGunluk[0].z>7*86400000)) tbGunluk=tbGunluk.filter(function(x){ return z-x.z<=7*86400000; }).slice(-1500);
+    if(tbGunluk.length>3000||(tbGunluk.length&&z-tbGunluk[0].z>14*86400000)) tbGunluk=tbGunluk.filter(function(x){ return z-x.z<=14*86400000; }).slice(-3000);
     yazLS("stand_tbGunluk",JSON.stringify(tbGunluk));
   }
   var TB_GUN_AD=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"], TB_AY=["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
   function tbIki(n){ return ("0"+n).slice(-2); }
   function tbSa(z){ var d=new Date(z); return tbIki(d.getHours())+":"+tbIki(d.getMinutes()); }
   function tbGunlukSatirlar(){
-    return tbGunluk.slice(-1000).map(function(x){ var d=new Date(x.z); return {g:d.getDate()+" "+TB_AY[d.getMonth()]+" "+TB_GUN_AD[d.getDay()],s:tbSa(x.z),t:x.t}; });
+    return tbGunluk.slice(-2000).map(function(x){ var d=new Date(x.z); return {g:d.getDate()+" "+TB_AY[d.getMonth()]+" "+TB_GUN_AD[d.getDay()],s:tbSa(x.z),t:x.t}; });
   }
   // Pil seviyesi (telefon sayfasındaki Pixel kutusuyla aynı eşikler)
   function pilSeviye(h){ return h<=4?"tasarruflu":(h<=8?"normal":(h<=15?"hızlı":"çok hızlı")); }
-  // Saat başı pil (sayfa açıkken)
-  var tbPilSaat=oku("stand_tbPilSaat")||"";
-  setInterval(function(){
+  // ---------- Pil ve mod takibi (31 Eki) ----------
+  // Pixel her 15 sn hangi modda olduğuna bakar: bekleme, Terbiyeci, Evi izle, Evi izle + takip.
+  // Pil her %1 düştüğünde, son düşüşten beri geçen süre modlara bölünür ve düşüş bu modlara paylaştırılır.
+  // Günlüğe: saat başı (o aralıkta ne kadar düştü, hangi modda ne kadar kalındı), her Evi izle oturumu,
+  // şarja takıldı / çıktı ve gece yarısı gün özeti (her modun saatte ortalama tüketimi) yazılır.
+  // Pixel'in ekranı kapalıyken sayfa uyuyabilir: 5 dk'dan uzun boşluk bekleme sayılır.
+  var PM_AD={bekleme:"bekleme",terbiyeci:"Terbiyeci",izle:"Evi izle",takip:"Evi izle + takip"}, PM_SIRA=["terbiyeci","izle","takip","bekleme"];
+  var pm=null; try{ pm=JSON.parse(oku("stand_pilMod")||"null"); }catch(h){ pm=null; }
+  function pmBos(){ return {z:Date.now(),y:pil?pil.y:null,mod:{},sarj:0}; }
+  if(!pm||typeof pm!=="object") pm={};
+  if(!pm.saat) pm.saat=pmBos();
+  if(!pm.gun) pm.gun={g:new Date().toDateString(),mod:{},nc:{},d:{},sarj:0};
+  if(!pm.ara) pm.ara={};
+  var pmIzle=null;   // süren Evi izle oturumu {bas, y0, takip(ms), adlar{}, sarj}
+  function pmMod(){
+    var izle=izleyenSayisi()>0||!!akis||!!pxAr;
+    if(izle) return takipAcik?"takip":"izle";
+    if(tb) return "terbiyeci";
+    return "bekleme";
+  }
+  function pmSure(ms){ var d=Math.round(ms/60000); return d<60?d+" dk":Math.floor(d/60)+" sa"+(d%60?" "+(d%60)+" dk":""); }
+  function pmModYazi(mod){
+    return PM_SIRA.filter(function(k){ return (mod[k]||0)>=60000; }).map(function(k){ return PM_AD[k]+" "+pmSure(mod[k]); }).join(", ");
+  }
+  function pmKaydet(){ yazLS("stand_pilMod",JSON.stringify({son:pm.son,saat:pm.saat,gun:pm.gun,ara:pm.ara})); }
+  function pmSaatYaz(simdi){
+    var a=pm.saat, d0=new Date(a.z), d1=new Date(simdi-1000);
+    var ad=tbSa(a.z)+"–"+tbSa(simdi)+(d0.toDateString()!==d1.toDateString()?" (gece yarısını geçti)":"");
+    var t;
+    if(pil&&a.y!=null){
+      var dus=a.y-pil.y, sa=(simdi-a.z)/3600000;
+      t=ad+" · pil %"+a.y+"→%"+pil.y;
+      if(a.sarj>=(simdi-a.z)*0.9) t+=" · şarjda";
+      else if(dus>0&&sa>=0.25){ var h=Math.round(dus/sa); t+=" · saatte %"+h+" ("+pilSeviye(h)+")"+(a.sarj>60000?" · "+pmSure(a.sarj)+" şarjda":""); }
+      else if(dus<0) t+=" · şarj oldu";
+      else t+=" · düşmedi";
+    } else t=ad+" · pil bilinmiyor";
+    var my=pmModYazi(a.mod); if(my) t+=" · "+my;
+    tbGun(t);
+  }
+  function pmGunYaz(){
+    var g=pm.gun, p=[];
+    PM_SIRA.forEach(function(k){
+      var top=g.mod[k]||0; if(top<60000) return;
+      var nc=g.nc[k]||0, d=g.d[k]||0, x=PM_AD[k]+" "+pmSure(top);
+      if(nc>=1200000) x+=" (saatte %"+(Math.round(d/(nc/3600000)*10)/10)+")"; else x+=" (az veri)";
+      p.push(x);
+    });
+    if(g.sarj>=60000) p.push("şarjda "+pmSure(g.sarj));
+    var gd=new Date(g.g); var gad=isNaN(gd.getTime())?g.g:(gd.getDate()+" "+TB_AY[gd.getMonth()]+" "+TB_GUN_AD[gd.getDay()]);
+    if(p.length) tbGun("GÜN ÖZETİ ("+gad+"): "+p.join(" · "));
+  }
+  function pmOrnek(){
+    var simdi=Date.now(), mod=pmMod(), son=pm.son;
+    if(son&&son.z){
+      var ms=simdi-son.z, m=son.mod;
+      if(ms>300000) m="bekleme";   // sayfa uyuyordu
+      if(ms>0&&ms<6*3600000){
+        var sarjda=!!(pil&&pil.s);
+        pm.saat.mod[m]=(pm.saat.mod[m]||0)+ms; pm.gun.mod[m]=(pm.gun.mod[m]||0)+ms;
+        if(sarjda){ pm.saat.sarj+=ms; pm.gun.sarj+=ms; }
+        else { pm.gun.nc[m]=(pm.gun.nc[m]||0)+ms; pm.ara[m]=(pm.ara[m]||0)+ms; }
+        if(pmIzle&&(son.mod==="takip")) pmIzle.takip+=Math.min(ms,300000);
+        if(pmIzle&&sarjda) pmIzle.sarj=true;
+      }
+    }
+    pm.son={z:simdi,mod:mod};
+    // gün değişti: özet
+    var bugun=new Date().toDateString();
+    if(pm.gun.g!==bugun){ pmGunYaz(); pm.gun={g:bugun,mod:{},nc:{},d:{},sarj:0}; }
+    // saat değişti: aralık satırı
+    if(new Date(pm.saat.z).getHours()!==new Date(simdi).getHours()||simdi-pm.saat.z>3600000){
+      pmSaatYaz(simdi); pm.saat={z:simdi,y:pil?pil.y:null,mod:{},sarj:0};
+    } else if(pm.saat.y==null&&pil) pm.saat.y=pil.y;
+    // Evi izle oturumu
+    var izliyor=mod==="izle"||mod==="takip";
+    if(izliyor){
+      if(!pmIzle) pmIzle={bas:simdi,y0:pil?pil.y:null,takip:0,adlar:{},sarj:!!(pil&&pil.s)};
+      Object.keys(izleyenler).forEach(function(id){ var a=izleyenler[id]&&izleyenler[id].ad; if(a) pmIzle.adlar[a]=1; });
+    } else if(pmIzle){
+      var o=pmIzle, ms_=simdi-o.bas; pmIzle=null;
+      if(ms_>=30000){
+        var t="Evi izle bitti"+(Object.keys(o.adlar).length?" · "+Object.keys(o.adlar).join(", "):"")+" · "+pmSure(Math.max(60000,ms_));
+        if(o.y0!=null&&pil) t+=" · pil %"+o.y0+"→%"+pil.y+(o.sarj?" (şarjdaydı)":"");
+        if(o.takip>=60000) t+=" · takip "+pmSure(o.takip);
+        tbGun(t);
+      }
+    }
+    pmKaydet();
+  }
+  // Pil %1 (ya da daha fazla) düşünce: düşüş, son düşüşten beri geçen sürede bulunulan modlara paylaştırılır
+  var pmSonY=null;
+  function pmPilDegisti(){
     if(!pil) return;
-    var d=new Date(), k=d.toDateString()+" "+d.getHours();
-    if(k===tbPilSaat) return;
-    tbPilSaat=k; yazLS("stand_tbPilSaat",k);
-    var ph=pilHizi();
-    tbGun("pil %"+pil.y+(pil.s?" · şarjda":(ph&&ph.h!=null?" · "+pilSeviye(Math.round(ph.h))+" (%"+Math.round(ph.h)+"/saat)":" · tüketim ölçülüyor")));
-  },60000);
+    if(pmSonY!=null&&!pil.s&&pil.y<pmSonY){
+      pmOrnek();
+      var dus=pmSonY-pil.y, top=0; Object.keys(pm.ara).forEach(function(k){ top+=pm.ara[k]; });
+      if(top>0) Object.keys(pm.ara).forEach(function(k){ pm.gun.d[k]=(pm.gun.d[k]||0)+dus*pm.ara[k]/top; });
+      else { var m=pmMod(); pm.gun.d[m]=(pm.gun.d[m]||0)+dus; }
+      pm.ara={}; pmKaydet();
+    }
+    if(pil.s) pm.ara={};
+    pmSonY=pil.y;
+  }
+  var pmSarjSon=null;
+  function pmSarjDegisti(){
+    if(!pil) return;
+    if(pmSarjSon!==null&&pmSarjSon!==pil.s){ pmOrnek(); tbGun((pil.s?"şarja takıldı":"şarjdan çıktı")+" · pil %"+pil.y); }
+    pmSarjSon=pil.s;
+  }
+  setInterval(pmOrnek,15000);
   // Çalışma saatleri: Pixel'in saatine göre (Pixel evde, Florida saatinde). Aralık gece yarısını geçebilir.
   function tbDk(t){ var p=String(t||"").split(":"); return (parseInt(p[0],10)||0)*60+(parseInt(p[1],10)||0); }
   function tbSaatIcinde(){
@@ -2053,17 +2154,23 @@
     var sa=m.saat&&typeof m.saat==="object"?m.saat:{gun:"hi",bas:"07:45",bit:"17:45"};   // varsayılan: hafta içi 07:45–17:45 (30 Eki)
     var saat_={gun:["hep","her","hi","hs"].indexOf(sa.gun)>=0?sa.gun:"hi",bas:/^\d\d:\d\d$/.test(sa.bas)?sa.bas:"07:45",bit:/^\d\d:\d\d$/.test(sa.bit)?sa.bit:"17:45"};
     var bn=Math.max(2,Math.min(5,Math.round(Number(m.bildirim)||3)));
-    var yeni={acik:!!m.acik,buyuk:m.buyuk!==false,pil:pk,konu:konu,saat:saat_,bildirim:bn,alan:{environment:al(m.alan&&m.alan.environment),user:al(m.alan&&m.alan.user)}};
+    var elle=Math.max(0,Math.min(Date.now()+12*3600000,Number(m.elle)||0));   // elle açıldıysa bu zamana kadar saat dışında da çalışır (31 Eki)
+    var yeni={acik:!!m.acik,buyuk:m.buyuk!==false,pil:pk,konu:konu,saat:saat_,bildirim:bn,elle:elle,alan:{environment:al(m.alan&&m.alan.environment),user:al(m.alan&&m.alan.user)}};
     var eski=JSON.stringify(tbAyar||{}), y=JSON.stringify(yeni);
     tbAyar=yeni; yazLS("stand_tbAyar",y);
+    if(eski!==y&&yeni.acik&&elle>Date.now()&&!(JSON.parse(eski).elle>Date.now())){ yaz("Terbiyeci elle açıldı: saat dışında da "+tbSa(elle)+"'e kadar çalışır."); tbGun("elle açıldı ("+tbSa(elle)+"'e kadar)"); }
     if(eski!==y) yaz("Terbiyeci ayarı geldi: "+(yeni.acik?"açık":"kapalı")+" · tezgah alanı "+(yeni.alan.environment?"var":"yok")+" · masa alanı "+(yeni.alan.user?"var":"yok")+" · yakın kedi "+(yeni.buyuk?"sayılır":"sayılmaz")+" · pil koruması "+(yeni.pil?"%"+yeni.pil:"kapalı")+" · saat "+(saat_.gun==="hep"?"her zaman":saat_.gun+" "+saat_.bas+"–"+saat_.bit)+" · en fazla "+bn+" bildirim · konu "+(konu?"Terbiyeci'nin":"Gizlilik'in")+".");
     if(eski!==y){ tbKaranlikMola=false; tbKaranlikBas=0; }   // yeni ayarla ışığa yeniden bakılsın
-    if(tb&&eski!==y) tbDur("ayar değişti");   // yeni alanlarla yeniden başlasın
+    // sadece elle süresi değiştiyse kameralar yeniden başlamasın
+    var eskiA={}; try{ eskiA=JSON.parse(eski); }catch(h){} var e2=JSON.parse(y); delete eskiA.elle; delete e2.elle;
+    if(tb&&JSON.stringify(eskiA)!==JSON.stringify(e2)) tbDur("ayar değişti");   // yeni alanlarla yeniden başlasın
     tbKontrol();
   }
   // Terbiyeci açık ve beklemedeyse ekran açık kalsın (uygulamada ekran kapalıyken kamera açılamıyor)
   // Pil korumasında ve karanlık molasında ekran bırakılır: Pixel normal bekleme gibi uyur (29 Eki)
-  function tbEkranGerekli(){ return !!(tbAyar&&tbAyar.acik&&beklemede&&!kamKapaliMi()&&!tbPilKoruma()&&!tbKaranlikMola&&tbSaatIcinde()); }
+  function tbEkranGerekli(){ return !!(tbAyar&&tbAyar.acik&&beklemede&&!kamKapaliMi()&&!tbPilKoruma()&&!tbKaranlikMola&&(tbSaatIcinde()||tbElle())); }
+  // Elle açma (31 Eki): telefon sayfasından açılınca 15 dk (geliştirme modu açıksa onun sonuna kadar) saate bakmadan çalışır
+  function tbElle(){ return !!(tbAyar&&tbAyar.elle&&tbAyar.elle>Date.now()); }
   // ---------- Terbiyeci tasarrufu (29 Eki, Aşama 1) ----------
   // Pil: şarjda değilken pil ayardaki yüzdenin altına inerse durur, şarja takınca devam eder.
   // Karanlık: iki kamera 2 dk boyunca karanlıksa kameralar kapanır; ekran her uyandığında (en çok dakikada bir) ışığa bakılır.
@@ -2075,7 +2182,7 @@
     if(!tbAyar||!tbAyar.acik) return "kapalı";
     if(!tbAyar.alan.environment&&!tbAyar.alan.user) return "alan çizilmedi";
     if(!tbKonu()) return "bildirim konusu yok";
-    if(!tbSaatIcinde()) return "çalışma saati dışında";
+    if(!tbSaatIcinde()&&!tbElle()) return "çalışma saati dışında";
     if(kamKapaliMi()) return "ev kamerası kapalı";
     if(!beklemede) return "bekleme modu kapalı";
     if(!gnBosta()) return "biri izliyor";
@@ -2369,7 +2476,7 @@
   // Durum: telefon sayfası görür (saklı); değişince ve 5 dk'da bir
   function tbDurumYaz(){
     var n=tb?"":(tbAciliyor?"kameralar açılıyor":tbNeden());
-    var m={calisiyor:!!tb,neden:n,karanlik:!!(tb&&tbKaranlik),pil:pil?pil.y:null,isik:tb?{environment:tb.k.environment?tb.k.environment.isik:null,user:tb.k.user?tb.k.user.isik:null}:null,
+    var m={calisiyor:!!tb,neden:n,elle:tbElle()&&!tbSaatIcinde()?tbAyar.elle:0,karanlik:!!(tb&&tbKaranlik),pil:pil?pil.y:null,isik:tb?{environment:tb.k.environment?tb.k.environment.isik:null,user:tb.k.user?tb.k.user.isik:null}:null,
       bugun:tbBugunGuncel().n,son:tbOlay,surum:SURUM,
       ziy:{environment:tbZiy.environment?{bas:tbZiy.environment.bas,n:tbZiy.environment.n}:null,user:tbZiy.user?{bas:tbZiy.user.bas,n:tbZiy.user.n}:null}};
     var mola=/^mola|^pil/.test(n);

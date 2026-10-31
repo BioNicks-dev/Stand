@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="30 Eki 20:15">
+<meta name="stand-surum" content="31 Eki 01:08">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -155,7 +155,8 @@
   .not{font-size:13px;color:var(--ink-soft);margin:6px 0 0}
   .tbIkili{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
   .tbIkili b{font-size:13px;font-weight:600}
-  .tbIkili canvas{width:100%;display:block;border-radius:8px;background:#000;touch-action:none;margin:4px 0 6px}
+  .tbIkili canvas{width:100%;display:block;border-radius:8px;background:#000;touch-action:pan-y;margin:4px 0 6px;outline:3px solid transparent;outline-offset:-3px}
+  .tbIkili canvas.ciziyor{touch-action:none;outline-color:var(--live)}
 
   /* gelen arama kutusu: her ekranin ustunde */
   #aramaKutu{position:fixed;left:0;right:0;top:0;z-index:50;background:var(--panel);
@@ -561,7 +562,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 30 Eki 20:15</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 31 Eki 01:08</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -806,7 +807,7 @@
       </div>
       <div class="satir" id="sayacSatir"><span>Gönderilen paket</span><b id="sayac">0</b></div>
       <pre id="kayit"></pre>
-      <p class="not gizle" id="tbGunlukNot" style="margin:8px 0 0">Son 7 günün ziyaretleri ve olayları, saat başı pil durumuyla. Sekmeye her basışta Pixel'den yeniden istenir. Temizle, Pixel'deki günlüğü siler.</p>
+      <p class="not gizle" id="tbGunlukNot" style="margin:8px 0 0">Son 14 günün ziyaretleri ve olayları. Pil satırlarında o arada hangi modda ne kadar kalındığı yazar (bekleme, Terbiyeci, Evi izle, takip); gece yarısı gün özeti her modun saatte ne kadar pil yediğini gösterir. Sekmeye her basışta Pixel'den yeniden istenir. Uzun takip için bu sekmede Temizle kapalı.</p>
       <div id="tbGunluk" class="gizle"><span class="not">Pixel'den isteniyor…</span></div>
     </div>
     </div>
@@ -865,10 +866,10 @@
           <p class="not" style="margin:0 0 8px">Kırmızı alan, kedinin ayaklarının basacağı yerdir. Tezgah için tezgahın üst yüzeyini, masa için masanın kenarını boydan boya çiz. Yeri alana katma, yoksa yerdeki kedi ya da oyuncak da sayılır. Çizmek için önce Pixel'den görüntüleri al.</p>
           <button class="kucuk genis" id="tbFotoBtn">Görüntüleri al</button>
         <div id="tbCizim" class="gizle">
-          <p class="not">Görüntünün üstünde parmağını sürükleyerek kırmızı alanı çiz, sonra Alanları kaydet'e bas.</p>
+          <p class="not">Görüntüler kilitli durur, yanlışlıkla dokunmak bir şey değiştirmez. Çiz'e bas, görüntünün üstünde parmağını sürükle; parmağını kaldırınca kilitlenir. Silmek için Çiz'e basıp görüntüye kısa dokun. Bitince Alanları kaydet'e bas.</p>
           <div class="tbIkili">
-            <div><b>Tezgah (arka kamera)</b><canvas id="tbCanEnv"></canvas><button class="kucuk genis" id="tbSilEnv">Alanı sil</button></div>
-            <div><b>Masa (ön kamera)</b><canvas id="tbCanUser"></canvas><button class="kucuk genis" id="tbSilUser">Alanı sil</button></div>
+            <div><b>Tezgah (arka kamera)</b><canvas id="tbCanEnv"></canvas><button class="kucuk genis" id="tbSilEnv">Çiz</button></div>
+            <div><b>Masa (ön kamera)</b><canvas id="tbCanUser"></canvas><button class="kucuk genis" id="tbSilUser">Çiz</button></div>
           </div>
           <button class="genis" id="tbKaydetBtn" style="margin-top:8px">Alanları kaydet</button>
         </div>
@@ -885,7 +886,7 @@
           <p class="not" style="margin:0">Pixel şarjda değilken pil bu seviyeye inerse Terbiyeci durur ve sana haber verir. Şarja takınca kendiliğinden devam eder.</p>
           <p class="not">Pil tasarrufu her zaman açık: tanıma sadece hareket olunca çalışır, ev 2 dk karanlık kalırsa kameralar kapanır, Pixel çok zorlanırsa 5 dk mola verir.</p>
           <label>Bir ziyarette en fazla bildirim<select id="tbBildirimSec"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
-          <p class="not" style="margin:0">Kedi çıkınca fotoğraf ve video, 2. dakikada fotoğraf ve video, sonra 5., 10. ve 15. dakikada sadece fotoğraf (seçtiğin sayıya kadar). Kedi inince "indi" bildirimi her zaman gelir. Masa ve tezgah ayrı sayılır. Bildirim konusu Bildirimler bölümünde, günlük Kayıt'ın Terbiyeci sekmesinde.</p>
+          <p class="not" style="margin:0">Kedi çıkınca fotoğraf ve video, 2. dakikada fotoğraf ve video, sonra 5., 10. ve 15. dakikada sadece fotoğraf (seçtiğin sayıya kadar). Kedi inince "indi" bildirimi her zaman gelir. Masa ve tezgah ayrı sayılır. Bildirim konusu Bildirimler bölümünde, günlük Kayıt'ın Terbiyeci sekmesinde. Terbiyeci'yi elle açınca saat dışında da 15 dk çalışır (geliştirme modu açıksa onun sonuna kadar), sonra saat düzenine döner.</p>
         </details>
       </div>
     </div>
@@ -978,6 +979,7 @@
     var tbs=kySekme==="terbiyeci";
     E("kayit").classList.toggle("gizle",tbs); E("sayacSatir").classList.toggle("gizle",tbs);
     E("tbGunluk").classList.toggle("gizle",!tbs); E("tbGunlukNot").classList.toggle("gizle",!tbs);
+    E("temizleBtn").disabled=tbs;   // pil takibi uzun sürecek: günlük şimdilik silinmez (31 Eki)
     if(!tbs) E("kayit").textContent=kyMetin();
     Array.prototype.forEach.call(E("kySekmeler").children,function(b){
       var k=b.getAttribute("data-k"), y=kyYeni[k]||0;
@@ -2792,7 +2794,7 @@
   });
   // Temizle sadece bu ekranı temizler; kartlar ve Pixel kendi son satırlarını tutmaya devam eder
   E("temizleBtn").onclick=function(){
-    if(kySekme==="terbiyeci"){ if(confirm("Pixel'deki Terbiyeci günlüğü silinsin mi?")) tbGunlukIste(true); return; }
+    if(kySekme==="terbiyeci") return;
     bildiri(kySekme==="hepsi"?"Kayıt ekranı temizlendi":KY_AD[kySekme]+" sekmesi temizlendi");
     kyHafiza=kyHafiza.filter(function(x){ return kySekme!=="hepsi"&&x.k!==kySekme; });
     if(kySekme==="hepsi") Object.keys(kyYeni).forEach(function(k){ kyYeni[k]=0; });
@@ -3106,7 +3108,7 @@
   var tbAlan={environment:null,user:null}, tbResim={environment:null,user:null}, tbDegisti=false;
   var TB_CAN={environment:"tbCanEnv",user:"tbCanUser"};
   function tbA(){ var a=tbAyar||{}; var sa=(a.saat&&typeof a.saat==="object")?a.saat:{gun:"hi",bas:"07:45",bit:"17:45"};
-    return {acik:!!a.acik,buyuk:a.buyuk!==false,pil:(typeof a.pil==="number")?a.pil:30,konu:a.konu||"",saat:{gun:sa.gun||"hi",bas:sa.bas||"07:45",bit:sa.bit||"17:45"},bildirim:Number(a.bildirim)||3,alan:{environment:(a.alan&&a.alan.environment)||null,user:(a.alan&&a.alan.user)||null}}; }
+    return {acik:!!a.acik,buyuk:a.buyuk!==false,pil:(typeof a.pil==="number")?a.pil:30,konu:a.konu||"",saat:{gun:sa.gun||"hi",bas:sa.bas||"07:45",bit:sa.bit||"17:45"},bildirim:Number(a.bildirim)||3,elle:Number(a.elle)||0,alan:{environment:(a.alan&&a.alan.environment)||null,user:(a.alan&&a.alan.user)||null}}; }
   // 30 Eki: Terbiyeci yazıları da üstteki açılır yazıda (süren işler "…" ile biter, sonuç gelene kadar kalır)
   function tbNot(t,tur){ if(t) bildiri(t,/…$/.test(t)?30000:undefined,tur); }
   function tbMesaj(ek,m){
@@ -3120,9 +3122,9 @@
       var sayi=0;
       ["environment","user"].forEach(function(y){
         if(!m.g[y]){ tbResim[y]=null; return; }
-        var r=new Image(); r.onload=function(){ tbResim[y]=r; tbCiz(y); }; r.src=m.g[y]; sayi++;
+        var r=new Image(); r.onload=function(){ tbResim[y]=r; tbCiz(y); tbDugmeYaz(); }; r.src=m.g[y]; sayi++;
       });
-      E("tbCizim").classList.remove("gizle");
+      E("tbCizim").classList.remove("gizle"); tbKilitle();
       tbNot(sayi?"Görüntüler geldi. Alanları çizip Kaydet'e bas.":"Görüntü gelmedi.");
       return;
     }
@@ -3131,6 +3133,10 @@
     if(ek==="/cevap"&&m.id===tbDenemeId){ clearTimeout(tbDenemeTik); tbDenemeId=""; E("tbDenemeBtn").disabled=false;
       var dm=m.m||(m.ok?"Gönderildi.":"Olmadı."); bildiri(dm,m.ok?5000:9000,m.ok?"bilgi":"hata"); yaz("Terbiyeci deneme: "+dm); }
   }
+  // Elle açma (31 Eki): açınca 15 dk (geliştirme modu açıksa onun sonuna kadar) saat dışında da çalışır
+  var TB_ELLE=15*60000;
+  function tbElleSonu(){ return Math.max(Date.now()+TB_ELLE,gmBitis>Date.now()?gmBitis:0); }
+  function tbElleYazi(d){ var k=(Number(d&&d.elle)||0)-Date.now(); return k>0?"elle açık, "+Math.max(1,Math.ceil(k/60000))+" dk kaldı":""; }
   function tbYayinla(degis){
     if(!yonetici()){ tbNot("Bu ayarı sadece yönetici değiştirebilir."); return false; }
     if(!(istemci&&istemci.connected&&kod)){ tbNot("Sunucuya bağlı değil, biraz sonra tekrar dene."); return false; }
@@ -3154,7 +3160,7 @@
     var t="-", c="";
     if(d){
       var eski=Date.now()-(Number(d.z)||0)>15*60000;
-      if(d.calisiyor){ t="izliyor"+(d.karanlik?" · karanlık, duraklatıldı":""); c=d.karanlik?"uyari":"iyi"; }
+      if(d.calisiyor){ t="izliyor"+(d.karanlik?" · karanlık, duraklatıldı":"")+(tbElleYazi(d)?" · "+tbElleYazi(d):""); c=d.karanlik?"uyari":"iyi"; }
       else if(d.neden==="pil koruması"){ t="pil koruması"+(d.pil!=null?" (%"+d.pil+")":"")+" · şarja takınca devam eder"; c="kotu"; }
       else if(/^mola/.test(d.neden||"")){ t=d.neden; c="uyari"; }
       else if(d.neden==="çalışma saati dışında"){ t="çalışma saati dışında"; c=""; }
@@ -3179,7 +3185,7 @@
     var a=tbA(), d=tbDurumM, t="bilinmiyor", c="soluk";
     if(tbAyar&&!a.acik) t="kapalı";
     else if(tbAyar&&d){
-      if(d.calisiyor){ t=d.karanlik?"izliyor · karanlık":"izliyor"; c=d.karanlik?"amber":"iyi"; }
+      if(d.calisiyor){ t=(d.karanlik?"izliyor · karanlık":"izliyor")+(tbElleYazi(d)?" · "+tbElleYazi(d):""); c=d.karanlik?"amber":"iyi"; }
       else if(d.neden==="pil koruması"){ t="pil koruması"+(d.pil!=null?" (%"+d.pil+")":""); c="kotu"; }
       else if(/^mola/.test(d.neden||"")){ t=d.neden; c="amber"; }
       else if(d.neden==="çalışma saati dışında"){ t="çalışma saati dışında"; }
@@ -3213,7 +3219,7 @@
     }
     tbKutuOnay=false; clearTimeout(tbKutuTik);
     var yeni=!tbA().acik;
-    if(tbYayinla({acik:yeni})) goster("gTb",yeni?"açılıyor…":"kapatılıyor…","soluk");
+    if(tbYayinla({acik:yeni,elle:yeni?tbElleSonu():0})) goster("gTb",yeni?"açılıyor…":"kapatılıyor…","soluk");
     else goster("gTb","sunucuya bağlı değil, sonra tekrar dene","kotu");
   }
   E("tbKutu").onclick=tbKutuDokun;
@@ -3283,23 +3289,54 @@
     }
   }
   function tbCizHepsi(){ tbCiz("environment"); tbCiz("user"); }
-  // Parmakla sürükleyerek dikdörtgen çizme
+  // Alan çizimi (31 Eki): görüntüler kilitli. Altındaki tek düğme duruma göre Çiz / Vazgeç / Geri al olur.
+  // Çiz: o görüntü çizime açılır (yeşil kenar). Parmak kalkınca alan kalır ve görüntü yine kilitlenir.
+  // Çizim açıkken sürüklemeden kısa dokunuş: "alan silinsin mi?" sorusu. Geri al 10 sn görünür, sonra yine Çiz olur.
+  var TB_DUGME={environment:"tbSilEnv",user:"tbSilUser"}, TB_YER_AD={environment:"Tezgah",user:"Masa"};
+  var tbCizAcik={environment:false,user:false}, tbGeri={environment:undefined,user:undefined}, tbCizBas={}, tbGeriTik={};
+  function tbGeriKur(y,once){ tbGeri[y]=once; clearTimeout(tbGeriTik[y]); tbGeriTik[y]=setTimeout(function(){ tbGeri[y]=undefined; tbDugmeYaz(); },10000); }
+  function tbDugmeYaz(){
+    ["environment","user"].forEach(function(y){
+      var b=E(TB_DUGME[y]), c=E(TB_CAN[y]); if(!b||!c) return;
+      b.textContent=tbCizAcik[y]?"Vazgeç":(tbGeri[y]!==undefined?"Geri al":"Çiz");
+      b.disabled=!tbResim[y]&&!tbCizAcik[y]&&tbGeri[y]===undefined;
+      c.classList.toggle("ciziyor",tbCizAcik[y]);
+    });
+  }
+  function tbKilitle(){ tbCizAcik={environment:false,user:false}; tbGeri={environment:undefined,user:undefined}; tbDugmeYaz(); }
   ["environment","user"].forEach(function(y){
     var c=E(TB_CAN[y]); if(!c) return;
     var bas=null;
     function nokta(e){ var b=c.getBoundingClientRect(); return [Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))]; }
     function alanYap(p,q){ return [Math.min(p[0],q[0]),Math.min(p[1],q[1]),Math.abs(p[0]-q[0]),Math.abs(p[1]-q[1])].map(function(v){ return +v.toFixed(3); }); }
-    c.addEventListener("pointerdown",function(e){ if(!tbResim[y]) return; e.preventDefault(); bas=nokta(e); try{ c.setPointerCapture(e.pointerId); }catch(h){} });
+    c.addEventListener("pointerdown",function(e){ if(!tbCizAcik[y]||!tbResim[y]) return; e.preventDefault(); bas=nokta(e); tbCizBas[y]=tbAlan[y]; try{ c.setPointerCapture(e.pointerId); }catch(h){} });
     c.addEventListener("pointermove",function(e){ if(!bas) return; e.preventDefault(); tbAlan[y]=alanYap(bas,nokta(e)); tbCiz(y); });
-    function bitir(e){ if(!bas) return; var a=alanYap(bas,nokta(e)); bas=null; tbAlan[y]=(a[2]>0.02&&a[3]>0.02)?a:tbAlan[y]; tbDegisti=true; tbCiz(y); tbArayuz(); }
-    c.addEventListener("pointerup",bitir); c.addEventListener("pointercancel",function(){ bas=null; });
+    function bitir(e){
+      if(!bas) return;
+      var a=alanYap(bas,nokta(e)), once=tbCizBas[y]; bas=null; tbCizAcik[y]=false;
+      if(a[2]>0.02&&a[3]>0.02){ tbAlan[y]=a; tbGeriKur(y,once); tbDegisti=true; tbNot(TB_YER_AD[y]+" alanı çizildi. Beğenmezsen 10 sn içinde Geri al, beğendiysen Alanları kaydet."); }
+      else {
+        tbAlan[y]=once; tbCiz(y);
+        if(once&&confirm(TB_YER_AD[y]+" alanı silinsin mi?")){ tbAlan[y]=null; tbGeriKur(y,once); tbDegisti=true; tbNot(TB_YER_AD[y]+" alanı silindi. Alanları kaydet'e bas."); }
+        else tbNot("Çizim kapandı, bir şey değişmedi.");
+      }
+      tbCiz(y); tbDugmeYaz(); tbArayuz();
+    }
+    c.addEventListener("pointerup",bitir);
+    c.addEventListener("pointercancel",function(){ if(!bas) return; bas=null; tbAlan[y]=tbCizBas[y]; tbCizAcik[y]=false; tbCiz(y); tbDugmeYaz(); });
+    E(TB_DUGME[y]).onclick=function(){
+      if(tbCizAcik[y]){ tbCizAcik[y]=false; tbNot("Çizim kapandı, bir şey değişmedi."); }
+      else if(tbGeri[y]!==undefined){ tbAlan[y]=tbGeri[y]; tbGeri[y]=undefined; clearTimeout(tbGeriTik[y]); tbDegisti=true; tbCiz(y); tbArayuz(); tbNot(TB_YER_AD[y]+" alanı geri alındı."); }
+      else if(!tbResim[y]){ tbNot("Önce Görüntüleri al'a bas."); return; }
+      else { tbCizAcik[y]=true; tbNot(TB_YER_AD[y]+": parmağını görüntünün üstünde sürükle."); }
+      tbDugmeYaz();
+    };
   });
-  E("tbSilEnv").onclick=function(){ tbAlan.environment=null; tbDegisti=true; tbCiz("environment"); tbArayuz(); tbNot("Tezgah alanı silindi. Alanları kaydet'e bas."); };
-  E("tbSilUser").onclick=function(){ tbAlan.user=null; tbDegisti=true; tbCiz("user"); tbArayuz(); tbNot("Masa alanı silindi. Alanları kaydet'e bas."); };
+  tbDugmeYaz();
   E("tbKaydetBtn").onclick=function(){
-    if(tbYayinla({alan:{environment:tbAlan.environment,user:tbAlan.user}})){ tbDegisti=false; tbArayuz(); tbNot("Alanlar kaydedildi. Terbiyeci açıksa Pixel yeni alanlarla yeniden başlar."); }
+    if(tbYayinla({alan:{environment:tbAlan.environment,user:tbAlan.user}})){ tbDegisti=false; tbKilitle(); tbArayuz(); tbNot("Alanlar kaydedildi. Terbiyeci açıksa Pixel yeni alanlarla yeniden başlar."); }
   };
-  E("tbAcik").onchange=function(){ if(!tbYayinla({acik:E("tbAcik").checked})) E("tbAcik").checked=tbA().acik; };
+  E("tbAcik").onchange=function(){ var ac=E("tbAcik").checked; if(!tbYayinla({acik:ac,elle:ac?tbElleSonu():0})) E("tbAcik").checked=tbA().acik; };
   E("tbBuyuk").onchange=function(){ if(!tbYayinla({buyuk:E("tbBuyuk").checked})) E("tbBuyuk").checked=tbA().buyuk; };
   E("tbPil").onchange=function(){ var v=Number(E("tbPil").value)||0; if(tbYayinla({pil:v})) tbNot("Pil koruması: "+(v?"%"+v:"kapalı")+"."); else E("tbPil").value=String(tbA().pil); };
   function tbIste(t,sessiz){
@@ -3331,7 +3368,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="30 Eki 20:15";
+  var SAYFA_SURUM="31 Eki 01:08";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
