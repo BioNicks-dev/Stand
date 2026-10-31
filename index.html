@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="31 Eki 01:08">
+<meta name="stand-surum" content="31 Eki 01:26">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -562,7 +562,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 31 Eki 01:08</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 31 Eki 01:26</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -3348,7 +3348,7 @@
   E("tbFotoBtn").onclick=function(){
     var id=tbIste("foto"); if(!id) return;
     tbFotoId=id; E("tbFotoBtn").disabled=true; tbNot("Pixel'den görüntü isteniyor…");
-    clearTimeout(tbFotoTik); tbFotoTik=setTimeout(function(){ if(tbFotoId===id){ tbFotoId=""; E("tbFotoBtn").disabled=false; tbNot("Pixel cevap vermedi. Pixel'de uygulama açık mı, kimse izlemiyor mu?"); } },25000);
+    clearTimeout(tbFotoTik); tbFotoTik=setTimeout(function(){ if(tbFotoId===id){ tbFotoId=""; E("tbFotoBtn").disabled=false; tbNot("Pixel cevap vermedi. Pixel'de uygulama açık mı, kimse izlemiyor mu?"); } },40000);   // ekran kapalıysa Pixel önce uyanır (31 Eki)
   };
   // Pixel'den adım haberi geldikçe süre yeniden başlar; 30 sn hiç haber gelmezse "cevap vermedi"
   function tbDenemeSure(){
@@ -3368,7 +3368,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="31 Eki 01:08";
+  var SAYFA_SURUM="31 Eki 01:26";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

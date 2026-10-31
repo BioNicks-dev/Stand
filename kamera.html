@@ -178,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 31 Eki 01:08</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 31 Eki 01:26</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -338,7 +338,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="31 Eki 01:08";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="31 Eki 01:26";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2380,6 +2380,25 @@
     }
   }
   // Fotoğraf: üstünde kırmızı alan ve sarı kedi kutusu
+  // Deneme için (31 Eki): iki kamera yan yana tek fotoğrafta (solda tezgah, sağda masa), kayıtlı alanlar kırmızı çerçeveli
+  function tbIkiliFoto(k){
+    var ys=["environment","user"].filter(function(y){ return k[y]&&k[y].v&&k[y].v.videoWidth; });
+    if(!ys.length) return Promise.reject(new Error("kameralardan görüntü gelmedi"));
+    if(ys.length===1) return tbFoto(k[ys[0]].v,tbAyar&&tbAyar.alan&&tbAyar.alan[ys[0]],null);
+    var H=480, ara=8, ws=ys.map(function(y){ var v=k[y].v; return Math.round(v.videoWidth*H/v.videoHeight); });
+    var c=document.createElement("canvas"); c.width=ws[0]+ara+ws[1]; c.height=H;
+    var x=c.getContext("2d"); x.fillStyle="#000"; x.fillRect(0,0,c.width,c.height);
+    var sol=0;
+    ys.forEach(function(y,i){
+      var w=ws[i], al=tbAyar&&tbAyar.alan&&tbAyar.alan[y];
+      x.drawImage(k[y].v,sol,0,w,H);
+      if(al){ x.strokeStyle="#ff3b30"; x.lineWidth=4; x.strokeRect(sol+al[0]*w,al[1]*H,al[2]*w,al[3]*H); }
+      x.font="bold 22px sans-serif"; x.fillStyle="rgba(0,0,0,.55)"; x.fillRect(sol+8,8,y==="environment"?92:72,32);
+      x.fillStyle="#fff"; x.fillText(y==="environment"?"Tezgah":"Masa",sol+16,32);
+      sol+=w+ara;
+    });
+    return new Promise(function(r){ c.toBlob(function(b){ r(b); },"image/jpeg",0.8); });
+  }
   function tbFoto(v,alan,kutu,genislik,kalite){
     return new Promise(function(r){
       var vw=v.videoWidth, vh=v.videoHeight, o=genislik?genislik/vw:1;
@@ -2490,11 +2509,26 @@
   }
   function tbYayin(ne,m){ if(istemci&&istemci.connected) try{ istemci.publish("comitok/"+kod+"/terbiyeci/"+ne,JSON.stringify(m)); }catch(h){} }
   // Telefon sayfasından: iki kameranın anlık görüntüsü (alan çizmek için) ya da deneme bildirimi
-  function tbGoruntuAl(){
+  // 31 Eki: ekran kapalıysa Pixel kendini uyandırır ve ekran açılınca isteğe kendisi devam eder (tekrar basmak gerekmez)
+  function tbGorunurBekle(ms){
+    return new Promise(function(r){
+      if(document.visibilityState==="visible"){ r(true); return; }
+      var bitti=false;
+      function ok(){ if(bitti||document.visibilityState!=="visible") return; bitti=true; document.removeEventListener("visibilitychange",ok); clearTimeout(t); setTimeout(function(){ r(true); },800); }
+      var t=setTimeout(function(){ if(bitti) return; bitti=true; document.removeEventListener("visibilitychange",ok); r(document.visibilityState==="visible"); },ms);
+      document.addEventListener("visibilitychange",ok);
+    });
+  }
+  function tbGoruntuAl(haber,uyandi){
     if(tb) return Promise.resolve(tb.k);
     if(!gnBosta()) return Promise.reject(new Error("biri izliyor, sonra tekrar deneyin"));
     if(tbAciliyor) return Promise.reject(new Error("Terbiyeci açılıyor, birkaç saniye sonra tekrar deneyin"));
-    if(document.visibilityState!=="visible"){ if(APP) try{ APP.uyan(); }catch(h){} return Promise.reject(new Error("Pixel'in ekranı kapalıydı, açılıyor. 10 sn sonra tekrar deneyin")); }
+    if(document.visibilityState!=="visible"){
+      if(!APP||uyandi) return Promise.reject(new Error("Pixel'in ekranı açılamadı, ekranına dokunup tekrar deneyin"));
+      if(haber) haber("ekran kapalıydı, uyandırılıyor…");
+      tbUyanSon=Date.now(); try{ APP.uyan(); }catch(h){}
+      return tbGorunurBekle(15000).then(function(){ return tbGoruntuAl(haber,true); });
+    }
     if(tbGecici) return Promise.reject(new Error("önceki istek sürüyor"));
     var nesil=++tbNesil, k={}; tbGecici=k;
     return tbKamAc("environment").then(function(o){ k.environment=o; return tbKamAc("user"); })
@@ -2511,7 +2545,7 @@
     // 30 Eki: Deneme'nin her adımı telefona haber verilir (telefonda üstte görünür)
     var adim=function(t){ if(m.t==="deneme"){ yaz("Terbiyeci deneme: "+t); tbYayin("adim",{id:m.id,m:t}); } };
     adim(tb?"istek alındı, Terbiyeci çalışıyor, fotoğraf çekiliyor…":"istek alındı, kameralar açılıyor…");
-    tbGoruntuAl().then(function(k){
+    tbGoruntuAl(m.t==="deneme"?adim:null).then(function(k){
       var gecici=k.gecici; delete k.gecici;
       function bitir(){ if(gecici){ tbKapat(k); if(tbGecici===k) tbGecici=null; } }
       if(m.t==="foto"){
@@ -2523,15 +2557,15 @@
           });
         })).then(function(){ bitir(); tbYayin("foto",{id:m.id,g:g}); yaz("Terbiyeci: görüntüler telefona gönderildi."); });
       }
-      var y=k.environment?"environment":"user";
-      return tbFoto(k[y].v,tbAyar&&tbAyar.alan&&tbAyar.alan[y],null).then(function(b){
+      adim("fotoğraf çekiliyor…");
+      return tbIkiliFoto(k).then(function(b){
         bitir();
         var konu=tbKonu();
         if(!konu){ tbYayin("cevap",{id:m.id,ok:false,m:"Bildirim konusu yok: Ayarlar > Bildirimler > Terbiyeci > Oluştur."}); return; }
         var kendi=!!(tbAyar&&tbAyar.konu&&tbAyar.konu===konu);
         adim("fotoğraf çekildi ("+Math.round(((b&&b.size)||0)/1024)+" KB), "+(kendi?"Terbiyeci":"Gizlilik")+" konusuna gönderiliyor ("+konu.slice(0,12)+"…)…");
         tbSonHata="";
-        return tbYolla(b,"deneme.jpg","Terbiyeci deneme","Bildirim ve fotoğraf çalışıyor ("+saat().slice(0,5)+").","test_tube")
+        return tbYolla(b,"deneme.jpg","Terbiyeci deneme","Bildirim ve kameralar çalışıyor ("+saat().slice(0,5)+"). Solda tezgah, sağda masa; kırmızı çerçeve kayıtlı alan.","test_tube")
           .then(function(ok){ tbYayin("cevap",{id:m.id,ok:ok,m:ok?"Deneme bildirimi gönderildi ("+(kendi?"Terbiyeci":"Gizlilik")+" konusu), telefonuna bak.":"ntfy'ye gönderilemedi: "+(tbSonHata||"bilinmeyen hata")+"."}); });
       });
     }).catch(function(h){
