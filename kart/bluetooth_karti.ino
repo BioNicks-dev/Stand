@@ -43,6 +43,10 @@
 //     "coz": 1 gelirse (sarj yeri, Baslangic) kabloyu acan yol secilir: baslangica en yakin karsilik.
 //   - Donus/egme sayaci hafizada: stand 3 sn durunca yazilir, kart acilinca kaldigi yerden devam eder.
 //   - Konum komutu "ad" tasir; gidilirken durumda "hedef", varinca 4 sn "vardi" gider (sayfalarda yazi).
+//
+//  1 Kasim 2026:
+//   - Donus hizi 27'den 28.3 derece/sn'ye (ekran goruntusu olcumu: yavas 180 gercekte ~180, kart 171 sayiyordu).
+//     Sayfadan ayarlanir: Ayarlar > Kart ayarlari > Donus hizi (ayar "hiz", 20-40).
 // =====================================================================
 
 #include <ArduinoJson.h>
@@ -64,7 +68,7 @@
 
 // Kart imzasi ve surumu. Kablosuz guncellemede yanlis kartin dosyasi yuklenmesin diye
 // internet karti dosyada bu imzayi arar. Degistirmeyin.
-const char IMZA[] = "STANDKARTI:BLUETOOTH|31 Ekim 2026 · 1";
+const char IMZA[] = "STANDKARTI:BLUETOOTH|1 Kasım 2026 · 1";
 const char* surum() { return strchr(IMZA, '|') + 1; }
 
 bool gAktif = false;   // kablosuz guncelleme suruyor mu
@@ -138,7 +142,7 @@ const uint16_t ORTA = 510, SAPMA = 190;
 uint32_t ARALIK = 40;                 // paket araligi (ms); Serial Monitor'a h yazarak 20/30/40/60/80 arasinda degistirilir
 const uint32_t GECIKME = 250;         // standin harekete baslama gecikmesi (ms)
 const uint32_t YARIM_TUR = 6600;      // 180 derece (ms)
-const float DONUS_HIZI = 27.0;        // derece / saniye
+float DONUS_HIZI = 28.3;              // derece / saniye. 1 Kas: 27 -> 28.3 (olcum), sayfadan ayarlanir (hafiza "hiz")
 const float EGME_HIZI = 27.0;         // derece / saniye
 const uint32_t JOY_BEKLEME = 600;     // joystick komutu kesilirse dur (ms)
 const uint32_t UYANIK_TUT = 240000;   // 4 dk hareketsizlikte kucuk kipirdama
@@ -1606,6 +1610,7 @@ void komutGeldi(char tur, const char* json) {
     else if (!strcmp(ad, "y180"))    { yerli180Yonu = (int)(d["deger"] | 1) >= 0 ? 1 : -1; hafiza.putChar("y180", yerli180Yonu); }
     else if (!strcmp(ad, "aralik"))  { ARALIK = constrain((int)(d["deger"] | 40), 20, 200); hafiza.putUInt("aralik", ARALIK); }
     else if (!strcmp(ad, "uyandir")) { uyandirmaEsik = constrain((int)(d["deger"] | 10000), 0, 15000); hafiza.putUInt("uyandir2", uyandirmaEsik); }
+    else if (!strcmp(ad, "hiz"))     { float v = d["deger"] | 28.3f; DONUS_HIZI = constrain(v, 20.0f, 40.0f); hafiza.putFloat("hiz", DONUS_HIZI); Kayit.printf("Donus hizi: %.1f derece/sn\n", DONUS_HIZI); }
     else if (!strcmp(ad, "sinir"))   { int v = d["deger"] | 540; donusSiniri = v <= 0 ? 0 : constrain(v, 180, 1440); hafiza.putUShort("sinir", (uint16_t)donusSiniri); }   // 0: sinirsiz
     else if (!strcmp(ad, "kopru"))   { kopruAcik = d["deger"] | true; hafiza.putBool("kopru2", kopruAcik); if (!kopruAcik && kumandaBagli()) kumandaIstemci->disconnect(); }
     else if (!strcmp(ad, "yerel"))   { Kayit.println("Iki kart duzeninde yerel mod yok, ayar yok sayildi."); durumYayinla(); return; }
@@ -1774,6 +1779,7 @@ void durumYayinla() {
   a["uyandir"] = uyandirmaEsik;
   a["kopru"] = kopruAcik;
   a["sinir"] = (int)donusSiniri;
+  a["hiz"] = round(DONUS_HIZI * 10) / 10.0;
   a["yerel"] = false;
   a["kalib"] = kalibHedef;
   d["kumTersX"] = kumTersX;
@@ -2062,6 +2068,7 @@ void setup() {
   yerli180Yonu = hafiza.getChar("y180", 1);
   geriDonusMs = hafiza.getUInt("geri180", 3600);
   donusSiniri = hafiza.getUShort("sinir", 540);
+  DONUS_HIZI = constrain(hafiza.getFloat("hiz", 28.3f), 20.0f, 40.0f);
   netDonus = kayitliDonus = hafiza.getFloat("donus", 0);   // sayac kaldigi yerden (31 Ekim)
   netEgme = kayitliEgme = hafiza.getFloat("egme", 0);
   pcAdres = hafiza.getString("pcAdr", "");

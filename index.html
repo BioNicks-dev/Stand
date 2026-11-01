@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="31 Eki 23:53">
+<meta name="stand-surum" content="1 Kas 01:03">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -354,6 +354,21 @@
   #kBilgi{position:absolute;left:10px;bottom:7px;color:#fff;font-size:12px;opacity:.75;text-shadow:0 1px 2px #000;pointer-events:none}
   .kYuvarlak{position:absolute;top:8px;width:42px;height:42px;min-height:0;padding:0;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.35);font-size:18px;z-index:3}
   .kKapat{right:8px} .kAyar{left:8px}
+  /* Evi izle'de konum şeridi (1 Kas): büyük düzende (bilgisayar, telefon yan) konumlar görüntünün üstünde */
+  body:not(.buyukDuzen) #kKonumBtn{display:none}
+  body.gsStandsiz #kKonumBtn,body.gsStandsiz #kKonumSerit{display:none !important}
+  #kKonumSerit{position:absolute;left:calc(10px + var(--gs,0px));right:calc(10px + var(--gsa,0px));top:calc(60px + var(--gu,0px));z-index:6;
+    display:flex;gap:6px;overflow-x:auto;padding:2px;scrollbar-width:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  #kKonumSerit::-webkit-scrollbar{display:none}
+  #kKonumSerit.gizle{display:none}
+  #kKonumSerit button{flex-shrink:0;width:auto;min-height:38px;margin:0;padding:6px 14px;border-radius:19px;background:rgba(0,0,0,.55);color:#fff;
+    border:1px solid rgba(255,255,255,.4);font-size:14px;white-space:nowrap}
+  #kKonumSerit button.ortak{border-style:dashed}
+  #kKonumSerit button.sarj{border-color:#4ade80;color:#86efac;font-weight:600}
+  #kKonumSerit .bos{color:#fff;font-size:13px;padding:8px 10px;background:rgba(0,0,0,.55);border-radius:12px;white-space:nowrap}
+  body.konumSeritAcik.buyukDuzen #kBilgi{top:calc(108px + var(--gu))}
+  body.konumSeritAcik.buyukDuzen #kOda{top:calc(134px + var(--gu))}
+  body.konumSeritAcik.buyukDuzen #kSesKutu{top:calc(172px + var(--gu))}
   #kBilgi.uyar{color:#ff9a9a;opacity:1}
   #kEkran #kBilgi{background:none;border:0;padding:2px 4px;margin:0;min-height:0;width:auto;font:inherit;font-size:12px;pointer-events:auto;z-index:4;cursor:pointer}
   #kBilgi:empty{display:none}
@@ -561,6 +576,7 @@
     <button id="kBilgi" type="button" aria-label="Ayrıntılar"></button>
     <div id="kAyrinti" class="gizli"></div>
     <button class="kYuvarlak kAyar" id="kAyarBtn" aria-label="Ayarlar"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ayar"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button>
+    <div id="kKonumSerit" class="gizle" role="group" aria-label="Konumlar"></div>
     <button class="kYuvarlak kKapat" id="kKapatBtn" aria-label="Kamerayı kapat"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-kapat"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg></button>
     <div id="kOda" class="gizle" aria-label="Kim burada, kontrol kimde"></div>
     <div id="kSesKutu" class="gizle" role="dialog" aria-label="Ses seviyesi">
@@ -591,6 +607,7 @@
     <button id="kMikBtn" aria-label="Evdeki mikrofon" disabled style="display:none"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-mik"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Mikrofon</span></button>
     <button id="kGorBtn" aria-label="Görüntüyü aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gor"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Görüntü</span></button>
     <button id="kFenerBtn" aria-label="Feneri aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-fener"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Fener</span></button>
+    <button id="kKonumBtn" type="button" aria-label="Konumlar" aria-expanded="false"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.3" fill="currentColor"/></svg><span>Konum</span></button>
     <button id="kTakipBtn" aria-label="İnsan / kedi takibini aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-takip"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Takip</span></button>
   </div>
 </div>
@@ -602,7 +619,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 31 Eki 23:53</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 1 Kas 01:03</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -762,6 +779,7 @@
           <option value="360">± 360° (1 tur)</option><option value="450">± 450°</option>
           <option value="540">± 540° (1,5 tur)</option><option value="720">± 720° (2 tur)</option><option value="1440">± 1440° (4 tur, kablo yoksa)</option><option value="0">Sınırsız (kablo yoksa)</option>
         </select></label>
+        <label>Dönüş hızı (° / sn, ölçümle 28,3)<input type="number" id="kaHiz" min="20" max="40" step="0.1" inputmode="decimal" style="width:90px"></label>
         <label>Standın 180° yönü<select id="kaY180"><option value="1">Sağa</option><option value="-1">Sola</option></select></label>
         <label>WhatsApp menü açık kalma süresi<select id="kaUyandir">
           <option value="0">Kapalı</option><option value="6000">6 sn</option><option value="8000">8 sn</option>
@@ -2445,6 +2463,7 @@
     if(!E("sinirNot").classList.contains("gizle")) return true;                        // dönüş sınırı uyarısı
     if(!E("kAyrinti").classList.contains("gizli")) return true;                        // ayrıntı kutusu açık
     if(!E("kSesKutu").classList.contains("gizle")) return true;                        // ses kutusu açık
+    if(!E("kKonumSerit").classList.contains("gizle")) return true;                     // konum şeridi açık
     if(!E("ayarlar").classList.contains("gizle")) return true;                         // ayarlar açık
     return false;
   }
@@ -2635,9 +2654,9 @@
   padEl.addEventListener("pointerleave",function(o){ if(aktif) padBirak(o); });
 
   // ---------- konumlar (31 Eki) ----------
-  // Kendi konumların bu telefonda saklı. Paylaşılanlar ve şarj yeri sunucuda saklı tek mesajda
+  // Kendi konumların bu telefonda saklı. Paylaşılanlar ve şarj konumu sunucuda saklı tek mesajda
   // (comitok/<oda>/goruntu/o, telefonlar zaten goruntu/+ dinliyor), herkesin listesinde görünür.
-  // Derece 0-359 saklanır; kart aynı yöne kısa yoldan gider, şarj yerine kabloyu açan yoldan (coz).
+  // Derece 0-359 saklanır; kart aynı yöne kısa yoldan gider, şarj konumuna kabloyu açan yoldan (coz).
   // Kısa dokunuş: git. Uzun bas: standın şu anki yerine güncelle (5 sn "Geri al").
   var ortakKonumlar=[], konumUzunZaman=0;
   function derece360(d){ d=(Number(d)||0)%360; if(d<0) d+=360; return Math.round(d*10)/10; }
@@ -2716,7 +2735,7 @@
     if(!ortakYaz(l)) return;
     if(!ortak) konumYaz(konumListesi().filter(function(x){ return x.id!==kn.id; }));
     konumlariCiz();
-    yaz(ac?"Şarj yeri: "+kn.ad+" (herkesin listesinde ⚡ ile)":"Şarj yeri kaldırıldı: "+kn.ad);
+    yaz(ac?"Şarj konumu: "+kn.ad+" (herkesin listesinde ⚡ ile)":"Şarj konumu kaldırıldı: "+kn.ad);
   }
   function uzunBasBagla(b,fn){
     var t=null;
@@ -2731,6 +2750,7 @@
   function konumlariCiz(){
     var kap=E("konumlar"), sil=E("konumSilListe");
     kap.innerHTML=""; sil.innerHTML="";
+    seritCiz();
     konumSirali().forEach(function(s){
       var kn=s.kn, ortak=s.ortak, yetki=!ortak||ortakYetki(kn);
       var cip=document.createElement("span"); cip.className="konumCip"+(ortak?" ortak":"")+(kn.sarj?" sarj":"");
@@ -2756,11 +2776,38 @@
       var dg=document.createElement("span"); dg.className="dgm";
       function dugme(t,f){ var x=document.createElement("button"); x.className="kucuk"; x.textContent=t; x.addEventListener("click",f); dg.appendChild(x); }
       if(!ortak) dugme("Paylaş",function(){ konumPaylas(kn); });
-      dugme(kn.sarj?"Şarj yeri değil":"Şarj yeri yap",function(){ sarjYeriYap(kn,ortak,!kn.sarj); });
+      dugme(kn.sarj?"Şarj konumu değil":"Şarj konumu yap",function(){ sarjYeriYap(kn,ortak,!kn.sarj); });
       if(yetki) dugme("Sil",function(){ konumSil(kn,ortak); });
       satir.appendChild(ad); satir.appendChild(dg); sil.appendChild(satir);
     });
   }
+  // Evi izle şeridi: dokun = git, uzun bas = güncelle; 8 sn dokunulmazsa kapanır
+  var seritTik=null;
+  function seritAcik(){ return !E("kKonumSerit").classList.contains("gizle"); }
+  function seritKapat(){ E("kKonumSerit").classList.add("gizle"); E("kKonumBtn").classList.remove("acik"); E("kKonumBtn").setAttribute("aria-expanded","false"); document.body.classList.remove("konumSeritAcik"); clearTimeout(seritTik); }
+  function seritSure(ms){ clearTimeout(seritTik); seritTik=setTimeout(seritKapat,ms||8000); }
+  function seritCiz(){
+    var sr=E("kKonumSerit"); sr.innerHTML="";
+    var l=konumSirali();
+    if(!l.length){ var b0=document.createElement("span"); b0.className="bos"; b0.textContent="Kayıtlı konum yok. Kaydetmek için ekranı küçült ya da dik tut."; sr.appendChild(b0); return; }
+    l.forEach(function(s){
+      var kn=s.kn, b=document.createElement("button"); b.type="button";
+      b.className=(s.ortak?"ortak":"")+(kn.sarj?" sarj":"");
+      b.textContent=(kn.sarj?"⚡ ":"")+kn.ad;
+      uzunBasBagla(b,function(){ seritSure(); konumGuncelle(kn,s.ortak); });
+      b.addEventListener("click",function(e){ e.stopPropagation(); if(b._uzun||Date.now()-konumUzunZaman<1500){ b._uzun=false; return; } konumaGit(kn); seritSure(3000); });
+      sr.appendChild(b);
+    });
+  }
+  E("kKonumBtn").addEventListener("click",function(e){
+    e.stopPropagation();
+    if(seritAcik()){ seritKapat(); return; }
+    seritCiz(); E("kKonumSerit").classList.remove("gizle"); E("kKonumBtn").classList.add("acik"); E("kKonumBtn").setAttribute("aria-expanded","true");
+    document.body.classList.add("konumSeritAcik"); seritSure();
+  });
+  E("kKonumSerit").addEventListener("pointerdown",function(){ seritSure(); });
+  E("kKonumSerit").addEventListener("scroll",function(){ seritSure(); },{passive:true});
+
   E("konumEkleBtn").addEventListener("click",function(){
     if(!konumSurdurulebilir()){ bildiri("Standın yeri bilinmiyor, konum kaydedilemedi",0,"hata"); return; }
     var ad=prompt("Konum adı (örn. kanepe)"); if(!ad) return;
@@ -2890,6 +2937,7 @@
       E("kaSinir").value=sv;
     }
     if(seciliDegil("kaUyandir")) E("kaUyandir").value=String(a.uyandir);
+    if(a.hiz!==undefined&&seciliDegil("kaHiz")) E("kaHiz").value=String(a.hiz);
     if(seciliDegil("kaAralik")) E("kaAralik").value=String(a.aralik);
     E("kalPad").classList.toggle("gizle",!a.kalib);
     E("kalBasla").textContent=a.kalib?"Ayar sürüyor…":"Ayarı başlat";
@@ -2898,6 +2946,11 @@
   E("ka180").onchange=function(){ ayarGonder("mod180",Number(E("ka180").value)); };
   E("kaY180").onchange=function(){ ayarGonder("y180",Number(E("kaY180").value)); };
   E("kaSinir").onchange=function(){ ayarGonder("sinir",Number(E("kaSinir").value)); };
+  E("kaHiz").onchange=function(){
+    var v=Number(String(E("kaHiz").value).replace(",","."));
+    if(!(v>=20&&v<=40)){ bildiri("Dönüş hızı 20 ile 40 arasında olmalı",0,"hata"); return; }
+    ayarGonder("hiz",Math.round(v*10)/10);
+  };
   E("kaUyandir").onchange=function(){ ayarGonder("uyandir",Number(E("kaUyandir").value)); };
   E("kaAralik").onchange=function(){ ayarGonder("aralik",Number(E("kaAralik").value)); };
   E("kaGeriEksi").onclick=function(){ ayarGonder("geri180",Math.max(600,Number(E("kaGeri").dataset.ms||6400)-200)); };
@@ -3537,7 +3590,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="31 Eki 23:53";
+  var SAYFA_SURUM="1 Kas 01:03";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -3966,6 +4019,7 @@
     gsArayuz(); kisiGoster();
   }
   function kameraModuKapat(){
+    seritKapat();
     if(gsAktif) gsBitir("görüşmeyi bitirdin",true);
     gkIptal();
     grBagKapat(true);
@@ -4774,7 +4828,7 @@
   }
   function grOrtaNokta(t){ return {x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2}; }
   function grMesafe(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)||1; }
-  function grKontrolMu(t){ return !!(t.target&&t.target.closest&&t.target.closest("#pad,button,#kAyrinti,#kBenYuva")); }
+  function grKontrolMu(t){ return !!(t.target&&t.target.closest&&t.target.closest("#pad,button,#kAyrinti,#kBenYuva,#kKonumSerit")); }
   function grGoruntuParmaklari(t){ var l=[]; for(var i=0;i<t.length;i++){ if(!grKontrolMu(t[i])) l.push(t[i]); } return l; }
   E("kEkran").addEventListener("touchstart",function(e){
     var p=grGoruntuParmaklari(e.touches);
@@ -4949,7 +5003,7 @@
     gstKoy("ben",benimAdim(),p,true,true); gstGonder(p,true);
     return true;
   }
-  function gstHedefMi(e){ return !(e.target&&e.target.closest&&e.target.closest("button,#pad,#kPadYuva,#kAyrinti,#kBenYuva,#kKisiYuva,#kOda,#kSesKutu")); }
+  function gstHedefMi(e){ return !(e.target&&e.target.closest&&e.target.closest("button,#pad,#kPadYuva,#kAyrinti,#kBenYuva,#kKisiYuva,#kOda,#kSesKutu,#kKonumSerit")); }
   function gstUzunOldu(){
     if(!gstBas||!gstMumkun()||grPinch){ gstBas=null; return; }
     gstBas.uzun=true; gstYutPid=gstBas.id; grTekParmak=null;
@@ -4980,7 +5034,7 @@
   // tek dokunuş: bağlantı yoksa bağlan. Çift dokunuş: yakınsa 1×'e dön, değilse doldur / tamamını göster
   E("kEkran").addEventListener("pointerup",function(e){
     if(gzUyanPid!==null&&e.pointerId===gzUyanPid) return;   // gizli kontrolleri geri getiren dokunuş
-    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva,#kKisiYuva,#kOda,#kSesKutu")) return;
+    if(e.target.closest&&e.target.closest("button,#pad,#kAyrinti,#kBenYuva,#kKisiYuva,#kOda,#kSesKutu,#kKonumSerit")) return;
     if(kisiBuyukId) return;
     if(gstYutPid!==null&&e.pointerId===gstYutPid){ gstYutPid=null; grDokunSon=0; return; }   // Göster'in uzun basışı bitti
     if(grHareketVardi){ if(!grPinch&&!grTekParmak) grHareketVardi=false; return; }
