@@ -36,6 +36,13 @@
 //     iPhone'a gelen arama gorulur (Kayit + durum "arama"). Kabul/ret: kumanda deklansoru
 //     (tek = kabul, cift = ret), sayfa komutlari aramaKabul/aramaRed (yonetici), Serial a / n.
 //     Arama calarken ekrana dokunan islemler yapilmaz.
+//
+//  31 Ekim 2026:
+//   - Konumlar 360 derece: kayitli derece kac tur icerse icersin, ayni yone bakan karsiliklardan
+//     en kisa yoldaki secilir (en fazla yarim tur). Donus sinirinin disindakiler secilmez.
+//     "coz": 1 gelirse (sarj yeri, Baslangic) kabloyu acan yol secilir: baslangica en yakin karsilik.
+//   - Donus/egme sayaci hafizada: stand 3 sn durunca yazilir, kart acilinca kaldigi yerden devam eder.
+//   - Konum komutu "ad" tasir; gidilirken durumda "hedef", varinca 4 sn "vardi" gider (sayfalarda yazi).
 // =====================================================================
 
 #include <ArduinoJson.h>
@@ -57,7 +64,7 @@
 
 // Kart imzasi ve surumu. Kablosuz guncellemede yanlis kartin dosyasi yuklenmesin diye
 // internet karti dosyada bu imzayi arar. Degistirmeyin.
-const char IMZA[] = "STANDKARTI:BLUETOOTH|27 Ekim 2026 · 1";
+const char IMZA[] = "STANDKARTI:BLUETOOTH|31 Ekim 2026 · 1";
 const char* surum() { return strchr(IMZA, '|') + 1; }
 
 bool gAktif = false;   // kablosuz guncelleme suruyor mu
@@ -182,6 +189,10 @@ const uint32_t KUMANDA_EN_UZUN = 20000;  // guvenlik: kumanda sessiz kalirsa en 
 
 bool kameraIzin = false;   // iPhone kamerasini uzaktan kontrol izni (ayri, acilista kapali)
 float netDonus = 0, netEgme = 0;
+float kayitliDonus = 0, kayitliEgme = 0;   // hafizadaki son deger (31 Ekim)
+char hedefAd[40] = "";      // konuma gidiliyor: sayfalarda "Gidiliyor: ..." yazar
+char vardiAd[40] = "";      // varildi: 4 sn "Vardi: ..." yazar
+uint32_t vardiZaman = 0;
 float donusSiniri = 540;     // baslangica gore en fazla bu kadar donulur (iki yone de)
 uint32_t sinirdeZaman = 0;   // donus sinirina en son ne zaman takildi
 uint32_t sonHareket = 0, sonPaket = 0, sonDurumYayin = 0, sonStandDenemesi = 0, sonCanliTut = 0;
@@ -350,7 +361,7 @@ void takipAdimi(int8_t dx, int8_t dy, uint32_t msX, uint32_t msY) {
 }
 
 void herSeyiDurdur() {
-  hr.aktif = false; sonraki.var = false;
+  hr.aktif = false; sonraki.var = false; hedefAd[0] = 0;
   joyDx = 0; joyDy = 0; joyZaman = 0; joyBasla = 0; joyVardi = false;
   kumDx = 0; kumDy = 0;
   durdurmaDarbesi();
@@ -358,18 +369,34 @@ void herSeyiDurdur() {
   Kayit.println("> dur");
 }
 
-void hedefeGit(float hedefDonus, bool egmeVar, float hedefEgme) {
-  if (hr.aktif) { Kayit.println("Mesgul."); return; }
-  // Konum sinirin disinda kaydedildiyse (kablo sariliyken), ayni yone bakan icerdeki karsiligina git
-  float ilk = hedefDonus;
-  if (donusSiniri > 0) {
-    while (hedefDonus > donusSiniri) hedefDonus -= 360;
-    while (hedefDonus < -donusSiniri) hedefDonus += 360;
+bool donuyorMu();
+// Konum 360 derece (31 Ekim): kayitli derece kac tur icerse icersin ayni yone bakan karsiliklardan
+// (360'in katlari) biri secilir. Normalde en kisa yol (en fazla yarim tur); coz ise kabloyu acan yol
+// (baslangica en yakin karsilik). Donus siniri varsa sinirin icindekiler arasindan secilir.
+float sar180(float a) { a = fmodf(a, 360.0f); if (a > 180) a -= 360; if (a <= -180) a += 360; return a; }
+float hedefSec(float hedef, bool coz) {
+  float yakin = netDonus + sar180(hedef - netDonus);   // en kisa yoldaki karsilik
+  float enIyi = yakin, enIyiPuan = 1e9;
+  bool bulundu = false;
+  for (int k = -8; k <= 8; k++) {
+    float a = yakin + 360.0f * k;
+    if (donusSiniri > 0 && fabsf(a) > donusSiniri + 0.5f) continue;
+    float puan = coz ? fabsf(a) : fabsf(a - netDonus);
+    if (puan < enIyiPuan - 0.01f) { enIyiPuan = puan; enIyi = a; bulundu = true; }
   }
-  if (hedefDonus != ilk) Kayit.printf("Konum %d derece sinir disinda, ayni yone bakan %d dereceye gidiliyor.\n", (int)ilk, (int)hedefDonus);
+  if (!bulundu) enIyi = sar180(hedef);   // olmamasi lazim (sinir en az 180)
+  return enIyi;
+}
+
+void hedefeGit(float hedefDonus, bool egmeVar, float hedefEgme, bool coz, const char* ad) {
+  if (hr.aktif) { Kayit.println("Mesgul."); return; }
+  float ilk = hedefDonus;
+  hedefDonus = hedefSec(hedefDonus, coz);
   float fark = hedefDonus - netDonus;
   uint32_t ms = fabs(fark) / DONUS_HIZI * 1000;
   if (ms > 45000) ms = 45000;
+  Kayit.printf("Konum%s%s: %d -> %d derece (kayitli %d%s)\n", ad[0] ? " " : "", ad, (int)round(netDonus), (int)round(hedefDonus),
+               (int)round(ilk), coz ? ", kabloyu acan yol" : "");
 
   uint32_t tms = 0; int8_t tyon = 0;
   if (egmeVar) {
@@ -378,12 +405,35 @@ void hedefeGit(float hedefDonus, bool egmeVar, float hedefEgme) {
     if (tms > 6000) tms = 6000;
     tyon = tf > 0 ? 1 : -1;
   }
+  bool basladi = false;
   if (ms < 120) {
-    if (tms >= 120) hareketBaslat(0, tyon, tms + GECIKME);
-    return;
+    if (tms >= 120) basladi = hareketBaslat(0, tyon, tms + GECIKME);
+  } else {
+    if (tms >= 120) { sonraki.var = true; sonraki.dx = 0; sonraki.dy = tyon; sonraki.sure = tms + GECIKME; sonraki.zaman = 0; }
+    basladi = hareketBaslat(fark > 0 ? 1 : -1, 0, ms + GECIKME);
+    if (!basladi) sonraki.var = false;
   }
-  if (tms >= 120) { sonraki.var = true; sonraki.dx = 0; sonraki.dy = tyon; sonraki.sure = tms + GECIKME; sonraki.zaman = 0; }
-  hareketBaslat(fark > 0 ? 1 : -1, 0, ms + GECIKME);
+  if (basladi) { strlcpy(hedefAd, ad, sizeof(hedefAd)); vardiAd[0] = 0; }
+  else if (ms < 120 && tms < 120 && ad[0]) { strlcpy(vardiAd, ad, sizeof(vardiAd)); vardiZaman = millis(); hedefAd[0] = 0; }
+  durumYayinla();
+}
+
+// Konum hareketi bitti mi (donus + sonra egme)? Bitince "vardi" yazilir.
+void hedefKontrol() {
+  if (!hedefAd[0] || hr.aktif || sonraki.var || donuyorMu()) return;
+  strlcpy(vardiAd, hedefAd, sizeof(vardiAd)); vardiZaman = millis(); hedefAd[0] = 0;
+  durumYayinla();
+}
+
+// Sayac hafizada (31 Ekim): degerler 3 sn degismezse ve 1 dereceden fazla farkliysa yazilir.
+void sayacKaydet() {
+  static float sonD = 0, sonE = 0;
+  static uint32_t degisti = 0;
+  if (netDonus != sonD || netEgme != sonE) { sonD = netDonus; sonE = netEgme; degisti = millis(); return; }
+  if (millis() - degisti < 3000) return;
+  if (fabsf(netDonus - kayitliDonus) < 1.0f && fabsf(netEgme - kayitliEgme) < 1.0f) return;
+  hafiza.putFloat("donus", netDonus); hafiza.putFloat("egme", netEgme);
+  kayitliDonus = netDonus; kayitliEgme = netEgme;
 }
 
 void hareketIsle() {
@@ -1680,8 +1730,8 @@ void komutGeldi(char tur, const char* json) {
   else if (!strcmp(t, "azsol")) hareketBaslat(-1, 0, 400);
   else if (!strcmp(t, "azyuk")) hareketBaslat( 0, 1, 350);
   else if (!strcmp(t, "azasa")) hareketBaslat( 0,-1, 350);
-  else if (!strcmp(t, "ev"))    hedefeGit(0, true, 0);
-  else if (!strcmp(t, "konum")) hedefeGit(d["derece"] | 0.0f, !d["tilt"].isNull(), d["tilt"] | 0.0f);
+  else if (!strcmp(t, "ev"))    hedefeGit(0, true, 0, true, "Başlangıç");
+  else if (!strcmp(t, "konum")) hedefeGit(d["derece"] | 0.0f, !d["tilt"].isNull(), d["tilt"] | 0.0f, (d["coz"] | 0) != 0, d["ad"] | "");
   else if (!strcmp(t, "dur"))   herSeyiDurdur();
   else if (!strcmp(t, "sifirla")) { netDonus = 0; netEgme = 0; Kayit.println("Baslangic ayarlandi."); durumYayinla(); }
 }
@@ -1698,6 +1748,8 @@ void durumYayinla() {
   d["sinirde"] = sinirdeZaman && millis() - sinirdeZaman < 3000;
   sonDonuyor = donuyorMu();
   d["donuyor"] = sonDonuyor;
+  if (hedefAd[0]) d["hedef"] = hedefAd;
+  else if (vardiAd[0] && millis() - vardiZaman < 4000) d["vardi"] = vardiAd;
   d["sira180"] = (mod180 == 2 && hibritGidildi) ? "donus" : "gidis";
   d["kumanda"] = kumandaBagli();
   if (kumAramaAcik()) d["kumAra"] = (int)((kumAraBitis - millis() + 999) / 1000);
@@ -2010,6 +2062,8 @@ void setup() {
   yerli180Yonu = hafiza.getChar("y180", 1);
   geriDonusMs = hafiza.getUInt("geri180", 3600);
   donusSiniri = hafiza.getUShort("sinir", 540);
+  netDonus = kayitliDonus = hafiza.getFloat("donus", 0);   // sayac kaldigi yerden (31 Ekim)
+  netEgme = kayitliEgme = hafiza.getFloat("egme", 0);
   pcAdres = hafiza.getString("pcAdr", "");
   pcAdresTipi = hafiza.getUChar("pcTip", 0);
   ipAdres = hafiza.getString("ipAdr", "");
@@ -2091,6 +2145,8 @@ void loop() {
     if (yayinLazim && reklam && !reklam->isAdvertising()) reklam->start();
   }
 
+  hedefKontrol();
+  sayacKaydet();
   if (n - sonDurumYayin > 2000 || donuyorMu() != sonDonuyor) durumYayinla();   // donme basladi/bitti: hemen bildir
   isikGuncelle();
 

@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="31 Eki 18:23">
+<meta name="stand-surum" content="31 Eki 23:53">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -125,6 +125,14 @@
   .konumCip{display:inline-flex}
   .konumCip .git{border-top-right-radius:0;border-bottom-right-radius:0;border-right:none}
   .konumCip .sil{border-top-left-radius:0;border-bottom-left-radius:0;padding:6px 10px;color:var(--ink-soft)}
+  .konumCip{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  .konumCip.ortak .git,.konumCip.ortak .sil{border-style:dashed}
+  .konumCip.sarj .git,.konumCip.sarj .sil{border-color:var(--live)}
+  .konumCip.sarj .git{color:var(--live);font-weight:600}
+  .konumCip.tek .git{border-right:1px dashed var(--line-strong);border-radius:var(--radius)}
+  .konumCip.tek.sarj .git{border-right-color:var(--live)}
+  .konumSil .dgm{display:flex;gap:6px;flex-shrink:0}
+  .konumSil .etiket{font-size:12px;color:var(--ink-soft)}
   .izinSatir{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
   .altbilgi{margin-top:14px;font-size:12px;color:var(--ink-soft);text-align:center}
 
@@ -336,6 +344,9 @@
   #kGosterYazi{position:absolute;left:50%;top:10px;transform:translateX(-50%);max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     padding:4px 12px;border-radius:14px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;font-weight:600;opacity:0;transition:opacity .25s}
   #kGosterYazi.acik{opacity:1}
+  #kKonumYazi{position:absolute;left:50%;top:46px;transform:translateX(-50%);max-width:80%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    padding:4px 12px;border-radius:14px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;font-weight:600;opacity:0;transition:opacity .25s}
+  #kKonumYazi.acik{opacity:1}
   @keyframes gNabiz{0%,100%{transform:scale(.88)}50%{transform:scale(1.08)}}
   @media (prefers-reduced-motion:reduce){.gHalka::before{animation:none}}
   #kOrta{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;color:#cfd4d2;font-size:15px;pointer-events:none}
@@ -545,7 +556,7 @@
   <div id="kEkran">
     <video id="kVideo" autoplay playsinline muted></video>
     <canvas id="kKutular"></canvas>
-    <div id="kGoster" aria-hidden="true"><div id="kGosterVurgu"></div><div id="kGosterYazi"></div></div>
+    <div id="kGoster" aria-hidden="true"><div id="kGosterVurgu"></div><div id="kGosterYazi"></div><div id="kKonumYazi"></div></div>
     <div id="kOrta"></div>
     <button id="kBilgi" type="button" aria-label="Ayrıntılar"></button>
     <div id="kAyrinti" class="gizli"></div>
@@ -591,7 +602,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 31 Eki 18:23</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 31 Eki 23:53</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1235,7 +1246,8 @@
   function hedefeGit(hedefDonus,hedefTilt){
     if(mesgul){ yaz("Stand meşgul."); return; }
     if(!rxKarakter){ yaz("Stand bağlı değil."); return; }
-    var fark=hedefDonus-netDonus, ms=Math.round(Math.abs(fark)/ayar("hizInput",27)*1000);
+    var fark=(((hedefDonus-netDonus)%360)+540)%360-180, ms=Math.round(Math.abs(fark)/ayar("hizInput",27)*1000);   // 360 derece: kısa yol (31 Eki)
+    hedefDonus=netDonus+fark;
     if(ms>10000) ms=10000;
     yaz("Dönüş "+Math.round(netDonus)+"° → "+Math.round(hedefDonus)+"°");
     function tilte(){
@@ -1333,6 +1345,7 @@
     });
     istemci.on("message",function(konu,veri){
       if(konu.slice(-10)==="/goruntu/g"){ gstGeldi(veri.toString()); return; }
+      if(konu.slice(-10)==="/goruntu/o"){ ortakGeldi(veri.toString()); return; }
       if(konu.slice(-10)==="/goruntu/i"){
         var gm=veri.toString();
         if(gm.indexOf('"pkayCevap"')>0){ try{ pkGeldi(JSON.parse(gm)); }catch(h){} return; }
@@ -1360,6 +1373,7 @@
       } else if(konu.slice(-6)==="/durum" && rol==="uzak"){
         if(m.cevrimdisi){ sonDurum=null; sonDurumZaman=0; guncelle(); return; }
         sonDurum=m; sonDurumZaman=Date.now();
+        konumDurum(m);
         if(yk&&m.ayarlar) kartAyarlariniYansit(m);
         izin=!!m.izin; netDonus=m.donus||0; netTilt=m.tilt||0; sayaclariYaz();
         if(oturumBas===null) oturumBas={d:netDonus,t:netTilt};
@@ -2620,38 +2634,163 @@
   padEl.addEventListener("pointercancel",padBirak);
   padEl.addEventListener("pointerleave",function(o){ if(aktif) padBirak(o); });
 
-  // ---------- konumlar ----------
-  function konumListesi(){ try{ return JSON.parse(localStorage.getItem("stand_konumlar")||"[]"); }catch(h){ return []; } }
+  // ---------- konumlar (31 Eki) ----------
+  // Kendi konumların bu telefonda saklı. Paylaşılanlar ve şarj yeri sunucuda saklı tek mesajda
+  // (comitok/<oda>/goruntu/o, telefonlar zaten goruntu/+ dinliyor), herkesin listesinde görünür.
+  // Derece 0-359 saklanır; kart aynı yöne kısa yoldan gider, şarj yerine kabloyu açan yoldan (coz).
+  // Kısa dokunuş: git. Uzun bas: standın şu anki yerine güncelle (5 sn "Geri al").
+  var ortakKonumlar=[], konumUzunZaman=0;
+  function derece360(d){ d=(Number(d)||0)%360; if(d<0) d+=360; return Math.round(d*10)/10; }
+  function konumKimlik(){ return "k"+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+  function konumListesi(){
+    var l; try{ l=JSON.parse(localStorage.getItem("stand_konumlar")||"[]"); }catch(h){ l=[]; }
+    if(!Array.isArray(l)) l=[];
+    var eksik=false; l.forEach(function(k){ if(!k.id){ k.id=konumKimlik(); eksik=true; } });
+    if(eksik) konumYaz(l);
+    return l;
+  }
   function konumYaz(l){ try{ localStorage.setItem("stand_konumlar",JSON.stringify(l)); }catch(h){} }
+  function ortakGeldi(t){
+    var m; try{ m=JSON.parse(t); }catch(h){ return; }
+    ortakKonumlar=(m&&Array.isArray(m.l)?m.l:[]).filter(function(k){ return k&&k.id&&k.ad; }).slice(0,30);
+    konumlariCiz();
+  }
+  function ortakYaz(l){
+    if(!istemci||!istemci.connected||!kod){ bildiri("Sunucuya bağlı değil, ortak konum değiştirilemedi",0,"hata"); return false; }
+    ortakKonumlar=l;
+    istemci.publish("comitok/"+kod+"/goruntu/o",JSON.stringify({l:l,z:Date.now()}),{retain:true});
+    konumlariCiz(); return true;
+  }
+  function ortakKopya(){ return ortakKonumlar.map(function(k){ return Object.assign({},k); }); }
+  function ortakYetki(kn){ return yonetici()||kn.sahip===benimKimlik; }
+  function konumSurdurulebilir(){ return rol==="evde"||(sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE); }
+  function konumaGit(kn){
+    var k={t:"konum",derece:kn.derece,ad:String(kn.ad).slice(0,16)};
+    if(kn.tilt!=null) k.tilt=kn.tilt;
+    if(kn.sarj) k.coz=1;
+    komutGonder(k);
+  }
+  function geriAlBildiri(t,geriAl){
+    bildiri(t+" · Geri al",5000,"bilgi");
+    var el=E("gkBildiri"); el.className="tik";
+    el.onclick=function(){ el.className="gizle"; el.onclick=null; geriAl(); };
+  }
+  function konumGuncelle(kn,ortak){
+    if(!konumSurdurulebilir()){ bildiri("Standın yeri bilinmiyor, konum güncellenemedi",0,"hata"); return; }
+    var yeni={derece:derece360(netDonus),tilt:Math.round(netTilt)}, eski={derece:kn.derece,tilt:kn.tilt};
+    function uygula(d){
+      if(ortak){
+        var l=ortakKopya(), o=l.filter(function(x){ return x.id===kn.id; })[0]; if(!o) return false;
+        o.derece=d.derece; o.tilt=d.tilt; return ortakYaz(l);
+      }
+      var l2=konumListesi(), y=l2.filter(function(x){ return x.id===kn.id; })[0]; if(!y) return false;
+      y.derece=d.derece; y.tilt=d.tilt; konumYaz(l2); konumlariCiz(); return true;
+    }
+    if(ortak&&!ortakYetki(kn)){ bildiri("Bu ortak konumu sadece "+(kn.sahipAd||"paylaşan")+" ya da yönetici güncelleyebilir",0,"hata"); return; }
+    if(!uygula(yeni)) return;
+    yaz("Konum güncellendi: "+kn.ad+" = "+Math.round(yeni.derece)+"° / "+yeni.tilt+"°");
+    geriAlBildiri(kn.ad+" güncellendi",function(){ if(uygula(eski)) yaz("Konum güncellemesi geri alındı: "+kn.ad); });
+  }
+  function konumSil(kn,ortak){
+    if(ortak){
+      if(!ortakYetki(kn)) return;
+      if(!confirm("\""+kn.ad+"\" herkesin listesinden silinsin mi?")) return;
+      if(ortakYaz(ortakKopya().filter(function(x){ return x.id!==kn.id; }))) yaz("Ortak konum silindi: "+kn.ad);
+      return;
+    }
+    if(!confirm("\""+kn.ad+"\" konumu silinsin mi?")) return;
+    konumYaz(konumListesi().filter(function(x){ return x.id!==kn.id; })); konumlariCiz(); yaz("Konum silindi: "+kn.ad);
+  }
+  function konumPaylas(kn){
+    var o={id:kn.id,ad:kn.ad,derece:derece360(kn.derece),tilt:kn.tilt,sahip:benimKimlik,sahipAd:benimAdim()};
+    if(!ortakYaz(ortakKopya().concat([o]))) return;
+    konumYaz(konumListesi().filter(function(x){ return x.id!==kn.id; })); konumlariCiz();
+    yaz("Konum paylaşıldı: "+kn.ad);
+  }
+  function sarjYeriYap(kn,ortak,ac){
+    var l=ortakKopya();
+    l.forEach(function(x){ if(ac) delete x.sarj; });
+    var o=l.filter(function(x){ return x.id===kn.id; })[0];
+    if(!o){ o={id:kn.id,ad:kn.ad,derece:derece360(kn.derece),tilt:kn.tilt,sahip:benimKimlik,sahipAd:benimAdim()}; l.push(o); }
+    if(ac) o.sarj=true; else delete o.sarj;
+    if(!ortakYaz(l)) return;
+    if(!ortak) konumYaz(konumListesi().filter(function(x){ return x.id!==kn.id; }));
+    konumlariCiz();
+    yaz(ac?"Şarj yeri: "+kn.ad+" (herkesin listesinde ⚡ ile)":"Şarj yeri kaldırıldı: "+kn.ad);
+  }
+  function uzunBasBagla(b,fn){
+    var t=null;
+    b.addEventListener("pointerdown",function(){ b._uzun=false; clearTimeout(t); t=setTimeout(function(){ b._uzun=true; konumUzunZaman=Date.now(); if(navigator.vibrate) navigator.vibrate(40); fn(); },600); });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(o){ b.addEventListener(o,function(){ clearTimeout(t); }); });
+    b.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+  }
+  function konumSirali(){
+    var o=ortakKonumlar.slice().sort(function(a,b){ return (b.sarj?1:0)-(a.sarj?1:0); });
+    return o.map(function(k){ return {kn:k,ortak:true}; }).concat(konumListesi().map(function(k){ return {kn:k,ortak:false}; }));
+  }
   function konumlariCiz(){
-    var l=konumListesi(), kap=E("konumlar"), sil=E("konumSilListe");
+    var kap=E("konumlar"), sil=E("konumSilListe");
     kap.innerHTML=""; sil.innerHTML="";
-    l.forEach(function(kn,i){
-      var cip=document.createElement("span"); cip.className="konumCip";
+    konumSirali().forEach(function(s){
+      var kn=s.kn, ortak=s.ortak, yetki=!ortak||ortakYetki(kn);
+      var cip=document.createElement("span"); cip.className="konumCip"+(ortak?" ortak":"")+(kn.sarj?" sarj":"");
       var b=document.createElement("button"); b.className="git";
-      b.textContent=kn.ad;
-      b.addEventListener("click",function(){ komutGonder({t:"konum",derece:kn.derece,tilt:kn.tilt}); });
-      var sx=document.createElement("button"); sx.className="sil";
-      sx.textContent="×"; sx.setAttribute("aria-label",kn.ad+" konumunu sil");
-      sx.addEventListener("click",function(){
-        if(!confirm("\""+kn.ad+"\" konumu silinsin mi?")) return;
-        var l2=konumListesi(); l2.splice(i,1); konumYaz(l2); konumlariCiz(); yaz("Konum silindi: "+kn.ad);
-      });
-      cip.appendChild(b); cip.appendChild(sx);
+      b.textContent=(kn.sarj?"⚡ ":"")+kn.ad;
+      if(ortak) b.title="Ortak konum · "+(kn.sahipAd||"?");
+      uzunBasBagla(b,function(){ konumGuncelle(kn,ortak); });
+      // uzun basış listeyi yeniden çizer; parmak kalkınca gelen tıklama yeni düğmeye düşmesin
+      b.addEventListener("click",function(){ if(b._uzun||Date.now()-konumUzunZaman<1500){ b._uzun=false; return; } konumaGit(kn); });
+      cip.appendChild(b);
+      if(yetki){
+        var sx=document.createElement("button"); sx.className="sil";
+        sx.textContent="×"; sx.setAttribute("aria-label",kn.ad+" konumunu sil");
+        sx.addEventListener("click",function(){ konumSil(kn,ortak); });
+        cip.appendChild(sx);
+      } else cip.classList.add("tek");
       kap.appendChild(cip);
-      var s=document.createElement("div"); s.className="konumSil";
+      // Ayarlar'daki liste (yönetici): paylaş, şarj yeri, sil
+      var satir=document.createElement("div"); satir.className="konumSil";
       var ad=document.createElement("span");
-      ad.textContent=kn.ad+" · "+Math.round(kn.derece)+"° / "+(kn.tilt==null?"eğme yok":Math.round(kn.tilt)+"°");
-      var x=document.createElement("button"); x.className="kucuk"; x.textContent="Sil";
-      x.addEventListener("click",function(){ var l2=konumListesi(); l2.splice(i,1); konumYaz(l2); konumlariCiz(); yaz("Konum silindi: "+kn.ad); });
-      s.appendChild(ad); s.appendChild(x); sil.appendChild(s);
+      ad.textContent=(kn.sarj?"⚡ ":"")+kn.ad+" · "+Math.round(derece360(kn.derece))+"° / "+(kn.tilt==null?"eğme yok":Math.round(kn.tilt)+"°");
+      if(ortak){ var e=document.createElement("div"); e.className="etiket"; e.textContent="Ortak · "+(kn.sahipAd||"?"); ad.appendChild(e); }
+      var dg=document.createElement("span"); dg.className="dgm";
+      function dugme(t,f){ var x=document.createElement("button"); x.className="kucuk"; x.textContent=t; x.addEventListener("click",f); dg.appendChild(x); }
+      if(!ortak) dugme("Paylaş",function(){ konumPaylas(kn); });
+      dugme(kn.sarj?"Şarj yeri değil":"Şarj yeri yap",function(){ sarjYeriYap(kn,ortak,!kn.sarj); });
+      if(yetki) dugme("Sil",function(){ konumSil(kn,ortak); });
+      satir.appendChild(ad); satir.appendChild(dg); sil.appendChild(satir);
     });
   }
   E("konumEkleBtn").addEventListener("click",function(){
+    if(!konumSurdurulebilir()){ bildiri("Standın yeri bilinmiyor, konum kaydedilemedi",0,"hata"); return; }
     var ad=prompt("Konum adı (örn. kanepe)"); if(!ad) return;
-    var l=konumListesi(); l.push({ad:ad,derece:netDonus,tilt:netTilt}); konumYaz(l); konumlariCiz();
-    yaz("Konum kaydedildi: "+ad+" = "+Math.round(netDonus)+"° / "+Math.round(netTilt)+"°");
+    ad=ad.trim().slice(0,16); if(!ad) return;
+    var kn={id:konumKimlik(),ad:ad,derece:derece360(netDonus),tilt:Math.round(netTilt)};
+    var paylas=rol==="uzak"&&istemci&&istemci.connected&&confirm("\""+ad+"\" herkesin listesinde de görünsün mü?\n\nTamam: paylaş\nVazgeç: sadece bu telefonda");
+    if(paylas){
+      kn.sahip=benimKimlik; kn.sahipAd=benimAdim();
+      if(!ortakYaz(ortakKopya().concat([kn]))) return;
+    } else { var l=konumListesi(); l.push(kn); konumYaz(l); konumlariCiz(); }
+    yaz("Konum kaydedildi"+(paylas?" (ortak)":"")+": "+ad+" = "+Math.round(kn.derece)+"° / "+kn.tilt+"°");
   });
+  // Kart konuma giderken durumda "hedef", varınca 4 sn "vardi" gönderir: herkeste yazı çıkar
+  var kdHedef="", kdVardi="", kdIlk=true, kyTik=null;
+  function konumYazi(t,sure){
+    var el=E("kKonumYazi");
+    clearTimeout(kyTik);
+    if(!t){ el.classList.remove("acik"); return; }
+    el.textContent=t; el.classList.add("acik");
+    kyTik=setTimeout(function(){ el.classList.remove("acik"); },sure||45000);
+    if(!grAcik) bildiri(t,sure||2500,"bilgi");
+  }
+  function konumDurum(m){
+    var h=String(m.hedef||""), v=String(m.vardi||"");
+    if(kdIlk){ kdIlk=false; kdHedef=h; kdVardi=v; if(h) konumYazi("Gidiliyor: "+h); return; }
+    if(h&&h!==kdHedef){ konumYazi("Gidiliyor: "+h); yaz("Stand konuma gidiyor: "+h+"."); }
+    if(v&&v!==kdVardi){ konumYazi("✓ Vardı: "+v,3000); yaz("Stand konuma vardı: "+v+"."); }
+    else if(!h&&kdHedef&&!v) konumYazi("");   // durduruldu
+    kdHedef=h; kdVardi=v;
+  }
 
   // ---------- düğmeler ----------
   E("sagBtn").onclick=function(){ komutGonder({t:"sag"}); };
@@ -2674,7 +2813,7 @@
   E("evBtn").addEventListener("contextmenu",function(e){ e.preventDefault(); });
   E("evBtn").onclick=function(){
     if(evUzunOldu){ evUzunOldu=false; return; }
-    if(oturumBas) komutGonder({t:"konum",derece:oturumBas.d,tilt:oturumBas.t});
+    if(oturumBas) komutGonder({t:"konum",derece:oturumBas.d,tilt:oturumBas.t,ad:"Başlangıç"});
     else komutGonder({t:"ev"});
   };
   E("durBtn").onclick=function(){ komutGonder({t:"dur"}); };
@@ -3398,7 +3537,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="31 Eki 18:23";
+  var SAYFA_SURUM="31 Eki 23:53";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
