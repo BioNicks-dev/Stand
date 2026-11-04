@@ -68,7 +68,7 @@
 
 // Kart imzasi ve surumu. Kablosuz guncellemede yanlis kartin dosyasi yuklenmesin diye
 // internet karti dosyada bu imzayi arar. Degistirmeyin.
-const char IMZA[] = "STANDKARTI:BLUETOOTH|1 Kasım 2026 · 1";
+const char IMZA[] = "STANDKARTI:BLUETOOTH|3 Kasım 2026 · 1";
 const char* surum() { return strchr(IMZA, '|') + 1; }
 
 bool gAktif = false;   // kablosuz guncelleme suruyor mu
@@ -325,6 +325,7 @@ bool hareketBaslat(int8_t dx, int8_t dy, uint32_t sure) {
     sinirUyarisi("bu yonde daha fazla donulmez");
     return false;
   }
+  durdurZaman[0] = durdurZaman[1] = durdurZaman[2] = 0;   // 3 Kas: onceki hareketin durdurma darbeleri yeni hareketi kesmesin
   hr.aktif = true; hr.dx = dx; hr.dy = dy; hr.bas = millis(); hr.sure = sure; hr.tam = false; hr.ayri = false;
   sonPaket = 0;
   Kayit.printf("> hareket dx=%d dy=%d %lu ms\n", dx, dy, (unsigned long)sure);
@@ -364,8 +365,9 @@ void takipAdimi(int8_t dx, int8_t dy, uint32_t msX, uint32_t msY) {
   sonPaket = 0;
 }
 
+void yuvaIsleriDur();   // yuva bolumunde (asagida)
 void herSeyiDurdur() {
-  hr.aktif = false; sonraki.var = false; hedefAd[0] = 0;
+  hr.aktif = false; sonraki.var = false; hedefAd[0] = 0; yuvaIsleriDur();
   joyDx = 0; joyDy = 0; joyZaman = 0; joyBasla = 0; joyVardi = false;
   kumDx = 0; kumDy = 0;
   durdurmaDarbesi();
@@ -422,8 +424,180 @@ void hedefeGit(float hedefDonus, bool egmeVar, float hedefEgme, bool coz, const 
   durumYayinla();
 }
 
+// ---------------------------------------------------------------------
+//  YUVA: AYRILMA VE SARJA OTURMA (3 Kasim 2026)
+// ---------------------------------------------------------------------
+// Pixel sarj temasini bildirir: temas gelince hemen {"t":"yuva","v":1,"ham":1}, 5 sn kesintisiz surunce
+// {"t":"yuva","v":1} (2 dk'da bir tekrar), temas kesilince hemen {"t":"yuva","v":0}.
+// Yuvadayken stand donemez (telefon mengene gibi sikisir) ama kart donmus gibi sayiyordu: konumlar
+// bundan kayiyordu. Artik yuvadayken donme komutu standa gitmez ve sayilmaz; once kafa iner
+// (ayrilma), sarj kesilince komut yapilir. Kesilmezse kafa biraz daha iner, olmazsa vazgecilir.
+// Sarj konumuna gidiste kafa asagida varilir, kucuk adimlarla kalkar; temas gelince durur.
+// Gecip de sarj gelmezse kafa biraz iner, 1-2-3-4-5 derece saga sola kayip tekrar dener.
+// Oturunca sayac sarj konumunun derecesine cekilir (yuva sabit nokta).
+bool yuvaKontrol = true;                    // ayar: kapaliyken yuva bilgisi yok sayilir
+bool yuvada = false, yuvaHam = false;
+uint32_t yuvaZaman = 0;
+float ayrilmaEgim = 15.0f;                  // ayar: ayrilirken kafanin inecegi derece
+const uint32_t YUVA_TAZE = 600000;          // Pixel 10 dk haber vermezse yuvada sayilmaz
+bool yuvaTaze() { return yuvaKontrol && yuvada && millis() - yuvaZaman < YUVA_TAZE; }
+
+void komutGeldi(char tur, const char* json);
+void durumYayinla();
+
+uint8_t ayrDurum = 0;                       // 0 yok, 1 kafa iniyor, 2 sarjin kesilmesi bekleniyor
+uint8_t ayrDeneme = 0;
+uint32_t ayrZaman = 0;
+char ayrKomut[320] = "";                    // ayrilinca yapilacak komut (bos: sadece ayril)
+char ayrSonuc[16] = ""; uint32_t ayrSonucZaman = 0;
+void ayrilmaYaz(const char* s) { strlcpy(ayrSonuc, s, sizeof(ayrSonuc)); ayrSonucZaman = millis(); durumYayinla(); }
+
+void yuvaGeldi(bool v, bool ham) {
+  if (!v) {
+    if (yuvada || yuvaHam) Kayit.println("Pixel: sarj kesildi");
+    yuvada = false; yuvaHam = false; yuvaZaman = millis();
+    durumYayinla();
+    return;
+  }
+  yuvaHam = true;
+  if (ham) return;
+  bool yeni = !yuvada;
+  yuvada = true; yuvaZaman = millis();
+  if (yeni) { Kayit.println("Pixel: yuvada (sarj 5 sn kesintisiz)"); durumYayinla(); }
+}
+
+void ayrilmaBaslat(const char* komut) {
+  if (ayrDurum) { if (komut && komut[0]) strlcpy(ayrKomut, komut, sizeof(ayrKomut)); return; }
+  if (hr.aktif && !hr.ayri) { Kayit.println("Mesgul."); return; }
+  if (hr.aktif) adimBitir(millis());
+  joyDx = 0; joyDy = 0;
+  strlcpy(ayrKomut, komut ? komut : "", sizeof(ayrKomut));
+  ayrDeneme = 0;
+  uint32_t ms = (uint32_t)(ayrilmaEgim / EGME_HIZI * 1000) + GECIKME;
+  if (hareketBaslat(0, -1, ms)) {
+    ayrDurum = 1;
+    Kayit.printf("Yuvadan ayriliyor: kafa %d derece iniyor\n", (int)ayrilmaEgim);
+    ayrilmaYaz("iniyor");
+  }
+}
+
+void ayrilmaIsle() {
+  if (!ayrDurum) return;
+  uint32_t n = millis();
+  if (ayrDurum == 1) { if (hr.aktif) return; ayrDurum = 2; ayrZaman = n; return; }
+  if (!yuvaTaze() && !yuvaHam) {
+    ayrDurum = 0;
+    Kayit.println("Yuvadan ayrildi.");
+    ayrilmaYaz("tamam");
+    if (ayrKomut[0]) { static char k[320]; strlcpy(k, ayrKomut, sizeof(k)); ayrKomut[0] = 0; komutGeldi('K', k); }
+    return;
+  }
+  if (n - ayrZaman < 3000) return;
+  if (ayrDeneme < 2) {
+    ayrDeneme++;
+    uint32_t ms = (uint32_t)(ayrilmaEgim / 2 / EGME_HIZI * 1000) + GECIKME;
+    Kayit.printf("Hala yuvada: kafa biraz daha iniyor (%d)\n", ayrDeneme);
+    if (hareketBaslat(0, -1, ms)) ayrDurum = 1; else ayrZaman = n;
+    return;
+  }
+  ayrDurum = 0; ayrKomut[0] = 0;
+  Kayit.println("Yuvadan ayrilamadi: donme yapilmadi.");
+  ayrilmaYaz("olmadi");
+}
+
+// Sarja oturma aramasi
+uint8_t otDurum = 0;            // 0 yok, 1 sarj konumuna gidiliyor (kafa asagida), 2 kalkiyor, 3 temas var: teyit bekleniyor, 4 once kafa iniyor
+float otDerece = 0, otEgme = 0, otTaban = 0;
+bool otCoz = false;
+uint8_t otDeneme = 0;
+uint32_t otZaman = 0;
+char otAd[40] = "";
+char otYazi[16] = ""; uint32_t otYaziZaman = 0;
+const int8_t OT_KAYMA[] = {0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5};
+const float OT_IN = 5.0f;       // denemeler arasi kafa bu kadar iner (temas yokken yana kaymak icin yeter)
+const uint8_t OT_DENEME = sizeof(OT_KAYMA);
+const uint32_t OT_ADIM = 350;   // kafa kalkma adimi (ms, ~2,7 derece; "az yukari" ile ayni)
+void otDurumYaz(const char* s) { strlcpy(otYazi, s, sizeof(otYazi)); otYaziZaman = millis(); durumYayinla(); }
+
+void hedefeGit(float hedefDonus, bool egmeVar, float hedefEgme, bool coz, const char* ad);
+void otBaslat(float derece, float egme, bool coz, const char* ad) {
+  if (hr.aktif && !hr.ayri) { Kayit.println("Mesgul."); return; }
+  if (hr.aktif) adimBitir(millis());
+  otDerece = derece; otEgme = egme; otDeneme = 0; otCoz = coz; otZaman = 0;
+  strlcpy(otAd, ad, sizeof(otAd));
+  Kayit.printf("Sarja oturma: %s, kafa asagida gidiliyor\n", ad);
+  // once kafa iner (donerken yuvaya takilmasin), sonra doner
+  float tf = netEgme - (egme - ayrilmaEgim);
+  if (tf > 1 && hareketBaslat(0, -1, (uint32_t)(tf / EGME_HIZI * 1000) + GECIKME)) otDurum = 4;
+  else { otDurum = 1; hedefeGit(derece, true, egme - ayrilmaEgim, coz, ad); }
+  strlcpy(hedefAd, ad, sizeof(hedefAd)); vardiAd[0] = 0;
+  otDurumYaz("gidiyor");
+}
+void yuvaIsleriDur() { otDurum = 0; ayrDurum = 0; ayrKomut[0] = 0; }
+void otIptal(const char* neden) {
+  if (!otDurum) return;
+  otDurum = 0;
+  Kayit.printf("Sarja oturma iptal (%s)\n", neden);
+  otDurumYaz("iptal");
+}
+void otBitir(bool basarili) {
+  otDurum = 0;
+  if (basarili) {
+    float eski = netDonus;
+    netDonus = netDonus + sar180(otDerece - netDonus);   // yuva sabit: sayac sarj konumuna (tur korunur)
+    Kayit.printf("Sarja oturdu (deneme %d). Sayac duzeltildi: %.1f -> %.1f derece\n", otDeneme + 1, eski, netDonus);
+    otDurumYaz("tamam");
+  } else {
+    Kayit.println("Sarja oturamadi: kafa indiriliyor.");
+    float tf = netEgme - (otEgme - ayrilmaEgim);
+    if (tf > 1) hareketBaslat(0, -1, (uint32_t)(tf / EGME_HIZI * 1000) + GECIKME);
+    otDurumYaz("olmadi");
+  }
+  strlcpy(vardiAd, otAd, sizeof(vardiAd)); vardiZaman = millis(); hedefAd[0] = 0;
+  durumYayinla();
+}
+void otIsle() {
+  if (!otDurum) return;
+  if (hr.aktif || sonraki.var || donuyorMu()) { otZaman = 0; return; }   // hareket bitsin
+  uint32_t n = millis();
+  if (!otZaman) { otZaman = n; return; }          // hareket yeni bitti: saymaya basla
+  if (otDurum == 4) { otDurum = 1; otZaman = 0; hedefeGit(otDerece, true, otEgme - ayrilmaEgim, otCoz, otAd); strlcpy(hedefAd, otAd, sizeof(hedefAd)); return; }
+  if (otDurum == 1) {
+    if (yuvaTaze()) { otBitir(true); return; }    // zaten yuvada
+    otTaban = netDonus; otDurum = 2; otZaman = n;
+    Kayit.println("Sarj konumunda: kafa yavasca kalkiyor");
+    otDurumYaz("kalkiyor");
+    return;
+  }
+  if (otDurum == 2) {
+    if (yuvaHam || yuvaTaze()) { otDurum = 3; otZaman = n; Kayit.println("Temas geldi: kafa durdu, sarj teyidi bekleniyor"); otDurumYaz("bekliyor"); return; }
+    if (n - otZaman < 900) return;                // adimdan sonra Pixel'e haber verme payi
+    if (netEgme < fminf(otEgme + 6, 44.0f)) { hareketBaslat(0, 1, OT_ADIM); return; }
+    // sarj egimini gecti, temas yok: kafa iner, yana kayip tekrar dener
+    otDeneme++;
+    if (otDeneme >= OT_DENEME) { otBitir(false); return; }
+    float tf = netEgme - (otEgme - OT_IN);
+    float hedef = otTaban + OT_KAYMA[otDeneme], fark = hedef - netDonus;
+    Kayit.printf("Sarj gelmedi: deneme %d, %+d derece\n", otDeneme + 1, (int)OT_KAYMA[otDeneme]);
+    if (fabsf(fark) > 0.3f) { sonraki.var = true; sonraki.dx = fark > 0 ? 1 : -1; sonraki.dy = 0; sonraki.sure = (uint32_t)(fabsf(fark) / DONUS_HIZI * 1000) + GECIKME; sonraki.zaman = 0; }
+    if (!hareketBaslat(0, -1, (uint32_t)(tf / EGME_HIZI * 1000) + GECIKME)) { if (sonraki.var) sonraki.zaman = n; }
+    otZaman = 0;
+    char y[16]; snprintf(y, sizeof(y), "deneme %d", otDeneme + 1); otDurumYaz(y);
+    return;
+  }
+  if (otDurum == 3) {
+    if (yuvaTaze()) { otBitir(true); return; }
+    if (!yuvaHam || n - otZaman > 8000) {         // temas gitti ya da teyit gelmedi: bir adim daha
+      Kayit.println("Temas kararsiz: bir adim daha kalkiyor");
+      yuvaHam = false; otDurum = 2; otZaman = n - 900;
+      hareketBaslat(0, 1, OT_ADIM);
+    }
+  }
+}
+
 // Konum hareketi bitti mi (donus + sonra egme)? Bitince "vardi" yazilir.
 void hedefKontrol() {
+  if (otDurum) return;                             // sarja oturma suruyor: sonunda otBitir yazar
   if (!hedefAd[0] || hr.aktif || sonraki.var || donuyorMu()) return;
   strlcpy(vardiAd, hedefAd, sizeof(vardiAd)); vardiZaman = millis(); hedefAd[0] = 0;
   durumYayinla();
@@ -493,7 +667,14 @@ void hareketIsle() {
   int8_t ex = webAktif ? joyDx : kumDx;
   int8_t ey = webAktif ? joyDy : kumDy;
   uint32_t aralik = webAktif ? ARALIK : KUMANDA_ARALIK;
+  if (joyAktif && otDurum) otIptal("joystick");
+  if (joyAktif && (yuvaTaze() || ayrDurum)) {      // 3 Kas: yuvadayken donme standa gitmez, sayilmaz
+    if (ex) { ex = 0; if (!ayrDurum) { ayrilmaBaslat(""); return; } }
+    if (ey > 0 && yuvaTaze()) ey = 0;              // yuvaya dogru bastirmasin
+  }
   if (joyAktif) {
+    // 3 Kas: onceki hareketin durdurma darbeleri joystick'i kesip sayaci saptirmasin
+    durdurZaman[0] = durdurZaman[1] = durdurZaman[2] = 0;
     if (n - sonPaket >= aralik) {
       if (ex && sinirdaMi(ex)) { ex = 0; sinirUyarisi("joystick bu yonde durduruldu"); }
       uint16_t px = webAktif ? ORTA + ex * SAPMA : (ex ? kumX : ORTA);
@@ -1400,6 +1581,7 @@ bool donuyorMu() {
 
 // 180 saga da sola da ayni yere varir. Sinira yaklasildiysa kablo acilan yonden yapilir.
 void yuzSeksen() {
+  if (yuvaTaze() || ayrDurum) { ayrilmaBaslat("{\"t\":\"k180\"}"); return; }   // 3 Kas: once yuvadan ayril
   if (mod180 == 1) {
     if (sinirAsar(yarimTurYonu, 180)) { yarimTurYonu = -yarimTurYonu; Kayit.println("Donus siniri: 180 ters yonden yapiliyor"); }
     akilliYarimTur();
@@ -1612,6 +1794,8 @@ void komutGeldi(char tur, const char* json) {
     else if (!strcmp(ad, "uyandir")) { uyandirmaEsik = constrain((int)(d["deger"] | 10000), 0, 15000); hafiza.putUInt("uyandir2", uyandirmaEsik); }
     else if (!strcmp(ad, "hiz"))     { float v = d["deger"] | 28.3f; DONUS_HIZI = constrain(v, 20.0f, 40.0f); hafiza.putFloat("hiz", DONUS_HIZI); Kayit.printf("Donus hizi: %.1f derece/sn\n", DONUS_HIZI); }
     else if (!strcmp(ad, "sinir"))   { int v = d["deger"] | 540; donusSiniri = v <= 0 ? 0 : constrain(v, 180, 1440); hafiza.putUShort("sinir", (uint16_t)donusSiniri); }   // 0: sinirsiz
+    else if (!strcmp(ad, "ayrilma")) { float v = d["deger"] | 15.0f; ayrilmaEgim = constrain(v, 5.0f, 40.0f); hafiza.putFloat("ayrilma", ayrilmaEgim); Kayit.printf("Ayrilma egimi: %.0f derece\n", ayrilmaEgim); }
+    else if (!strcmp(ad, "yuva"))    { yuvaKontrol = d["deger"] | true; hafiza.putBool("yuva", yuvaKontrol); Kayit.printf("Yuva kontrolu: %s\n", yuvaKontrol ? "acik" : "kapali"); }
     else if (!strcmp(ad, "kopru"))   { kopruAcik = d["deger"] | true; hafiza.putBool("kopru2", kopruAcik); if (!kopruAcik && kumandaBagli()) kumandaIstemci->disconnect(); }
     else if (!strcmp(ad, "yerel"))   { Kayit.println("Iki kart duzeninde yerel mod yok, ayar yok sayildi."); durumYayinla(); return; }
     else { Kayit.printf("Bilinmeyen ayar: %s\n", ad); return; }
@@ -1713,6 +1897,29 @@ void komutGeldi(char tur, const char* json) {
   }
   if (!strcmp(t, "sifirla") && !yonetici) { Kayit.println("Baslangic yap reddedildi (yonetici kodu yok)."); return; }
 
+  // 3 Kas: yuva bilgisi, ayrilma denemesi; yuvadayken donme komutlari once ayrilmayi bekler
+  if (!strcmp(t, "yuva")) { yuvaGeldi((int)(d["v"] | 0) != 0, (int)(d["ham"] | 0) != 0); return; }
+  if (!strcmp(t, "ayril")) {
+    if (ayrDurum) return;
+    if (!yuvaTaze()) { Kayit.println("Ayrilma denemesi: Pixel yuvada degil (ya da haber yok)."); ayrilmaYaz("yuvada degil"); return; }
+    ayrilmaBaslat("");
+    return;
+  }
+  {
+    bool joyDon = !strcmp(t, "joy") && yonu(d["x"] | (int)ORTA) != 0;
+    bool donmeli = joyDon || !strcmp(t, "sag") || !strcmp(t, "sol") || !strcmp(t, "k180") || !strcmp(t, "azsag") ||
+                   !strcmp(t, "azsol") || !strcmp(t, "ev") || !strcmp(t, "konum") || (!strcmp(t, "adim") && (int)(d["x"] | 0) != 0);
+    bool hareket = donmeli || !strcmp(t, "joy") || !strcmp(t, "azyuk") || !strcmp(t, "azasa") || !strcmp(t, "adim") || !strcmp(t, "dur");
+    if (otDurum && hareket) otIptal(t);
+    if (!strcmp(t, "dur")) { ayrDurum = 0; ayrKomut[0] = 0; }
+    else if (yuvaTaze() || ayrDurum) {
+      if (!strcmp(t, "adim")) return;                       // takip yuvadayken calismaz
+      if (!strcmp(t, "azyuk") && yuvaTaze()) return;        // yuvaya bastirmasin
+      if (!strcmp(t, "konum") && (d["sarj"] | 0) && yuvaTaze() && !ayrDurum) { Kayit.println("Zaten yuvada."); otDurumYaz("tamam"); return; }
+      if (donmeli) { ayrilmaBaslat(joyDon ? "" : json); return; }
+    }
+  }
+
   // takip adimi surerken baska bir komut gelirse (joystick, dugme, dur) adim hemen biter, o komut gecerli olur
   if (hr.aktif && hr.ayri && strcmp(t, "adim") != 0) { adimBitir(millis()); durdurmaDarbesi(); }
 
@@ -1736,7 +1943,10 @@ void komutGeldi(char tur, const char* json) {
   else if (!strcmp(t, "azyuk")) hareketBaslat( 0, 1, 350);
   else if (!strcmp(t, "azasa")) hareketBaslat( 0,-1, 350);
   else if (!strcmp(t, "ev"))    hedefeGit(0, true, 0, true, "Başlangıç");
-  else if (!strcmp(t, "konum")) hedefeGit(d["derece"] | 0.0f, !d["tilt"].isNull(), d["tilt"] | 0.0f, (d["coz"] | 0) != 0, d["ad"] | "");
+  else if (!strcmp(t, "konum")) {
+    if ((d["sarj"] | 0) && !d["tilt"].isNull() && yuvaKontrol) otBaslat(d["derece"] | 0.0f, d["tilt"] | 0.0f, (d["coz"] | 0) != 0, d["ad"] | "");
+    else hedefeGit(d["derece"] | 0.0f, !d["tilt"].isNull(), d["tilt"] | 0.0f, (d["coz"] | 0) != 0, d["ad"] | "");
+  }
   else if (!strcmp(t, "dur"))   herSeyiDurdur();
   else if (!strcmp(t, "sifirla")) { netDonus = 0; netEgme = 0; Kayit.println("Baslangic ayarlandi."); durumYayinla(); }
 }
@@ -1756,6 +1966,9 @@ void durumYayinla() {
   if (hedefAd[0]) d["hedef"] = hedefAd;
   else if (vardiAd[0] && millis() - vardiZaman < 4000) d["vardi"] = vardiAd;
   d["sira180"] = (mod180 == 2 && hibritGidildi) ? "donus" : "gidis";
+  d["yuva"] = yuvaTaze();
+  if (ayrDurum || (ayrSonuc[0] && millis() - ayrSonucZaman < 6000)) d["ayr"] = ayrDurum ? "iniyor" : ayrSonuc;
+  if (otDurum || (otYazi[0] && millis() - otYaziZaman < 6000)) d["ot"] = otYazi;
   d["kumanda"] = kumandaBagli();
   if (kumAramaAcik()) d["kumAra"] = (int)((kumAraBitis - millis() + 999) / 1000);
   d["iphone"] = iphoneBagli();
@@ -1780,6 +1993,8 @@ void durumYayinla() {
   a["kopru"] = kopruAcik;
   a["sinir"] = (int)donusSiniri;
   a["hiz"] = round(DONUS_HIZI * 10) / 10.0;
+  a["ayrilma"] = (int)round(ayrilmaEgim);
+  a["yuva"] = yuvaKontrol;
   a["yerel"] = false;
   a["kalib"] = kalibHedef;
   d["kumTersX"] = kumTersX;
@@ -2069,6 +2284,8 @@ void setup() {
   geriDonusMs = hafiza.getUInt("geri180", 3600);
   donusSiniri = hafiza.getUShort("sinir", 540);
   DONUS_HIZI = constrain(hafiza.getFloat("hiz", 28.3f), 20.0f, 40.0f);
+  ayrilmaEgim = constrain(hafiza.getFloat("ayrilma", 15.0f), 5.0f, 40.0f);
+  yuvaKontrol = hafiza.getBool("yuva", true);
   netDonus = kayitliDonus = hafiza.getFloat("donus", 0);   // sayac kaldigi yerden (31 Ekim)
   netEgme = kayitliEgme = hafiza.getFloat("egme", 0);
   pcAdres = hafiza.getString("pcAdr", "");
@@ -2152,6 +2369,8 @@ void loop() {
     if (yayinLazim && reklam && !reklam->isAdvertising()) reklam->start();
   }
 
+  ayrilmaIsle();
+  otIsle();
   hedefKontrol();
   sayacKaydet();
   if (n - sonDurumYayin > 2000 || donuyorMu() != sonDonuyor) durumYayinla();   // donme basladi/bitti: hemen bildir

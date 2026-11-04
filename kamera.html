@@ -178,7 +178,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 3 Kas 20:59</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 3 Kas 21:52</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -338,7 +338,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="3 Kas 20:59";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="3 Kas 21:52";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -392,17 +392,22 @@
   // 3 Kas: şarj ancak 5 sn kesintisiz sürünce "şarjda" sayılır (mıknatıslı uç oynayınca saniyede birkaç kez takılıp çıkıyordu);
   // çıkış da öyle. Arada oynayan temas günlüğe tek satır yazılır.
   var pil=null, pilHamS=null, sarjTik=null, sarjOyna=0, SARJ_KARAR=5000;
+  // Yuva bilgisi karta (3 Kas): temas gelince hemen {v:1,ham:1}, 5 sn kesintisiz sürünce {v:1} (2 dk'da bir tekrar),
+  // kesilince hemen {v:0}. Kart yuvadayken standı döndürmez, önce kafayı indirip ayrılır; şarja oturmayı da bununla arar.
+  function yuvaKarta(v,ham){ try{ var m={t:"yuva",v:v?1:0}; if(ham) m.ham=1; karta(m); }catch(h){} }
+  setInterval(function(){ if(pil&&pil.s&&pilHamS) yuvaKarta(true); },120000);
   function sarjKarar(){
     var n=sarjOyna; sarjOyna=0; if(!pil) return;
+    if(pilHamS) yuvaKarta(true);   // 5 sn kesintisiz şarjda (oynayıp yine takıldıysa da)
     if(pilHamS!==pil.s){ pil.s=pilHamS; pilOrnekle(); bildir(); try{ pmSarjDegisti(n); pmPilDegisti(); }catch(h){} }
     else if(n>=2){ try{ pmOynak(n); }catch(h){} }
   }
   if(navigator.getBattery) navigator.getBattery().then(function(b){
     function oku_(){
       var y=Math.round(b.level*100), s_=!!b.charging;
-      if(!pil){ pil={y:y,s:s_}; pilHamS=s_; pilOrnekle(); bildir(); try{ pmSarjDegisti(0); pmPilDegisti(); }catch(h){} return; }
+      if(!pil){ pil={y:y,s:s_}; pilHamS=s_; pilOrnekle(); bildir(); try{ pmSarjDegisti(0); pmPilDegisti(); }catch(h){} setTimeout(function(){ yuvaKarta(!!(pil&&pil.s)); },3000); return; }
       var yd=pil.y!==y; pil.y=y;
-      if(s_!==pilHamS){ pilHamS=s_; sarjOyna++; clearTimeout(sarjTik); sarjTik=setTimeout(sarjKarar,SARJ_KARAR); }
+      if(s_!==pilHamS){ pilHamS=s_; sarjOyna++; yuvaKarta(s_,s_); clearTimeout(sarjTik); sarjTik=setTimeout(sarjKarar,SARJ_KARAR); }
       if(yd){ pilOrnekle(); bildir(); try{ pmPilDegisti(); }catch(h){} }
     }
     oku_(); b.addEventListener("levelchange",oku_); b.addEventListener("chargingchange",oku_);
