@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="3 Kas 21:52">
+<meta name="stand-surum" content="4 Kas 00:05">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -619,7 +619,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 3 Kas 21:52</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 4 Kas 00:05</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -781,8 +781,9 @@
         </select></label>
         <label>Dönüş hızı (° / sn, ölçümle 28,3)<input type="number" id="kaHiz" min="20" max="40" step="0.1" inputmode="decimal" style="width:90px"></label>
         <label>Yuva kontrolü (Pixel şarjdayken dönmeden önce yuvadan ayrıl)<input type="checkbox" id="kaYuva"></label>
-        <label>Ayrılma eğimi (kafa kaç derece insin)<select id="kaAyrilma"><option value="5">5°</option><option value="10">10°</option><option value="15">15°</option><option value="20">20°</option><option value="25">25°</option><option value="30">30°</option><option value="40">40°</option></select></label>
-        <div class="satir"><span id="kaAyrilmaY">Pixel yuvadayken dene: kafa iner, telefon ayrılıyor mu bakılır.</span><button class="kucuk" id="kaAyrilmaDene" style="width:auto">Ayrılmayı dene</button></div>
+        <label>Ayrılma yönü<select id="kaAyrYon"><option value="1">Normal</option><option value="-1">Ters</option></select></label>
+        <label>Ayrılma eğimi (kafa kaç derece gitsin)<select id="kaAyrilma"><option value="5">5°</option><option value="10">10°</option><option value="15">15°</option><option value="20">20°</option><option value="25">25°</option><option value="30">30°</option><option value="40">40°</option></select></label>
+        <div class="satir"><span id="kaAyrilmaY">Pixel yuvadayken dene: kafa ayrılma yönüne gider, telefon ayrılıyor mu bakılır.</span><button class="kucuk" id="kaAyrilmaDene" style="width:auto">Ayrılmayı dene</button></div>
         <label>Standın 180° yönü<select id="kaY180"><option value="1">Sağa</option><option value="-1">Sola</option></select></label>
         <label>WhatsApp menü açık kalma süresi<select id="kaUyandir">
           <option value="0">Kapalı</option><option value="6000">6 sn</option><option value="8000">8 sn</option>
@@ -2859,8 +2860,8 @@
   }
   // 3 Kas: kartın yuvadan ayrılma ve şarja oturma durumu
   var kdOt="", kdAyr="", kdOtSon=0, kdAyrSon=0;
-  var OT_YAZI={kalkiyor:"⚡ Yerleşiyor: kafa yavaşça kalkıyor…",bekliyor:"⚡ Temas var, şarj bekleniyor…",olmadi:"⚠ Şarja oturmadı · elle düzelt ya da konumu güncelle",iptal:"Şarja oturma durduruldu",tamam:"⚡ Şarj başladı ✓"};
-  var AYR_YAZI={iniyor:"Yuvadan ayrılıyor: kafa iniyor…",tamam:"Yuvadan ayrıldı ✓","olmadi":"⚠ Yuvadan ayrılamadı · dönme yapılmadı","yuvada degil":"Pixel yuvada değil (şarja oturtup tekrar dene)"};
+  var OT_YAZI={kalkiyor:"⚡ Yerleşiyor: kafa yavaşça yuvaya yaklaşıyor…",bekliyor:"⚡ Temas var, şarj bekleniyor…",olmadi:"⚠ Şarja oturmadı · elle düzelt ya da konumu güncelle",iptal:"Şarja oturma durduruldu",tamam:"⚡ Şarj başladı ✓"};
+  var AYR_YAZI={iniyor:"Yuvadan ayrılıyor…",tamam:"Yuvadan ayrıldı ✓","olmadi":"⚠ Yuvadan ayrılamadı · 10 sn içinde tekrar dönersen yapılır",iptal:"Ayrılma durduruldu (elle komut)","yuvada degil":"Pixel yuvada değil (şarja oturtup tekrar dene)"};
   function yuvaDurum(m){
     var ot=String(m.ot||""), ay=String(m.ayr||"");
     if(ot!==kdOt){
@@ -2987,7 +2988,8 @@
     if(a.hiz!==undefined&&seciliDegil("kaHiz")) E("kaHiz").value=String(a.hiz);
     if(a.yuva!==undefined&&seciliDegil("kaYuva")) E("kaYuva").checked=!!a.yuva;
     if(a.ayrilma!==undefined&&seciliDegil("kaAyrilma")){ var av=String(a.ayrilma); if(!E("kaAyrilma").querySelector('option[value="'+av+'"]')){ var o2=document.createElement("option"); o2.value=av; o2.textContent=av+"°"; E("kaAyrilma").appendChild(o2); } E("kaAyrilma").value=av; }
-    E("kaAyrilmaY").textContent=m.yuva?"Pixel şu an yuvada. Dene: kafa iner, telefon ayrılıyor mu bakılır.":"Pixel şu an yuvada değil (şarja oturtup dene).";
+    if(a.ayrYon!==undefined&&seciliDegil("kaAyrYon")) E("kaAyrYon").value=String(a.ayrYon<0?-1:1);
+    E("kaAyrilmaY").textContent=m.yuva?"Pixel şu an yuvada. Dene: kafa ayrılma yönüne gider; telefon yuvaya bastırıyorsa yönü Ters yap.":"Pixel şu an yuvada değil (şarja oturtup dene).";
     if(seciliDegil("kaAralik")) E("kaAralik").value=String(a.aralik);
     E("kalPad").classList.toggle("gizle",!a.kalib);
     E("kalBasla").textContent=a.kalib?"Ayar sürüyor…":"Ayarı başlat";
@@ -3002,6 +3004,7 @@
     ayarGonder("hiz",Math.round(v*10)/10);
   };
   E("kaYuva").onchange=function(){ ayarGonder("yuva",E("kaYuva").checked); };
+  E("kaAyrYon").onchange=function(){ ayarGonder("ayrYon",Number(E("kaAyrYon").value)); };
   E("kaAyrilma").onchange=function(){ ayarGonder("ayrilma",Number(E("kaAyrilma").value)); };
   E("kaAyrilmaDene").onclick=function(){ if(komutGonder({t:"ayril"})) bildiri("Ayrılma deneniyor…",4000,"bilgi"); };
   E("kaUyandir").onchange=function(){ ayarGonder("uyandir",Number(E("kaUyandir").value)); };
@@ -3649,7 +3652,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="3 Kas 21:52";
+  var SAYFA_SURUM="4 Kas 00:05";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
