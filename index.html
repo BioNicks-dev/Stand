@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="4 Kas 00:05">
+<meta name="stand-surum" content="26 Kas 01:21">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -47,6 +47,13 @@
   .kucuk{min-height:38px;padding:6px 10px;font-size:14px}
   .izgara2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .izgara3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  /* 26 Kas: Hohem V3 (Pixel yönetiyor) */
+  #gbIzgara{grid-column:1 / -1;margin-top:8px}
+  #gbIzgara .gbSira{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+  #gbIzgara .gbSira.uc{grid-template-columns:repeat(3,1fr)}
+  #gbIzgara button{min-height:40px;padding:6px 2px;font-size:14px}
+  #gbIzgara button.secili{border-color:var(--live);color:var(--live);font-weight:700}
+  #gbIzgara .gbBilgi{font-size:13px;color:var(--ink-soft);text-align:center}
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:10px}
 
   .gostergeler{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px}
@@ -619,7 +626,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 4 Kas 00:05</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 01:21</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -658,6 +665,15 @@
     <button id="solBtn">Sol 180°</button>
     <button id="evBtn">Başlangıç</button>
     <button id="sagBtn">Sağ 180°</button>
+  </div>
+  <div id="gbIzgara" class="gizle">
+    <div class="gbBilgi" id="gbBilgi">Gimbal (V3)</div>
+    <div class="gbSira" id="gbModlar">
+      <button type="button" data-m="0">PF</button><button type="button" data-m="1">PTF</button><button type="button" data-m="3">POV</button><button type="button" data-m="2">L</button>
+    </div>
+    <div class="gbSira uc">
+      <button type="button" data-y="0">Portre</button><button type="button" data-y="1">Yatay</button><button type="button" data-y="2">Ters</button>
+    </div>
   </div>
   <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
   </div>
@@ -1317,6 +1333,12 @@
     return k;
   }
   function komutGonder(k){
+    // 26 Kas: V3'ü Pixel yönetiyorsa joystick ve Dur gimbala gider; konum ve 180 düğmeleri sonraki aşamada
+    if(rol==="uzak"&&gbAktif()){
+      if(k.t==="dur"){ gbDur(); return true; }
+      if(k.t==="joy") return true;   // joystick gbJoy ile gider
+      if(STAND_KOMUTLARI[k.t]){ bildiri("Bu düğme V3'te henüz yok (konumlar sonraki aşamada)",0,"bilgi"); return false; }
+    }
     // stand hareketleri sadece kontrol sahibinden (dur ve joystick bırakma herkese açık)
     if(rol==="uzak"&&STAND_KOMUTLARI[k.t]&&!(k.t==="joy"&&k.x===ORTA&&k.y===ORTA)&&!kontrolVarMi()){ if(ayarIcinde()) bildiri("Stand kontrolü şu an sende değil",0,"hata"); return false; }
     if(grAcik&&grYet&&grYet.takip) grTakipBekle(15);
@@ -2640,7 +2662,38 @@
     var acik=a>=0.75 || (a>=0.45 ? (joyFaz%4)<2 : (joyFaz%4)===0);
     return acik ? (v>0?ORTA+SAPMA:ORTA-SAPMA) : ORTA;
   }
-  function uzakJoyGonder(){ joyFaz++; komutGonder({t:"joy",x:darbeDegeri(hamX),y:darbeDegeri(hamY)}); }
+  function uzakJoyGonder(){ if(gbAktif()){ gbJoy(); return; } joyFaz++; komutGonder({t:"joy",x:darbeDegeri(hamX),y:darbeDegeri(hamY)}); }
+  // ---------- 26 Kas: Hohem V3 (Pixel'deki uygulama yönetiyor) ----------
+  // Pixel "yetenek" mesajında gimbal bilgisini yollar; bağlıysa joystick, Dur, mod ve yön gimbala gider (goruntu/k).
+  // Joystick ne kadar itilirse gimbal o kadar hızlı döner (sapma 40-400).
+  var gbSonGonder=0;
+  function gbAktif(){ return !!(grAcik&&grYet&&grYet.gimbal&&grYet.gimbal.durum==="bagli"); }
+  function gbHiz(v){ var a=Math.abs(v); if(a<0.12) return 0; return Math.round((v>0?1:-1)*(40+(Math.min(1,a)-0.12)/0.88*360)); }
+  function gbJoy(){
+    if(!kontrolVarMi()) return;
+    grTakipBekle(15);
+    var x=gbHiz(hamX), y=-gbHiz(hamY);   // hamY yukarı +, gimbalda yukarı -
+    if(!x&&!y){ if(gbSonGonder){ gbSonGonder=0; grGonder({t:"gimbal",dur:1}); } return; }
+    gbSonGonder=Date.now();
+    grGonder({t:"gimbal",x:x,y:y,ad:benimAdim()});
+  }
+  function gbDur(){ gbSonGonder=0; grGonder({t:"gimbal",dur:1}); }
+  function gbCiz(){
+    var a=gbAktif(), g=grYet&&grYet.gimbal;
+    E("gbIzgara").classList.toggle("gizle",!a);
+    E("standIzgara").classList.toggle("gizle",a);
+    if(!a) return;
+    var b="Gimbal (V3) bağlı";
+    if(g.pil) b+=" · pil "+(g.pil/1000).toFixed(1).replace(".",",")+" V";
+    E("gbBilgi").textContent=b;
+    Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
+  }
+  Array.prototype.forEach.call(E("gbIzgara").querySelectorAll("button[data-m]"),function(d){
+    d.onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",mod:Number(d.getAttribute("data-m")),ad:benimAdim()}); bildiri("Gimbal modu: "+d.textContent,2000,"bilgi"); };
+  });
+  Array.prototype.forEach.call(E("gbIzgara").querySelectorAll("button[data-y]"),function(d){
+    d.onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",yon:Number(d.getAttribute("data-y")),ad:benimAdim()}); bildiri("Gimbal: "+d.textContent,2000,"bilgi"); };
+  });
   padEl.addEventListener("pointerdown",function(o){
     if(rol==="evde"&&(!rxKarakter||mesgul)) return;
     padEl.setPointerCapture(o.pointerId); padEl.classList.add("tutuluyor");
@@ -2656,7 +2709,7 @@
     if(!aktif) return;
     aktif=false; padEl.classList.remove("tutuluyor");
     topuzEl.style.transform=""; sonX=ORTA; sonY=ORTA; hamX=0; hamY=0;
-    if(rol==="uzak"){ clearInterval(uzakTik); komutGonder({t:"joy",x:ORTA,y:ORTA}); }
+    if(rol==="uzak"){ clearInterval(uzakTik); if(gbAktif()) gbDur(); else komutGonder({t:"joy",x:ORTA,y:ORTA}); }
     else { durdurmaDarbesi(); durumYayinla(); }
     if(o&&o.pointerId!=null&&padEl.hasPointerCapture(o.pointerId)) padEl.releasePointerCapture(o.pointerId);
   }
@@ -3652,7 +3705,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="4 Kas 00:05";
+  var SAYFA_SURUM="26 Kas 01:21";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -3676,7 +3729,7 @@
     clearTimeout(grBekleme); clearInterval(grOlcum); clearTimeout(grYedekTik);
     if(grPc){ try{ grPc.close(); }catch(h){} grPc=null; }
     if(haberVer&&grIstekte) grGonder({t:"bitir",id:grId});
-    grIstekte=false; grYet=null; grZ=1; grC={x:0,y:0}; grZc=1; grZHedef=null; grVideo.style.transform="";
+    grIstekte=false; grYet=null; grZ=1; grC={x:0,y:0}; grZc=1; grZHedef=null; grVideo.style.transform=""; gbCiz();
     grVideo.srcObject=null; grKutuSon=null; grKutuCiz(); grOto=null; grOtoVar=false; grTur=""; grCoz=""; grCozW=0; grCozH=0; grPx={ms:null,isi:null,kal:null};
     E("kBilgi").textContent=""; E("kBilgi").classList.remove("uyar"); E("kAyrinti").classList.add("gizli"); E("kTakipBtn").classList.remove("ogreniyor");
     E("mikGucSec").disabled=true;
@@ -3898,6 +3951,7 @@
     grDugmeler(true);
     E("kCevirBtn").querySelector("span").textContent=m.yon==="environment"?"Arka":"Ön";
     E("kMikBtn").classList.toggle("kapali",!m.mik);
+    gbCiz();
     E("kGorBtn").classList.toggle("kapali",!m.gor);
     E("kFenerBtn").disabled=!m.fener;
     E("kFenerBtn").classList.toggle("acik",!!m.fenerAcik);
@@ -4086,6 +4140,7 @@
     gkIptal();
     grBagKapat(true);
     grAcik=false;
+    gbCiz();
     document.body.classList.remove("kameraModu");
     E("kameraAlan").classList.add("gizle");
     duzenUygula();
