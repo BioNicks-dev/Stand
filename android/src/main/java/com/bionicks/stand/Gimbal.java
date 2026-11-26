@@ -167,6 +167,7 @@ final class Gimbal {
             if (g.varisZaman > 0 && SystemClock.elapsedRealtime() - g.varisZaman < 4000) o.put("vardi", g.gitAd);
             o.put("sinir", g.solVar);
             o.put("paketBoyu", g.paketBoyu);
+            o.put("gucKapatAc", g.aciKurtarma >= 3);
             o.put("aciYok", g.hazir && SystemClock.elapsedRealtime() - Math.max(g.a84Zaman, g.hazirZaman) > 3000);
             o.put("ayar", g.ayarYazi); o.put("ayarliyor", g.testAktif);
             if (g.solVar) o.put("sol", Math.round(g.sol));
@@ -187,7 +188,7 @@ final class Gimbal {
         Gimbal g = ben;
         if (g == null) return;
         g.gitAktif = false;          // elle hareket otomatik gidişi keser
-        if (g.testAktif) { g.testAktif = false; g.durYontem = g.testEski; g.ayarYazi = "Ayar yarıda kesildi (elle hareket)."; Kayit.yaz("Gimbal ayarı elle hareketle kesildi."); }
+        if (g.testAktif) { g.testAktif = false; g.durYontem = g.testEski; g.istenenHiz = g.testHizEski; g.ayarYazi = "Ayar yarıda kesildi (elle hareket)."; Kayit.yaz("Gimbal ayarı elle hareketle kesildi."); }
         g.hx = sinirla(x); g.hy = sinirla(y);
         g.sonHareketKomutu = SystemClock.elapsedRealtime();
     }
@@ -265,9 +266,10 @@ final class Gimbal {
     // ---------- 26 Kas 15:30: otomatik hareket testi (~50 sn) ----------
     // Her yöne 1,5 sn (hız 150) gider, bırakır, 2,5 sn izler: ne kadar gitti, bırakınca ne kadar kaydı, ne zaman durdu.
     // İki durdurma yöntemi denenir (A: yüz yok, B: önce yüz ortada). Eğme yönü de buradan öğrenilir.
-    private static final int[][] TEST = { {150,0,0},{-150,0,0},{0,-150,0},{0,150,0},{150,0,1},{-150,0,1},{0,-150,1},{0,150,1} };
+    // {x, y, takip hızı}: hızlı (2) ve çok hızlı (3) karşılaştırılır; durdurma B (önce yüz ortada)
+    private static final int[][] TEST = { {150,0,2},{-150,0,2},{0,-150,2},{0,150,2},{150,0,3},{-150,0,3},{0,-150,3},{0,150,3} };
     private static final String[] TEST_AD = { "sağ", "sol", "yukarı", "aşağı" };
-    private boolean testAktif = false; private int testNo = 0; private int testEski = 0;
+    private boolean testAktif = false; private int testNo = 0; private int testEski = 0, testHizEski = 2;
     private double tBasY, tBasE, tDurY, tDurE, tSonY, tSonE; private long tDurZaman, tSakin;
     private final double[] tKayma = new double[8]; private final long[] tSure = new long[8];
     private final StringBuilder testOzet = new StringBuilder();
@@ -279,8 +281,8 @@ final class Gimbal {
             if (g.testAktif) { Kayit.yaz("Gimbal ayarı zaten sürüyor."); return; }
             String neden = !g.hazir ? "gimbal bağlı değil" : Double.isNaN(g.yatay()) ? "gimbal açısı gelmiyor (paket boyu " + (g.paketBoyu > 0 ? g.paketBoyu : "?") + "); uygulama kendisi toparlamaya çalışıyor, 15 sn sonra tekrar deneyin" : Double.isNaN(g.egme()) ? "Pixel'in eğim sensörü okunmuyor" : null;
             if (neden != null) { g.ayarYazi = "Başlamadı: " + neden + "."; Kayit.yaz("Gimbal ayarı başlamadı: " + neden + "."); return; }
-            if (g.mod != 1) { g.gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, g.takipHizi >= 0 ? g.takipHizi : 1 })); g.mod = 1; }
-            g.testAktif = true; g.testNo = 0; g.testEski = g.durYontem; g.gitAktif = false; g.sonHareketKomutu = 0;
+            if (g.mod != 1) { g.gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, g.istenenHiz })); g.mod = 1; }
+            g.testAktif = true; g.testNo = 0; g.testEski = g.durYontem; g.testHizEski = g.istenenHiz; g.gitAktif = false; g.sonHareketKomutu = 0;
             g.testOzet.setLength(0);
             g.ayarYazi = "Ayarlanıyor… (1/8) Gimbala dokunmayın.";
             Kayit.yaz("Gimbal ayarı başladı (~50 sn). Gimbala dokunmayın.");
@@ -292,7 +294,8 @@ final class Gimbal {
         if (!testAktif) return;
         if (testNo >= TEST.length) { testBitir(); return; }
         int[] t = TEST[testNo];
-        durYontem = t[2];
+        durYontem = 1;
+        if (takipHizi != t[2]) { gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, t[2] })); takipHizi = t[2]; h.postDelayed(this::testKos, 1000); return; }
         ayarYazi = "Ayarlanıyor… (" + (testNo + 1) + "/8) Gimbala dokunmayın.";
         tBasY = yatay(); tBasE = egme();
         final long bitis = SystemClock.elapsedRealtime() + (t[0] != 0 ? 1500 : 1000);   // eğme 1 sn (uca dayanmasın)
@@ -325,7 +328,7 @@ final class Gimbal {
         if (!yatayTest) isaret *= egmeIsaret;
         double ileri = kayma * Math.signum(gitti == 0 ? isaret : gitti);  // + = aynı yönde devam etti
         tKayma[testNo] = ileri; tSure[testNo] = tSakin - tDurZaman;
-        String satir = "Ayar " + (testNo + 1) + "/8 " + TEST_AD[yonNo] + " (" + (t[2] == 0 ? "A" : "B") + "): gitti " + f1(gitti) + "°, bırakınca " + f1(ileri) + "° daha, "
+        String satir = "Ayar " + (testNo + 1) + "/8 " + TEST_AD[yonNo] + " (" + (t[2] == 2 ? "hızlı" : "çok hızlı") + "): gitti " + f1(gitti) + "°, bırakınca " + f1(ileri) + "° daha, "
             + String.format(java.util.Locale.US, "%.1f", (tSakin - tDurZaman) / 1000.0) + " sn'de durdu, öbür eksen " + f1(oteki) + "°.";
         Kayit.yaz("Gimbal " + satir);
         if (testNo == 2 && Math.abs(gitti) > 3) {                        // yukarı komutu: eğme ölçümü hangi yöne?
@@ -340,12 +343,13 @@ final class Gimbal {
     private void testBitir() {
         testAktif = false; sonHareketKomutu = 0;
         double a = 0, b = 0; for (int i = 0; i < 4; i++) { a += tKayma[i]; b += tKayma[i + 4]; }
-        int sec = b < a - 1 ? 1 : 0;
-        durYontem = sec;
-        if (ayar != null) ayar.edit().putInt("durYontem", sec).apply();
-        Kayit.yaz("Gimbal ayarı bitti. " + testOzet + "Bırakınca ortalama kayma: A " + f1(a / 4) + "°, B " + f1(b / 4) + "° → " + (sec == 0 ? "A" : "B") + " seçildi (kaydedildi).");
+        int sec = b < a - 1 ? 3 : 2;
+        istenenHiz = sec; durYontem = 1;
+        gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, sec }));
+        if (ayar != null) ayar.edit().putInt("takipHiz", sec).putInt("durYontem2", 1).apply();
+        Kayit.yaz("Gimbal ayarı bitti. " + testOzet + "Bırakınca ortalama kayma: hızlı " + f1(a / 4) + "°, çok hızlı " + f1(b / 4) + "° → " + (sec == 2 ? "hızlı" : "çok hızlı") + " seçildi (kaydedildi).");
         java.text.SimpleDateFormat sf = new java.text.SimpleDateFormat("d MMM HH:mm", new java.util.Locale("tr"));
-        ayarYazi = "Ayarlandı (" + sf.format(new java.util.Date()) + "): eğme yönü " + (egmeIsaret > 0 ? "normal" : "ters") + ", bırakınca kayma ~" + f1(Math.min(a, b) / 4).replace("+", "") + "°.";
+        ayarYazi = "Ayarlandı (" + sf.format(new java.util.Date()) + "): eğme yönü " + (egmeIsaret > 0 ? "normal" : "ters") + ", takip " + (sec == 2 ? "hızlı" : "çok hızlı") + ", bırakınca kayma ~" + f1(Math.min(a, b) / 4).replace("+", "") + "°.";
         if (ayar != null) ayar.edit().putString("ayarOzet", ayarYazi).apply();
     }
 
@@ -408,7 +412,8 @@ final class Gimbal {
             ayar = c.getSharedPreferences("gimbal", Context.MODE_PRIVATE);
             solVar = ayar.getBoolean("solVar2", false); sol = ayar.getFloat("sol2", 0f);
             egmeIsaret = ayar.getInt("egmeIsaret", 1) < 0 ? -1 : 1;
-            durYontem = ayar.getInt("durYontem", 0) == 1 ? 1 : 0;
+            durYontem = ayar.getInt("durYontem2", 1) == 0 ? 0 : 1;        // 16:25 ölçümü: B (önce yüz ortada) eğmede 22° yerine 2° kaydı
+            istenenHiz = Math.max(0, Math.min(3, ayar.getInt("takipHiz", 2)));
             ayarYazi = ayar.getString("ayarOzet", "Henüz ayarlanmadı.");
         } catch (Exception e) { }
         try {
@@ -575,7 +580,7 @@ final class Gimbal {
                 hazir = true; durum = "bagli"; sonHata = ""; hazirZaman = SystemClock.elapsedRealtime();
                 Kayit.yaz("Gimbal: bağlandı (" + ad + "), açılış paketleri gönderiliyor.");
                 for (String p : ACILIS) kuyruk.add(hexten(p));
-                kuyruk.add(paket(0x00, 0x7C, new int[] { 0, 0, 1, 1 }));   // 26 Kas: PTF + orta takip hızı (uzaktan kontrol için)
+                kuyruk.add(paket(0x00, 0x7C, new int[] { 0, 0, 1, istenenHiz }));   // PTF + seçili takip hızı (uzaktan kontrol için)
                 yazNext();
             });
         }
@@ -639,11 +644,11 @@ final class Gimbal {
                         hareketEdiyor = true; hareketBas = simdi;
                         // PF'de eğme kilitli, L'de hepsi kilitli: yüz takibi eğmiyor. Hareket için PTF gerekir.
                         if (mod == 0 || mod == 2) {
-                            int hz = takipHizi >= 0 ? takipHizi : 1;
-                            gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, hz }));
+                            gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, istenenHiz }));
                             Kayit.yaz("Gimbal: mod " + MOD_AD[mod] + " idi, hareket için PTF'ye alındı.");
                             mod = 1;
                         }
+                        else if (mod == 1 && takipHizi >= 0 && takipHizi != istenenHiz) gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, istenenHiz }));
                         gonder(paket(0x03, 0x2B, new int[] { 0, 0 }));     // tracker'ın kendi takibini durdur (Hohem Joy da yapıyor)
                         gonder(takip(0, 0, 0, 0));
                         sonAkis = simdi;
@@ -689,6 +694,9 @@ final class Gimbal {
             aciKurtarma = 2;
             Kayit.yaz("Gimbal: açı hâlâ gelmiyor, yeniden bağlanılıyor.");
             kapat("açı gelmiyor"); h.postDelayed(this::ara, 1500);
+        } else if (aciKurtarma == 2) {
+            aciKurtarma = 3;
+            Kayit.yaz("Gimbal: açı yeniden bağlanınca da gelmedi. Gimbalı güç tuşundan kapatıp açın.");
         }
         // 2: bir kez yeniden bağlandı, yine olmazsa döngüye girme (yeniden bağlanınca sayaç sıfırlanır)
     }
@@ -702,6 +710,8 @@ final class Gimbal {
     private long sonAkis = 0, akisMax = 0, aciMax = 0, oncekiAci = 0; private int gitDurKalk = 0;
     // durdurma yöntemi: 0 = yüz yok (varsayılan), 1 = önce yüz ortada sonra yüz yok (Hohem Joy gibi)
     private int durYontem = 0;
+    // 26 Kas 16:40: takip hızı (Follow Speed). Orta (1) gecikmeli: komut 1,5 sn geç başlıyor, bırakınca 1,4 sn devam ediyor.
+    private int istenenHiz = 2;
     // 26 Kas 16:00: "Gimbalı ayarla" ilerleme / sonuç yazısı (panelde görünür)
     private volatile String ayarYazi = "";
     // açı geçmişi (her 00 84 cevabında): "bıraktığın yerde dursun" için

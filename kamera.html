@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:25</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:45</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -364,7 +364,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 16:25";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 16:45";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2757,7 +2757,7 @@
   // ---------- 26 Kas: Seda'nın sayfasından gimbal (Aşama 2) ----------
   // Sayfa basılı tutarken ~150 ms'de bir {t:"gimbal",x,y} yollar, bırakınca {t:"gimbal",dur:1}.
   // İnternet gecikmesi olmasın diye son komut burada 100 ms'de bir tekrarlanır; 400 ms yeni komut gelmezse durur (26 Kas: 700'den indirildi, fazla gidiyordu).
-  var gbPilYuzde=function(mv){ var v=mv/2000, e=[[3.23,0],[3.27,5],[3.40,12],[3.60,20],[3.70,35],[3.75,45],[3.80,55],[3.90,68],[4.00,80],[4.10,90],[4.20,100]]; if(v<=e[0][0]) return 0; for(var i=1;i<e.length;i++){ if(v<=e[i][0]){ var a=e[i-1],b=e[i]; return Math.round(a[1]+(v-a[0])/(b[0]-a[0])*(b[1]-a[1])); } } return 100; };   // 26 Kas: lityum eğrisi (sayfadakiyle aynı)
+  var gbPilYuzde=function(mv){ var v=mv/2000, e=[[3.23,0],[3.27,5],[3.40,12],[3.54,20],[3.60,25],[3.70,35],[3.75,45],[3.80,55],[3.90,68],[4.00,80],[4.10,90],[4.20,100]]; if(v<=e[0][0]) return 0; for(var i=1;i<e.length;i++){ if(v<=e[i][0]){ var a=e[i-1],b=e[i]; return Math.round(a[1]+(v-a[0])/(b[0]-a[0])*(b[1]-a[1])); } } return 100; };   // 26 Kas: lityum eğrisi (sayfadakiyle aynı)
   var gbSonOzet="", gbUzakX=0, gbUzakY=0, gbUzakSon=0, gbUzakTik=null;
   function gimbalVar(){ return !!(APP&&typeof APP.gimbalDurum==="function"); }
   function gimbalOzet(){
@@ -2818,7 +2818,7 @@
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
       E("gbAci").textContent=(typeof g.yatay==="number"?"yatay "+Math.round(g.yatay)+"°":"yatay ?")+" · "+(typeof g.egme==="number"?"eğme "+Math.round(g.egme)+"°":"eğme ?")+(typeof g.roll==="number"?" · roll "+g.roll+"°":"")+(g.gidiyor?" · gidiyor…":"")+(g.sinir?" · sınır biliniyor":" · sınır öğrenilmedi");
       if(typeof g.ayar==="string"&&g.ayar) E("gbAyar").textContent=g.ayar;
-      if(g.aciYok) E("gbAci").textContent="gelmiyor (paket boyu "+(g.paketBoyu||"?")+") · uygulama toparlamaya çalışıyor";
+      if(g.aciYok) E("gbAci").textContent=g.gucKapatAc?"gelmiyor · gimbalı güç tuşundan kapatıp açın":"gelmiyor · uygulama toparlamaya çalışıyor (15 sn)";
       E("gbTest").disabled=!!g.ayarliyor||g.durum!=="bagli";
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
       var oz=g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"")+"|"+(typeof g.yatay==="number"?Math.round(g.yatay/2):"")+"|"+(typeof g.egme==="number"?Math.round(g.egme/2):"")+"|"+!!g.gidiyor+"|"+(g.vardi||"")+"|"+!!g.sinir;
