@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="26 Kas 16:10">
+<meta name="stand-surum" content="26 Kas 16:25">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -628,7 +628,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 16:10</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 16:25</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -670,11 +670,8 @@
   </div>
   <div id="gbIzgara" class="gizle">
     <div class="gbBilgi" id="gbBilgi">Gimbal (V3)</div>
-    <div class="gbSira" id="gbModlar">
-      <button type="button" data-m="0">PF</button><button type="button" data-m="1">PTF</button><button type="button" data-m="3">POV</button><button type="button" data-m="2">L</button>
-    </div>
     <div class="gbSira uc">
-      <button type="button" data-y="1">Portre</button><button type="button" data-y="0">Yatay</button><button type="button" data-y="2">Ters</button>
+      <button type="button" data-y="1">Dikey</button><button type="button" data-y="0">Yatay</button><button type="button" data-y="2">Ters yatay</button>
     </div>
   </div>
   <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
@@ -2727,7 +2724,7 @@
     if(typeof g.yatay==="number") b+=" · "+Math.round(g.yatay)+"° / "+(typeof g.egme==="number"?Math.round(g.egme):"?")+"°"+(g.gidiyor?" · gidiyor…":"");
     if(g.pil) b+=" · pil ~%"+gbPilYuzde(g.pil)+" ("+(g.pil/1000).toFixed(2).replace(".",",")+" V)";
     E("gbBilgi").textContent=b;
-    Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
+    if(E("gbModlar")) Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
   }
   Array.prototype.forEach.call(E("gbIzgara").querySelectorAll("button[data-m]"),function(d){
     d.onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",mod:Number(d.getAttribute("data-m")),ad:benimAdim()}); bildiri("Gimbal modu: "+d.textContent,2000,"bilgi"); };
@@ -3777,7 +3774,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="26 Kas 16:10";
+  var SAYFA_SURUM="26 Kas 16:25";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

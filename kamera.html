@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:10</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:25</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -364,7 +364,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 16:10";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 16:25";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2773,7 +2773,7 @@
   function gimbalUzak(m){
     if(!gimbalVar()) return;
     if(m.mod!=null){ try{ APP.gimbalMod(Number(m.mod)); }catch(h){} yaz("Stand sayfası: gimbal modu "+["PF","PTF","L","POV"][Number(m.mod)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
-    if(m.yon!=null){ try{ APP.gimbalYon(Number(m.yon)); }catch(h){} yaz("Stand sayfası: gimbal yönü "+["landscape","portre","ters landscape"][Number(m.yon)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
+    if(m.yon!=null){ try{ APP.gimbalYon(Number(m.yon)); }catch(h){} yaz("Stand sayfası: gimbal yönü "+["yatay","dikey","ters yatay"][Number(m.yon)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
     // 26 Kas (Aşama 3b): açıya git, göreli, 180, sınırı unut
     if(m.git){ gimbalUzakDur(); try{ APP.gimbalGit(Number(m.git.yatay)||0, m.git.egme==null?-999:Number(m.git.egme), String(m.git.ad||"")); }catch(h){} yaz("Stand sayfası: gimbal "+(m.git.ad?"\""+m.git.ad+"\" konumuna":"hedefe")+" gidiyor"+(m.ad?" ("+m.ad+")":"")+"."); return; }
     if(m.goreli){ gimbalUzakDur(); try{ APP.gimbalGoreli(Number(m.goreli.y)||0, Number(m.goreli.e)||0); }catch(h){} return; }
@@ -2818,6 +2818,7 @@
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
       E("gbAci").textContent=(typeof g.yatay==="number"?"yatay "+Math.round(g.yatay)+"°":"yatay ?")+" · "+(typeof g.egme==="number"?"eğme "+Math.round(g.egme)+"°":"eğme ?")+(typeof g.roll==="number"?" · roll "+g.roll+"°":"")+(g.gidiyor?" · gidiyor…":"")+(g.sinir?" · sınır biliniyor":" · sınır öğrenilmedi");
       if(typeof g.ayar==="string"&&g.ayar) E("gbAyar").textContent=g.ayar;
+      if(g.aciYok) E("gbAci").textContent="gelmiyor (paket boyu "+(g.paketBoyu||"?")+") · uygulama toparlamaya çalışıyor";
       E("gbTest").disabled=!!g.ayarliyor||g.durum!=="bagli";
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
       var oz=g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"")+"|"+(typeof g.yatay==="number"?Math.round(g.yatay/2):"")+"|"+(typeof g.egme==="number"?Math.round(g.egme/2):"")+"|"+!!g.gidiyor+"|"+(g.vardi||"")+"|"+!!g.sinir;

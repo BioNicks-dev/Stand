@@ -166,6 +166,8 @@ final class Gimbal {
             o.put("gidiyor", g.gitAktif);
             if (g.varisZaman > 0 && SystemClock.elapsedRealtime() - g.varisZaman < 4000) o.put("vardi", g.gitAd);
             o.put("sinir", g.solVar);
+            o.put("paketBoyu", g.paketBoyu);
+            o.put("aciYok", g.hazir && SystemClock.elapsedRealtime() - Math.max(g.a84Zaman, g.hazirZaman) > 3000);
             o.put("ayar", g.ayarYazi); o.put("ayarliyor", g.testAktif);
             if (g.solVar) o.put("sol", Math.round(g.sol));
             int[] a = g.a84;
@@ -275,7 +277,7 @@ final class Gimbal {
         if (g == null) return;
         g.h.post(() -> {
             if (g.testAktif) { Kayit.yaz("Gimbal ayarı zaten sürüyor."); return; }
-            String neden = !g.hazir ? "gimbal bağlı değil" : Double.isNaN(g.yatay()) ? "gimbal açısı gelmiyor" : Double.isNaN(g.egme()) ? "Pixel'in eğim sensörü okunmuyor" : null;
+            String neden = !g.hazir ? "gimbal bağlı değil" : Double.isNaN(g.yatay()) ? "gimbal açısı gelmiyor (paket boyu " + (g.paketBoyu > 0 ? g.paketBoyu : "?") + "); uygulama kendisi toparlamaya çalışıyor, 15 sn sonra tekrar deneyin" : Double.isNaN(g.egme()) ? "Pixel'in eğim sensörü okunmuyor" : null;
             if (neden != null) { g.ayarYazi = "Başlamadı: " + neden + "."; Kayit.yaz("Gimbal ayarı başlamadı: " + neden + "."); return; }
             if (g.mod != 1) { g.gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, g.takipHizi >= 0 ? g.takipHizi : 1 })); g.mod = 1; }
             g.testAktif = true; g.testNo = 0; g.testEski = g.durYontem; g.gitAktif = false; g.sonHareketKomutu = 0;
@@ -373,13 +375,13 @@ final class Gimbal {
         });
     }
 
-    // 0 = landscape, 1 = portre, 2 = ters landscape (26 Kas denemesiyle düzeltildi)
+    // 0 = yatay, 1 = dikey, 2 = ters yatay (26 Kas denemesiyle düzeltildi)
     static void yon(final int y) {
         final Gimbal g = ben;
         if (g == null || y < 0 || y > 2) return;
         g.h.post(() -> {
             g.gonder(paket(0x00, 0x9A, new int[] { 0x0A, y, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0 }));
-            Kayit.yaz("Gimbal: yön " + (y == 1 ? "portre" : y == 0 ? "landscape" : "ters landscape") + ".");
+            Kayit.yaz("Gimbal: yön " + (y == 1 ? "dikey" : y == 0 ? "yatay" : "ters yatay") + ".");
         });
     }
 
@@ -553,6 +555,7 @@ final class Gimbal {
         @Override public void onMtuChanged(final BluetoothGatt g, final int mtu, final int st) {
             h.post(() -> {
                 if (g != gatt) return;
+                paketBoyu = mtu;
                 Kayit.yaz("Gimbal: paket boyu " + mtu + (st == BluetoothGatt.GATT_SUCCESS ? "" : " (hata " + st + ")") + ".");
                 if (!servisAramaBasladi) { servisAramaBasladi = true; try { g.discoverServices(); } catch (Exception e) { } }
             });
@@ -569,7 +572,7 @@ final class Gimbal {
                 // Hohem Joy cevap kanalını açmak için gimbala bir şey yazmıyor; gimbal cevapları kendisi yolluyor.
                 // Sadece telefonun tarafında dinlemeyi açıyoruz (gimbala yazma yok, kuyruğu kilitleyemez).
                 if (o != null) { try { g.setCharacteristicNotification(o, true); } catch (Exception e) { } }
-                hazir = true; durum = "bagli"; sonHata = "";
+                hazir = true; durum = "bagli"; sonHata = ""; hazirZaman = SystemClock.elapsedRealtime();
                 Kayit.yaz("Gimbal: bağlandı (" + ad + "), açılış paketleri gönderiliyor.");
                 for (String p : ACILIS) kuyruk.add(hexten(p));
                 kuyruk.add(paket(0x00, 0x7C, new int[] { 0, 0, 1, 1 }));   // 26 Kas: PTF + orta takip hızı (uzaktan kontrol için)
@@ -627,6 +630,7 @@ final class Gimbal {
             long simdi = SystemClock.elapsedRealtime();
             if (yaziyor && simdi - yazmaBasi > 1000) { yaziyor = false; yazNext(); }   // geri bildirim gelmediyse devam
             if (hazir) {
+                aciKontrol(simdi);
                 if (gitAktif) gitAdim(simdi);
                 sinirKoru(simdi);
                 boolean istek = sonHareketKomutu > 0 && simdi - sonHareketKomutu <= HAREKET_ZAMAN;
@@ -673,6 +677,22 @@ final class Gimbal {
             h.postDelayed(this, HAREKET_ARA);
         }
     };
+    private void aciKontrol(long simdi) {
+        long son = Math.max(a84Zaman, hazirZaman);
+        if (simdi - son < 6000 || simdi - aciKurtarmaZaman < 6000) return;
+        aciKurtarmaZaman = simdi;
+        if (aciKurtarma == 0) {
+            aciKurtarma = 1;
+            Kayit.yaz("Gimbal: açı gelmiyor (paket boyu " + (paketBoyu > 0 ? paketBoyu : "?") + "), büyük paket yeniden isteniyor.");
+            try { if (gatt != null) gatt.requestMtu(247); } catch (Exception e) { }
+        } else if (aciKurtarma == 1) {
+            aciKurtarma = 2;
+            Kayit.yaz("Gimbal: açı hâlâ gelmiyor, yeniden bağlanılıyor.");
+            kapat("açı gelmiyor"); h.postDelayed(this::ara, 1500);
+        }
+        // 2: bir kez yeniden bağlandı, yine olmazsa döngüye girme (yeniden bağlanınca sayaç sıfırlanır)
+    }
+
     private int nabizSay = 0, aciSay = 0;
     private long hareketBas = 0;
     // 26 Kas 15:30: eğme yönü. +1: y < 0 (yukarı komutu) Pixel'in eğme ölçümünü artırır. Ters çıkarsa kendisi düzeltir ve saklar.
@@ -687,6 +707,8 @@ final class Gimbal {
     // açı geçmişi (her 00 84 cevabında): "bıraktığın yerde dursun" için
     private final long[] gT = new long[128]; private final double[] gY = new double[128], gE = new double[128]; private int gN = 0;
     private boolean gitSessiz = false;
+    // 26 Kas 16:20: açı (00 84) gelmezse kendini toparla: önce paket boyunu yeniden iste, olmazsa yeniden bağlan
+    private volatile int paketBoyu = 0; private long hazirZaman = 0; private int aciKurtarma = 0; private long aciKurtarmaZaman = 0;
 
     // ---------- açılar ----------
     static double sar(double d) { d = ((d + 180) % 360 + 360) % 360 - 180; return d; }
@@ -826,6 +848,7 @@ final class Gimbal {
             if (gitAktif && oncekiAci > 0) aciMax = Math.max(aciMax, t - oncekiAci);
             oncekiAci = t;
             a84 = a; a84Zaman = t;
+            if (aciKurtarma != 0) { aciKurtarma = 0; Kayit.yaz("Gimbal: açı yeniden geliyor."); }
             int i = gN++ & 127; gT[i] = t; gY[i] = sar(-a[2] / 10.0); gE[i] = egme();
         } else if (grup == 0x00 && komut == 0x57 && veriBoy >= 2) {
             int m = v[v.length - 4] & 0xFF, hz = v[v.length - 3] & 0xFF;
