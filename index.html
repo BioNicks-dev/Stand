@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="26 Kas 15:10">
+<meta name="stand-surum" content="26 Kas 15:40">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -130,6 +130,7 @@
   .kameraIzin{min-height:32px;padding:4px 10px;font-size:13px;color:var(--ink-soft);border-color:var(--line-strong)}
   .kameraIzin.acik{color:var(--live);border-color:var(--live)}
   .konumCip{display:inline-flex}
+  .konumEkleCip{border-color:#60a5fa !important;color:#2563eb;font-weight:600}
   .konumCip .git{border-top-right-radius:0;border-bottom-right-radius:0;border-right:none}
   .konumCip .sil{border-top-left-radius:0;border-bottom-left-radius:0;padding:6px 10px;color:var(--ink-soft)}
   .konumCip{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
@@ -627,7 +628,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 15:10</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 15:40</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -2707,6 +2708,7 @@
   function gbDur(){ gbSonGonder=0; gbEgmeYon=0; gbEgmeKilit=false; grGonder({t:"gimbal",dur:1}); }
   function gbCiz(){
     var a=gbAktif(), g=grYet&&grYet.gimbal;
+    if(a!==gbKonumCizildi) konumlariCiz();
     E("gbIzgara").classList.toggle("gizle",!a);
     E("standIzgara").classList.toggle("gizle",false);   // 26 Kas 3b: Sol/Sağ 180 ve Başlangıç V3'te de çalışıyor
     if(!a) return;
@@ -2886,7 +2888,15 @@
       if(yetki) dugme("Sil",function(){ konumSil(kn,ortak); });
       satir.appendChild(ad); satir.appendChild(dg); sil.appendChild(satir);
     });
+    // 26 Kas 15:40: V3 bağlıyken Evi izle'de (dik ekran) listenin sonunda "+ Konum ekle"
+    if(gbAktif()){
+      var ek=document.createElement("button"); ek.className="git konumEkleCip"; ek.textContent="+ Konum ekle";
+      ek.addEventListener("click",function(){ konumEkle(); });
+      kap.appendChild(ek);
+    }
+    gbKonumCizildi=gbAktif();
   }
+  var gbKonumCizildi=false;
   // Evi izle şeridi: dokun = git, uzun bas = güncelle; 8 sn dokunulmazsa kapanır
   var seritTik=null;
   function seritAcik(){ return !E("kKonumSerit").classList.contains("gizle"); }
@@ -3760,7 +3770,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="26 Kas 15:10";
+  var SAYFA_SURUM="26 Kas 15:40";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

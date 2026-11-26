@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 13:36</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 15:40</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -307,6 +307,7 @@
       </div>
       <div class="gbSira"><button type="button" id="gbSag180">Sağdan 180°</button><button type="button" id="gbSol180">Soldan 180°</button><button type="button" id="gbOrtala">Düz bak (eğme 0°)</button></div>
       <button id="gbSinirUnut" type="button">Yatay sınırı unut (yeniden öğrensin)</button>
+      <button id="gbTest" type="button">Hareket testi (~50 sn, gimbala dokunmayın)</button>
       <button id="gbYeniden" type="button">Yeniden bağlan</button>
       <div class="durum" style="margin-top:10px">
         <b>Açı ölçümü (Aşama 3a)</b><br>
@@ -389,7 +390,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 13:36";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 15:40";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2842,6 +2843,7 @@
     E("gbSol180").addEventListener("click",function(){ try{ APP.gimbal180(-1); }catch(h){} });
     E("gbOrtala").addEventListener("click",function(){ var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){} if(typeof g.yatay==="number") try{ APP.gimbalGit(g.yatay,0,"düz"); }catch(h){} });
     E("gbSinirUnut").addEventListener("click",function(){ try{ APP.gimbalSinirUnut(); }catch(h){} });
+    E("gbTest").addEventListener("click",function(){ if(typeof APP.gimbalTest!=="function"){ yaz("Hareket testi için uygulamayı güncelleyin."); return; } try{ APP.gimbalTest(); }catch(h){} });
     // Aşama 3a: 60 sn boyunca 0,5 sn'de bir gimbal ham sayıları + Pixel sensörü; 2 sn'de bir tek satır (4 örnek) Kayıt'a
     // ölçüm Pixel'in hafızasında tutulur; bitince "Ölçümü kopyala" hepsini tek seferde panoya alır
     var olcTik=null, olcVeri=[];
