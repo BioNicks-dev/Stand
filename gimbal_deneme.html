@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="Gimbal deneme · 25 Kas 19:52">
+<meta name="stand-surum" content="Gimbal deneme · 25 Kas 20:15">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Gimbal deneme (Hohem V3)</title>
 <style>
@@ -34,7 +34,7 @@
 <body>
 <main>
   <h1>Gimbal deneme · Hohem V3</h1>
-  <div class="surum" id="surumDamga">Gimbal deneme · 25 Kas 19:52</div>
+  <div class="surum" id="surumDamga">Gimbal deneme · 25 Kas 20:15</div>
 
   <div class="satir">
     <button id="baglan">Bağlan</button>
@@ -75,13 +75,14 @@
 
   <div class="satir">
     <label><input type="checkbox" id="kalpGoster"> "Buradayım" paketlerini de yaz</label>
+    <button id="kopyala" style="flex:0 0 auto">Kaydı kopyala</button>
     <button id="temizle" style="flex:0 0 auto">Kaydı temizle</button>
   </div>
   <div id="kayit"></div>
 </main>
 
 <script>
-var SAYFA_SURUM = "Gimbal deneme · 25 Kas 19:52";
+var SAYFA_SURUM = "Gimbal deneme · 25 Kas 20:15";
 
 // ---------- Paket yapisi ----------
 // AA 55 | uzunluk | 00 | grup | komut | veri... | toplam | FF
@@ -129,12 +130,15 @@ var YUZ_W = 90, YUZ_H = 90;
 
 // ---------- Kayit ----------
 var kayitEl = document.getElementById("kayit");
+var tumKayit = [];
 function yaz(metin, tur) {
   var d = new Date();
   var s = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2) + ":" + ("0" + d.getSeconds()).slice(-2) + "." + ("00" + d.getMilliseconds()).slice(-3);
   var div = document.createElement("div");
   div.className = "k-" + (tur || "not");
   div.textContent = s + " " + metin;
+  tumKayit.push(s + " " + metin);
+  if (tumKayit.length > 5000) tumKayit.shift();
   kayitEl.appendChild(div);
   while (kayitEl.childNodes.length > 400) kayitEl.removeChild(kayitEl.firstChild);
   kayitEl.scrollTop = kayitEl.scrollHeight;
@@ -201,8 +205,8 @@ function servisBul(sunucu) {
         if (yazKar && okuKar) return;
         return s.getCharacteristics().then(function (kl) {
           kl.forEach(function (k) {
-            if (k.uuid.indexOf("0000ffe3") === 0) yazKar = k;
-            if (k.uuid.indexOf("0000ffe4") === 0) okuKar = k;
+            if (k.uuid.indexOf("0000ffe1") === 0) yazKar = k;
+            if (k.uuid.indexOf("0000ffe2") === 0) okuKar = k;
           });
         }).catch(function () {});
       });
@@ -225,8 +229,8 @@ function baglan() {
   }).then(function (sunucu) {
     return servisBul(sunucu);
   }).then(function () {
-    if (!yazKar || !okuKar) throw new Error("FFE3/FFE4 bulunamadı");
-    yaz("FFE3 (yazma) ve FFE4 (cevap) bulundu.");
+    if (!yazKar || !okuKar) throw new Error("FFE1/FFE2 bulunamadı");
+    yaz("FFE1 (yazma) ve FFE2 (cevap) bulundu.");
     okuKar.addEventListener("characteristicvaluechanged", gelen);
     // Cevap kanalini acma istegi gimbalda cevapsiz kaliyor ve Chrome'un tum siradaki islemlerini kilitliyor.
     // Bu surumde hic acmiyoruz; sadece komut gonderiyoruz.
@@ -345,7 +349,25 @@ document.getElementById("otoDeneme").addEventListener("click", function () {
 document.getElementById("dur").addEventListener("click", function () { otoIptal = true; hareketBitir(); yaz("Hepsini durdur.", "not"); });
 document.getElementById("baglan").addEventListener("click", baglan);
 document.getElementById("kes").addEventListener("click", kes);
-document.getElementById("temizle").addEventListener("click", function () { kayitEl.innerHTML = ""; });
+document.getElementById("temizle").addEventListener("click", function () { kayitEl.innerHTML = ""; tumKayit = []; });
+document.getElementById("kopyala").addEventListener("click", function () {
+  var bas = [
+    "Sürüm: " + SAYFA_SURUM,
+    "Cihaz: " + (cihaz ? cihaz.name : "-") + " · bağlı: " + (cihaz && cihaz.gatt.connected ? "evet" : "hayır"),
+    "Giden: " + gidenSay + " · Gelen: " + gelenSay,
+    "Tarayıcı: " + navigator.userAgent,
+    "----"
+  ];
+  var metin = bas.concat(tumKayit).join("\n");
+  function bitti() { yaz("Kayıt panoya kopyalandı (" + tumKayit.length + " satır).", "not"); }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(metin).then(bitti, function () { eskiKopya(metin); bitti(); });
+  } else { eskiKopya(metin); bitti(); }
+});
+function eskiKopya(m) {
+  var t = document.createElement("textarea"); t.value = m; document.body.appendChild(t);
+  t.select(); try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(t);
+}
 document.getElementById("hamGonder").addEventListener("click", function () {
   var b = hexten(document.getElementById("ham").value);
   if (!b) { yaz("Ham paket geçersiz.", "hata"); return; }
