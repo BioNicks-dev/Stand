@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="26 Kas 01:21">
+<meta name="stand-surum" content="26 Kas 01:57">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -626,7 +626,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 01:21</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 01:57</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1334,7 +1334,7 @@
   }
   function komutGonder(k){
     // 26 Kas: V3'ü Pixel yönetiyorsa joystick ve Dur gimbala gider; konum ve 180 düğmeleri sonraki aşamada
-    if(rol==="uzak"&&gbAktif()){
+    if(gbAktif()){
       if(k.t==="dur"){ gbDur(); return true; }
       if(k.t==="joy") return true;   // joystick gbJoy ile gider
       if(STAND_KOMUTLARI[k.t]){ bildiri("Bu düğme V3'te henüz yok (konumlar sonraki aşamada)",0,"bilgi"); return false; }
@@ -2582,7 +2582,8 @@
         else { yaz("Uzaktan ayrıldı: "+uzaklar[id].cihaz); delete uzaklar[id]; }
       });
       uzakYaz(aktifler.length?aktifler.join(", "):"kapalı",aktifler.length?"iyi":"soluk");
-      padEl.classList.toggle("pasif",!standBagli);
+      padEl.classList.toggle("pasif",!standBagli&&!gbAktif());
+      if(gbAktif()) goster("gStand","V3 bağlı (Pixel)","iyi");
       E("btKutu").classList.add("gizle");
     } else {
       var taze=sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE;
@@ -2596,7 +2597,8 @@
         goster("gStand",sonDurum.stand?"bağlı":"kapalı",sonDurum.stand?"iyi":"kotu");
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
-      padEl.classList.toggle("pasif",!(taze&&sonDurum.stand));
+      padEl.classList.toggle("pasif",!(taze&&sonDurum.stand)&&!gbAktif());
+      if(gbAktif()) goster("gStand","V3 bağlı (Pixel)","iyi");
       pixelKutusu();
       E("sinirNot").classList.toggle("gizle",!(taze&&sonDurum.sinirde));
       var net=(sonDurum&&sonDurum.net)||null;
@@ -2683,6 +2685,7 @@
     E("gbIzgara").classList.toggle("gizle",!a);
     E("standIzgara").classList.toggle("gizle",a);
     if(!a) return;
+    try{ guncelle(); }catch(h){}
     var b="Gimbal (V3) bağlı";
     if(g.pil) b+=" · pil "+(g.pil/1000).toFixed(1).replace(".",",")+" V";
     E("gbBilgi").textContent=b;
@@ -2695,10 +2698,10 @@
     d.onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",yon:Number(d.getAttribute("data-y")),ad:benimAdim()}); bildiri("Gimbal: "+d.textContent,2000,"bilgi"); };
   });
   padEl.addEventListener("pointerdown",function(o){
-    if(rol==="evde"&&(!rxKarakter||mesgul)) return;
+    if(rol==="evde"&&(!rxKarakter||mesgul)&&!gbAktif()) return;
     padEl.setPointerCapture(o.pointerId); padEl.classList.add("tutuluyor");
     aktif=true; padHareket(o);
-    if(rol==="uzak"){
+    if(rol==="uzak"||gbAktif()){   // 26 Kas: V3 bağlıyken her rolde gimbala
       clearInterval(uzakTik); joyFaz=-1;
       uzakTik=setInterval(uzakJoyGonder,150);
       uzakJoyGonder();
@@ -2709,7 +2712,8 @@
     if(!aktif) return;
     aktif=false; padEl.classList.remove("tutuluyor");
     topuzEl.style.transform=""; sonX=ORTA; sonY=ORTA; hamX=0; hamY=0;
-    if(rol==="uzak"){ clearInterval(uzakTik); if(gbAktif()) gbDur(); else komutGonder({t:"joy",x:ORTA,y:ORTA}); }
+    if(gbAktif()){ clearInterval(uzakTik); gbDur(); }
+    else if(rol==="uzak"){ clearInterval(uzakTik); komutGonder({t:"joy",x:ORTA,y:ORTA}); }
     else { durdurmaDarbesi(); durumYayinla(); }
     if(o&&o.pointerId!=null&&padEl.hasPointerCapture(o.pointerId)) padEl.releasePointerCapture(o.pointerId);
   }
@@ -3705,7 +3709,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="26 Kas 01:21";
+  var SAYFA_SURUM="26 Kas 01:57";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
