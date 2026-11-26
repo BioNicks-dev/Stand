@@ -108,6 +108,15 @@ final class Kopru {
     @JavascriptInterface public String waAyar() { return Arama.ayarAl(c); }
     @JavascriptInterface public void waAyarYaz(String json) { Arama.ayarYaz(c, json); }
 
+    // Uygulama 26: Hohem V3 gimbal (Gimbal.java)
+    @JavascriptInterface public String gimbalDurum() { return Gimbal.durumJson(); }
+    @JavascriptInterface public void gimbalHareket(int x, int y) { Gimbal.hareket(x, y); }
+    @JavascriptInterface public void gimbalDur() { Gimbal.dur(); }
+    @JavascriptInterface public void gimbalMod(int m) { Gimbal.mod(m); }
+    @JavascriptInterface public void gimbalYon(int y) { Gimbal.yon(y); }
+    @JavascriptInterface public void gimbalHam(String hex) { Gimbal.ham(hex); }
+    @JavascriptInterface public void gimbalYeniden() { Gimbal.yenidenBaglan(); }
+
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");
         c.startService(new Intent(c, Bekci.class).setAction(Bekci.DURDUR));

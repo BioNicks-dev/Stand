@@ -49,6 +49,14 @@
   h2{font-size:17px;font-weight:600;margin:0 0 6px}
   a{color:var(--live)}
   button.dur{border-color:var(--stop);color:var(--stop)}
+  /* 26 Kas: gimbal test paneli */
+  #gbYon{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:repeat(3,64px);gap:6px;margin:8px 0}
+  #gbYon button{font-size:24px;touch-action:none;-webkit-user-select:none;user-select:none;min-height:0;padding:0}
+  #gbYon button.basili{background:var(--live);color:#fff}
+  #gbYukari{grid-column:2;grid-row:1} #gbSol{grid-column:1;grid-row:2} #gbSag{grid-column:3;grid-row:2} #gbAsagi{grid-column:2;grid-row:3}
+  #gbDur{grid-column:2;grid-row:2;font-size:14px}
+  .gbSira{display:flex;gap:6px;margin:6px 0} .gbSira button{min-height:42px;padding:8px 4px}
+  .gbSira button.secili{border-color:var(--live);color:var(--live);font-weight:700}
   .ic > * + button{margin-top:8px}
   /* özet satırı + göstergeler */
   .ozet{display:flex;align-items:center;gap:10px;padding:12px;margin:10px 0 8px;border-radius:var(--radius);background:var(--panel);border:1px solid var(--line);font-size:17px}
@@ -178,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 3 Kas 21:52</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 00:58</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -270,6 +278,37 @@
       </div>
     </details>
 
+    <details id="gbKutu" class="bolum gizli">
+      <summary>Gimbal (Hohem V3) <span id="gbOzet" class="not"></span></summary>
+      <div class="ic">
+      <div class="durum">
+        Bağlantı: <b id="gbDurum">-</b><br>
+        Gimbal pili (ham): <b id="gbPil">-</b> · Mod: <b id="gbMod">-</b><br>
+        <span class="not">Cevap: <b id="gbCevap">-</b> · Giden: <b id="gbGiden">0</b> · Gelen: <b id="gbGelen">0</b></span>
+      </div>
+      <div id="gbYon">
+        <button id="gbYukari" type="button">▲</button>
+        <button id="gbSol" type="button">◀</button>
+        <button id="gbDur" type="button" class="dur">Dur</button>
+        <button id="gbSag" type="button">▶</button>
+        <button id="gbAsagi" type="button">▼</button>
+      </div>
+      <label for="gbHiz">Hız: <b id="gbHizYazi">150</b></label>
+      <input type="range" id="gbHiz" min="40" max="400" step="10" value="150" style="padding:0">
+      <label>Mod</label>
+      <div class="gbSira" id="gbModlar">
+        <button type="button" data-m="0">PF</button><button type="button" data-m="1">PTF</button>
+        <button type="button" data-m="3">POV</button><button type="button" data-m="2">L</button>
+      </div>
+      <label>Yön</label>
+      <div class="gbSira">
+        <button type="button" id="gbPortre">Portre</button><button type="button" id="gbYatay">Landscape</button><button type="button" id="gbTers">Ters</button>
+      </div>
+      <button id="gbYeniden" type="button">Yeniden bağlan</button>
+      <p class="not">Hohem Joy açıkken çakışabilir; denemede kapalı olsun. Yön tuşları basılı tutulduğu sürece döner, bırakınca durur. Komut 0,3 sn gelmezse gimbal kendiliğinden durur.</p>
+      </div>
+    </details>
+
     <details class="bolum">
       <summary>Zil ve ses</summary>
       <div class="ic">
@@ -338,7 +377,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="3 Kas 21:52";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 00:58";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2725,6 +2764,47 @@
     }
     E("waAcik").addEventListener("change",kaydet); E("waEsle").addEventListener("change",kaydet); E("waYon").addEventListener("change",kaydet); E("waDiger").addEventListener("change",kaydet);
   }
+
+  // ---------- 26 Kas: Hohem V3 gimbal test paneli (uygulama 26+) ----------
+  var GB_DURUM={kapali:"kapalı",izinYok:"Bluetooth izni yok",bluetoothKapali:"Bluetooth kapalı",araniyor:"aranıyor…",baglaniyor:"bağlanıyor…",bagli:"bağlı"};
+  function gimbalKur(){
+    E("gbKutu").className="bolum";
+    var tik=null, yon=null, son=null;
+    function hiz(){ return parseInt(E("gbHiz").value,10)||150; }
+    function gonder(){ if(!yon) return; var s=hiz(), x=0, y=0;
+      if(yon==="sag") x=s; else if(yon==="sol") x=-s; else if(yon==="asagi") y=s; else if(yon==="yukari") y=-s;
+      try{ APP.gimbalHareket(x,y); }catch(h){} }
+    function birak(){ if(son) son.classList.remove("basili"); son=null; yon=null; if(tik){ clearInterval(tik); tik=null; } try{ APP.gimbalDur(); }catch(h){} }
+    [["gbSag","sag"],["gbSol","sol"],["gbYukari","yukari"],["gbAsagi","asagi"]].forEach(function(a){
+      var d=E(a[0]);
+      d.addEventListener("pointerdown",function(e){ e.preventDefault(); birak(); try{ d.setPointerCapture(e.pointerId); }catch(h){} son=d; d.classList.add("basili"); yon=a[1]; gonder(); tik=setInterval(gonder,100); });
+      ["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){ d.addEventListener(ev,function(){ if(son===d) birak(); }); });
+      d.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+    });
+    E("gbDur").addEventListener("click",birak);
+    E("gbHiz").addEventListener("input",function(){ E("gbHizYazi").textContent=this.value; });
+    Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(b){
+      b.addEventListener("click",function(){ try{ APP.gimbalMod(parseInt(b.getAttribute("data-m"),10)); }catch(h){} });
+    });
+    E("gbPortre").addEventListener("click",function(){ try{ APP.gimbalYon(0); }catch(h){} });
+    E("gbYatay").addEventListener("click",function(){ try{ APP.gimbalYon(1); }catch(h){} });
+    E("gbTers").addEventListener("click",function(){ try{ APP.gimbalYon(2); }catch(h){} });
+    E("gbYeniden").addEventListener("click",function(){ try{ APP.gimbalYeniden(); }catch(h){} yaz("Gimbal: yeniden bağlanılıyor."); });
+    document.addEventListener("visibilitychange",function(){ if(document.hidden) birak(); });
+    function guncelle(){
+      var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return; }
+      var d=GB_DURUM[g.durum]||g.durum||"-";
+      E("gbDurum").textContent=d+(g.ad?" ("+g.ad+")":"")+(g.hata?" · "+g.hata:"");
+      E("gbDurum").className=g.durum==="bagli"?"iyi":(g.durum==="izinYok"||g.durum==="bluetoothKapali"?"kotu":"uyari");
+      E("gbOzet").textContent=g.durum==="bagli"?"· bağlı":"· "+d;
+      E("gbPil").textContent=g.pilMv>0?g.pilMv:"-";
+      E("gbMod").textContent=g.modAd||"-";
+      E("gbCevap").textContent=g.cevap?"geliyor":"yok";
+      E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
+      Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(b){ b.className=(parseInt(b.getAttribute("data-m"),10)===g.mod)?"secili":""; });
+    }
+    guncelle(); setInterval(guncelle,1000);
+  }
   function uygulamaBasla(){
     var s=""; try{ s=APP.surum(); }catch(h){}
     E("surumYazi").textContent="· "+SURUM+" · v"+s; E("appSurum").textContent="v"+s;   // 25 Eki: "uygulama 20" yerine "v20"
@@ -2736,6 +2816,7 @@
     if(gs){ yaz("Uygulama güncellendi: v"+gs+"."); gnKatman("Güncellendi","v"+gs,true); setTimeout(gnKatmanKapat,4000); }
     E("durumKutu").className="durumKutu"; durumGuncelle(); setInterval(durumGuncelle,3000);
     waKur();
+    if(typeof APP.gimbalDurum==="function") gimbalKur();   // 26 Kas: Hohem V3
     setInterval(function(){ try{ APP.nabiz(); }catch(h){} },5000);
     setInterval(function(){ try{ JSON.parse(APP.kayitAl()).forEach(function(m){ yaz("Uygulama: "+m); }); }catch(h){} bekleyenIstekBak(); },3000);
     if(typeof APP.baglanti==="function"){ try{ APP.baglanti(kod,ss); }catch(h){} }

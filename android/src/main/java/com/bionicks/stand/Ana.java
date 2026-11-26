@@ -69,6 +69,11 @@ public class Ana extends Activity {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.RECORD_AUDIO);
         if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.READ_CONTACTS);   // uygulama 14: santral
         if (checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.CALL_PHONE);         // uygulama 16: santral
+        // uygulama 26: gimbal (Bluetooth). Android 12+ "Yakındaki cihazlar"; daha eskide konum izni
+        if (Build.VERSION.SDK_INT >= 31) {
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.BLUETOOTH_CONNECT);
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.BLUETOOTH_SCAN);
+        } else if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) l.add(Manifest.permission.ACCESS_FINE_LOCATION);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
             l.add(Manifest.permission.POST_NOTIFICATIONS);
         if (!l.isEmpty()) requestPermissions(l.toArray(new String[0]), 7);

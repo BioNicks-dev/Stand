@@ -20,6 +20,14 @@
     <!-- Uygulama 16: WhatsApp'ın rehberden görüntülü arama yolu telefon arama izni isteyebilir -->
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
+    <!-- Uygulama 26: Hohem V3 gimbalı Bluetooth ile yönetmek için -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- Uygulama 15: Android 11+ başka uygulamayı ancak burada adı geçerse görür (santral WhatsApp'ı açabilsin) -->
