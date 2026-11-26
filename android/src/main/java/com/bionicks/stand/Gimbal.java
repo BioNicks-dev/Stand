@@ -904,17 +904,13 @@ final class Gimbal {
     // 2 = uyut, 3 = uyandır (uygulama yakalanan bekleme paketini gönderir), 4 = ışık komutu dene (uygulama dener).
     // Listeye girmeyenler (bilerek): Fonksiyon 5/7 kez ve yan tekerlek 5/7 kez (eşleşmeyi siler), Mod 5 kez (kalibrasyon),
     // deklanşöre ve güç tuşuna uzun basış (kapatır).
+    // 26 Kas 18:45: okuma taraması gimbalı kilitledi ve kapattı (kod 147, sonra açılınca tekrar kapandı). Tarama ve deneme
+    // adımları KALDIRILDI; öğrenme yine sadece dinler. Işık ve bekleme denemeleri paneldeki tek paketlik düğmelerle yapılır.
     private static final String[] OGR_TALIMAT = {
-        "Dokunmayın: ışık KAPALIYKEN ayarlar okunuyor",
-        "Dokunmayın: ikinci okuma (karşılaştırma için)",
         "Kumandada JOYSTICK'e UZUN basın: AI kameranın ışığı AÇILSIN",
-        "Dokunmayın: ışık AÇIKKEN ayarlar okunuyor",
         "Kumandada AYAR tuşuna 1 kez basın (ışık parlaklığı değişir)",
-        "Dokunmayın: ayarlar okunuyor",
         "Kumandada AYAR tuşuna 2 kez basın (ışık rengi değişir)",
-        "Dokunmayın: ayarlar okunuyor",
         "Kumandada JOYSTICK'e UZUN basın: ışık KAPANSIN",
-        "Dokunmayın: uygulama ışığı kendisi açmayı deniyor. Işık yanarsa söyleyin",
         "Gimbalda YAN TEKERLEĞE UZUN basın (ışık açılır)",
         "YAN TEKERLEĞİ yukarı çevirin (parlaklık)",
         "YAN TEKERLEĞE 2 kez basın (renk)",
@@ -928,16 +924,13 @@ final class Gimbal {
         "MOD tuşuna 3 kez basın (180° roll)",
         "Kumandada DEKLANŞÖR tuşuna 1 kez basın",
         "Gimbalda GÜÇ tuşuna 2 kez basın (bekleme)",
-        "GÜÇ tuşuna yine 2 kez basın (uyanma)",
-        "Dokunmayın: uygulama gimbalı UYUTUYOR",
-        "Dokunmayın: uygulama gimbalı UYANDIRIYOR" };
-    private static final String[] OGR_AD = { "Okuma 1 (ışık kapalı)", "Okuma 2 (ışık kapalı)", "Joystick uzun (ışık aç)", "Okuma 3 (ışık açık)",
-        "Ayar 1 kez (parlaklık)", "Okuma 4 (parlaklık)", "Ayar 2 kez (renk)", "Okuma 5 (renk)", "Joystick uzun (ışık kapa)", "Işık komutu denemesi",
+        "GÜÇ tuşuna yine 2 kez basın (uyanma)" };
+    private static final String[] OGR_AD = { "Joystick uzun (ışık aç)", "Ayar 1 kez (parlaklık)", "Ayar 2 kez (renk)", "Joystick uzun (ışık kapa)",
         "Tekerlek uzun (ışık aç)", "Tekerlek yukarı", "Tekerlek 2 kez (renk)", "Tekerlek uzun (ışık kapa)",
         "Joystick 2 kez", "Ayar uzun (roll)", "Fonksiyon 2 kez", "Fonksiyon uzun", "Mod 1 kez", "Mod 2 kez", "Mod 3 kez", "Deklanşör 1 kez",
-        "Güç 2 kez (bekleme)", "Güç 2 kez (uyanma)", "Uygulama uyuttu", "Uygulama uyandırdı" };
-    private static final int[] OGR_TUR = { 1, 1, 0, 1, 0, 1, 0, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3 };
-    private static final int[] OGR_SURE = { 30, 30, 7, 30, 7, 30, 7, 30, 7, 40, 7, 7, 7, 7, 6, 8, 6, 7, 6, 6, 8, 6, 8, 10, 8, 10 };
+        "Güç 2 kez (bekleme)", "Güç 2 kez (uyanma)" };
+    private static final int[] OGR_TUR = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    private static final int[] OGR_SURE = { 7, 7, 7, 7, 7, 7, 7, 7, 6, 8, 6, 7, 6, 6, 8, 6, 8, 10 };
     private static final int OGR_SESSIZ = 4;
     private volatile boolean ogrAktif = false; private volatile int ogrNo = 0, ogrEvre = 0, ogrKalan = 0;
     private long ogrEvreBas = 0; private volatile String ogrYazi = "";
@@ -954,7 +947,7 @@ final class Gimbal {
             g.ogrAktif = true; g.ogrNo = 0; g.ogrBulunan = 0; g.ogrNormal.clear(); g.ogrNormalGK.clear();
             for (int k = 0; k < 6; k++) g.tara[k].clear();
             g.ogrSonuc.setLength(0); g.isikKomut = "";
-            Kayit.yaz("Kumanda öğren başladı (" + OGR_TALIMAT.length + " adım, ~6 dk).");
+            Kayit.yaz("Kumanda öğren başladı (" + OGR_TALIMAT.length + " adım, ~4 dk). Gimbala bir şey gönderilmiyor, sadece dinleniyor.");
             g.ogrEvreBasla(0);
             g.h.postDelayed(g.ogrDongu, 200);
         });
@@ -1056,6 +1049,7 @@ final class Gimbal {
     private static int taraNo(int adim) { return adim == 0 ? 0 : adim == 1 ? 1 : adim == 3 ? 2 : adim == 5 ? 3 : 4; }
 
     private void taramaBasla(int kume) {
+        if (kume >= 0) { Kayit.yaz("Öğren: okuma taraması kapalı (gimbalı kilitliyordu)."); return; }
         taramaKume = kume; taramaSira = 0; tara[kume].clear(); taramaAktif = true;
         h.postDelayed(taramaAdim, 300);
     }
@@ -1125,6 +1119,7 @@ final class Gimbal {
     // ve hareket/mod/yön komutları denenmez.
     private final java.util.ArrayList<String[]> denePlan = new java.util.ArrayList<>(); private int deneSira = 0;
     private void isikDene() {
+        if (denePlan != null) { Kayit.yaz("Öğren: ışık denemesi kapalı."); return; }
         denePlan.clear(); deneSira = 0;
         java.util.ArrayList<String> l = tara[2].isEmpty() ? new java.util.ArrayList<String>() : degisen(1, 2);
         int[] yasak = { 0x1A, 0x98, 0x99, 0x9A, 0x60, 0x7C, 0x79, 0x7A, 0xC1, 0xCB };
