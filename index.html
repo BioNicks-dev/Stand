@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="26 Kas 15:40">
+<meta name="stand-surum" content="26 Kas 16:10">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -628,7 +628,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 15:40</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 16:10</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -2694,7 +2694,7 @@
       if(!gbEgmeKilit&&n-gbEgmeBas>GB_EGME_SURE){ gbEgmeKilit=true; bildiri("Eğme durdu (uca dayanmasın). Devam için joystick'i bırakıp tekrar it",3000,"bilgi"); }
       if(gbEgmeKilit) y=0;
     } else { gbEgmeYon=0; gbEgmeKilit=false; }
-    if(!x&&!y){ if(gbSonGonder){ gbSonGonder=0; grGonder({t:"gimbal",dur:1}); } return; }
+    if(!x&&!y){ if(gbSonGonder){ gbSonGonder=0; grGonder({t:"gimbal",dur:1,geri:gbGeri()}); } return; }
     gbSonGonder=Date.now();
     grGonder({t:"gimbal",x:x,y:y,ad:benimAdim()});
   }
@@ -2705,10 +2705,17 @@
     if(!gbBas){ bildiri("Başlangıç henüz bilinmiyor",0,"bilgi"); return false; }
     grTakipBekle(15); grGonder({t:"gimbal",git:{yatay:gbBas.y,egme:gbBas.e,ad:"Başlangıç"},ad:benimAdim()}); return true;
   }
-  function gbDur(){ gbSonGonder=0; gbEgmeYon=0; gbEgmeKilit=false; grGonder({t:"gimbal",dur:1}); }
+  function gbDur(){ var g=gbSonGonder?gbGeri():0; gbSonGonder=0; gbEgmeYon=0; gbEgmeKilit=false; grGonder({t:"gimbal",dur:1,geri:g}); }
+  // 26 Kas 16:10: "bıraktığın yerde dursun". Ekrandaki görüntü ve komut gecikmeli; bırakınca gimbal bu kadar ms önceki
+  // açısına (ekranda gördüğün yere) döner. Gecikme 5 sn'de bir ping ile ölçülür: gidiş-dönüş + görüntü tamponu (~150 ms).
+  var gbRtt=[], gbPingTik=null;
+  function gbGeri(){ if(!gbRtt.length) return 450; var l=gbRtt.slice().sort(function(a,b){ return a-b; }); return Math.min(1500,Math.round(l[Math.floor(l.length/2)]+150)); }
+  function gbPing(){ if(gbAktif()) grGonder({t:"ping",n:Date.now()}); }
+  function gbPong(m){ var d=Date.now()-Number(m.n); if(!(d>0&&d<5000)) return; gbRtt.push(d); if(gbRtt.length>7) gbRtt.shift(); }
   function gbCiz(){
     var a=gbAktif(), g=grYet&&grYet.gimbal;
     if(a!==gbKonumCizildi) konumlariCiz();
+    if(a&&!gbPingTik){ gbPing(); gbPingTik=setInterval(gbPing,5000); } else if(!a&&gbPingTik){ clearInterval(gbPingTik); gbPingTik=null; gbRtt=[]; }
     E("gbIzgara").classList.toggle("gizle",!a);
     E("standIzgara").classList.toggle("gizle",false);   // 26 Kas 3b: Sol/Sağ 180 ve Başlangıç V3'te de çalışıyor
     if(!a) return;
@@ -3770,7 +3777,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="26 Kas 15:40";
+  var SAYFA_SURUM="26 Kas 16:10";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -4106,6 +4113,7 @@
     }
     if(m.t==="teklif") grTeklif(m);
     else if(m.t==="yetenek"&&grIstekte) grYetenek(m);
+    else if(m.t==="pong") gbPong(m);
     else if(m.t==="bosta"&&(!m.id||m.id===grId)){
       if(grBeni||grKonus){ grBeni=false; grKonus=false; grBenUygula(); }
       if(m.neden==="evden"){

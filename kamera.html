@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 15:40</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:10</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -287,37 +287,11 @@
         Açı: <b id="gbAci">-</b><br>
         <span class="not">Cevap: <b id="gbCevap">-</b> · Giden: <b id="gbGiden">0</b> · Gelen: <b id="gbGelen">0</b></span>
       </div>
-      <div id="gbYon">
-        <button id="gbYukari" type="button">▲</button>
-        <button id="gbSol" type="button">◀</button>
-        <button id="gbDur" type="button" class="dur">Dur</button>
-        <button id="gbSag" type="button">▶</button>
-        <button id="gbAsagi" type="button">▼</button>
-      </div>
-      <label for="gbHiz">Hız: <b id="gbHizYazi">150</b></label>
-      <input type="range" id="gbHiz" min="40" max="400" step="10" value="150" style="padding:0">
-      <label>Mod</label>
-      <div class="gbSira" id="gbModlar">
-        <button type="button" data-m="0">PF</button><button type="button" data-m="1">PTF</button>
-        <button type="button" data-m="3">POV</button><button type="button" data-m="2">L</button>
-      </div>
-      <label>Yön</label>
-      <div class="gbSira">
-        <button type="button" id="gbPortre">Portre</button><button type="button" id="gbYatay">Landscape</button><button type="button" id="gbTers">Ters</button>
-      </div>
-      <div class="gbSira"><button type="button" id="gbSag180">Sağdan 180°</button><button type="button" id="gbSol180">Soldan 180°</button><button type="button" id="gbOrtala">Düz bak (eğme 0°)</button></div>
+      <div class="durum" style="margin-top:8px">Ayar: <b id="gbAyar">-</b></div>
+      <button id="gbTest" type="button">Gimbalı ayarla (~1 dk, gimbala dokunmayın)</button>
+      <p class="not">Bir kez yapılır. Gimbal kendisi dört yöne gidip gelir; eğme yönünü ve bırakınca ne kadar kaydığını öğrenip kaydeder. Gimbal yeri değişince ya da hareket tuhaflaşınca tekrar yapılabilir.</p>
       <button id="gbSinirUnut" type="button">Yatay sınırı unut (yeniden öğrensin)</button>
-      <button id="gbTest" type="button">Hareket testi (~50 sn, gimbala dokunmayın)</button>
       <button id="gbYeniden" type="button">Yeniden bağlan</button>
-      <div class="durum" style="margin-top:10px">
-        <b>Açı ölçümü (Aşama 3a)</b><br>
-        <span class="not">Gimbal (ham): <span id="gbA84">-</span></span><br>
-        <span class="not">Pixel sensörü: <span id="gbQ">-</span></span>
-      </div>
-      <button id="gbOlcum" type="button">Ölçümü başlat (60 sn)</button>
-      <button id="gbOlcumOto" type="button">Otomatik ölçüm: yatay (55 sn, gimbalı kendisi çevirir)</button>
-      <button id="gbOlcumKopya" type="button" disabled>Ölçümü kopyala</button>
-      <p class="not">Ölçüm sırasında gimbalı joystick'le yavaşça her yöne gezdirin (sağ, sol, yukarı, aşağı, sonra ortaya). Bitince "Ölçümü kopyala"ya basıp metni Claude'a yapıştırın.</p>
       <p class="not">Hohem Joy açıkken çakışabilir; denemede kapalı olsun. Yön tuşları basılı tutulduğu sürece döner, bırakınca durur. Komut 0,3 sn gelmezse gimbal kendiliğinden durur.</p>
       </div>
     </details>
@@ -390,7 +364,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 15:40";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 16:10";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1691,7 +1665,8 @@
       mikHesapla();
     }
     else if(m.t==="gor") gorAyarla(m.deger);
-    else if(m.t==="gimbal") gimbalUzak(m);   // 26 Kas: Seda'nın sayfasından V3
+    else if(m.t==="gimbal") gimbalUzak(m);
+    else if(m.t==="ping") gonder({t:"pong",n:m.n});   // 26 Kas: izleyen gecikmeyi ölçer   // 26 Kas: Seda'nın sayfasından V3
     else if(m.t==="mikGuc") mikGucAyarla(m.deger);
     else if(m.t==="takip") takipAyarla(!!m.deger,m);
     else if(m.t==="takipBekle"){ akici=false; takipBekleBitis=Date.now()+Math.min(30,Number(m.sn)||5)*1000; disariSayi=0; olcum=null; test=null; arama={bitti:true}; gecmis=[]; hareketiBirak(); }
@@ -2804,7 +2779,12 @@
     if(m.goreli){ gimbalUzakDur(); try{ APP.gimbalGoreli(Number(m.goreli.y)||0, Number(m.goreli.e)||0); }catch(h){} return; }
     if(m.c180){ gimbalUzakDur(); try{ APP.gimbal180(m.c180>0?1:-1); }catch(h){} yaz("Stand sayfası: gimbal 180°"+(m.ad?" ("+m.ad+")":"")+"."); return; }
     if(m.sinirUnut){ try{ APP.gimbalSinirUnut(); }catch(h){} return; }
-    if(m.dur){ gimbalUzakDur(); return; }
+    if(m.dur){
+      if(gbUzakTik){ clearInterval(gbUzakTik); gbUzakTik=null; } gbUzakSon=0;
+      var geri=Math.max(0,Math.min(1500,Number(m.geri)||0));
+      if(geri&&typeof APP.gimbalDurGeri==="function"){ try{ APP.gimbalDurGeri(geri); }catch(h){} } else { try{ APP.gimbalDur(); }catch(h){} }
+      return;
+    }
     gbUzakX=Math.max(-400,Math.min(400,Number(m.x)||0)); gbUzakY=Math.max(-400,Math.min(400,Number(m.y)||0));
     if(!gbUzakX&&!gbUzakY){ gimbalUzakDur(); return; }
     gbUzakSon=Date.now();
@@ -2818,88 +2798,14 @@
   var GB_DURUM={kapali:"kapalı",izinYok:"Bluetooth izni yok",bluetoothKapali:"Bluetooth kapalı",araniyor:"aranıyor…",baglaniyor:"bağlanıyor…",bagli:"bağlı"};
   function gimbalKur(){
     E("gbKutu").className="bolum";
-    var tik=null, yon=null, son=null;
-    function hiz(){ return parseInt(E("gbHiz").value,10)||150; }
-    function gonder(){ if(!yon) return; var s=hiz(), x=0, y=0;
-      if(yon==="sag") x=s; else if(yon==="sol") x=-s; else if(yon==="asagi") y=s; else if(yon==="yukari") y=-s;
-      try{ APP.gimbalHareket(x,y); }catch(h){} }
-    function birak(){ if(son) son.classList.remove("basili"); son=null; yon=null; if(tik){ clearInterval(tik); tik=null; } try{ APP.gimbalDur(); }catch(h){} }
-    [["gbSag","sag"],["gbSol","sol"],["gbYukari","yukari"],["gbAsagi","asagi"]].forEach(function(a){
-      var d=E(a[0]);
-      d.addEventListener("pointerdown",function(e){ e.preventDefault(); birak(); try{ d.setPointerCapture(e.pointerId); }catch(h){} son=d; d.classList.add("basili"); yon=a[1]; gonder(); tik=setInterval(gonder,100); });
-      ["pointerup","pointercancel","lostpointercapture"].forEach(function(ev){ d.addEventListener(ev,function(){ if(son===d) birak(); }); });
-      d.addEventListener("contextmenu",function(e){ e.preventDefault(); });
-    });
-    E("gbDur").addEventListener("click",birak);
-    E("gbHiz").addEventListener("input",function(){ E("gbHizYazi").textContent=this.value; });
-    Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(b){
-      b.addEventListener("click",function(){ try{ APP.gimbalMod(parseInt(b.getAttribute("data-m"),10)); }catch(h){} });
-    });
-    E("gbPortre").addEventListener("click",function(){ try{ APP.gimbalYon(1); }catch(h){} });   // 26 Kas: 1 = portre, 0 = landscape (denemede ters çıktı)
-    E("gbYatay").addEventListener("click",function(){ try{ APP.gimbalYon(0); }catch(h){} });
-    E("gbTers").addEventListener("click",function(){ try{ APP.gimbalYon(2); }catch(h){} });
     E("gbYeniden").addEventListener("click",function(){ try{ APP.gimbalYeniden(); }catch(h){} yaz("Gimbal: yeniden bağlanılıyor."); });
-    E("gbSag180").addEventListener("click",function(){ try{ APP.gimbal180(1); }catch(h){} });
-    E("gbSol180").addEventListener("click",function(){ try{ APP.gimbal180(-1); }catch(h){} });
-    E("gbOrtala").addEventListener("click",function(){ var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){} if(typeof g.yatay==="number") try{ APP.gimbalGit(g.yatay,0,"düz"); }catch(h){} });
     E("gbSinirUnut").addEventListener("click",function(){ try{ APP.gimbalSinirUnut(); }catch(h){} });
-    E("gbTest").addEventListener("click",function(){ if(typeof APP.gimbalTest!=="function"){ yaz("Hareket testi için uygulamayı güncelleyin."); return; } try{ APP.gimbalTest(); }catch(h){} });
-    // Aşama 3a: 60 sn boyunca 0,5 sn'de bir gimbal ham sayıları + Pixel sensörü; 2 sn'de bir tek satır (4 örnek) Kayıt'a
-    // ölçüm Pixel'in hafızasında tutulur; bitince "Ölçümü kopyala" hepsini tek seferde panoya alır
-    var olcTik=null, olcVeri=[];
-    function olcBitir(neden){
-      clearInterval(olcTik); olcTik=null;
-      E("gbOlcum").textContent="Ölçümü başlat (60 sn)";
-      E("gbOlcumKopya").disabled=!olcVeri.length;
-      yaz("Gimbal ölçümü bitti ("+neden+"): "+olcVeri.length+" örnek. \"Ölçümü kopyala\" ile alın.");
-    }
-    E("gbOlcum").addEventListener("click",function(){
-      if(olcTik){ olcBitir("elle"); return; }
-      var bas=Date.now(); olcVeri=["GK "+SURUM+" · t(ms) | gimbal 14 sayı | Pixel q (w x y z)"];
-      E("gbOlcumKopya").disabled=true;
-      yaz("Gimbal ölçümü başladı (60 sn).");
-      E("gbOlcum").textContent="Ölçüm sürüyor… (durdurmak için dokun)";
-      olcTik=setInterval(function(){
-        var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){}
-        var t=Date.now()-bas;
-        if(g.a84&&g.q) olcVeri.push(t+"|"+g.a84.join(",")+"|"+g.q.join(","));
-        E("gbOlcum").textContent="Ölçüm sürüyor… "+Math.max(0,Math.ceil((60000-t)/1000))+" sn (durdurmak için dokun)";
-        if(t>=60000) olcBitir("60 sn");
-      },500);
+    E("gbTest").addEventListener("click",function(){
+      if(typeof APP.gimbalTest!=="function"){ E("gbAyar").textContent="Bu düğme için uygulama güncellenmeli."; return; }
+      E("gbAyar").textContent="Başlatılıyor…";
+      try{ APP.gimbalTest(); }catch(h){ E("gbAyar").textContent="Başlamadı: "+h; }
+      setTimeout(guncelle,300);
     });
-    // Otomatik yatay ölçüm: uygulama gimbalı kendisi çevirir (10 sn dur, 5 sn sağ, 5 sn dur, 10 sn sol, 5 sn dur, 5 sn sağ, 15 sn dur)
-    var otoAdim=null, otoTik=null;
-    E("gbOlcumOto").addEventListener("click",function(){
-      if(olcTik||otoTik){ return; }
-      var plan=[[0,10000],[150,5000],[0,5000],[-150,10000],[0,5000],[150,5000],[0,15000]];
-      var bas=Date.now(), sinir=[], top=0; plan.forEach(function(p){ top+=p[1]; sinir.push(top); });
-      olcVeri=["GK "+SURUM+" · OTOMATİK YATAY · plan(ms,x): "+plan.map(function(p){ return p[1]+":"+p[0]; }).join(" ")+" · t(ms) | gimbal 14 sayı | Pixel q (w x y z)"];
-      E("gbOlcumKopya").disabled=true; E("gbOlcum").disabled=true;
-      yaz("Otomatik yatay ölçüm başladı ("+Math.round(top/1000)+" sn). Gimbal kendisi dönecek.");
-      otoTik=setInterval(function(){   // hareket: 100 ms'de bir (uygulama 300 ms komut gelmezse durdurur)
-        var t=Date.now()-bas, i=0; while(i<sinir.length&&t>=sinir[i]) i++;
-        if(i>=plan.length){ try{ APP.gimbalDur(); }catch(h){} return; }
-        if(plan[i][0]) { try{ APP.gimbalHareket(plan[i][0],0); }catch(h){} } else { try{ APP.gimbalDur(); }catch(h){} }
-      },100);
-      olcTik=setInterval(function(){   // ölçüm: 500 ms'de bir
-        var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){}
-        var t=Date.now()-bas;
-        if(g.a84&&g.q) olcVeri.push(t+"|"+g.a84.join(",")+"|"+g.q.join(","));
-        E("gbOlcumOto").textContent="Otomatik ölçüm sürüyor… "+Math.max(0,Math.ceil((top-t)/1000))+" sn";
-        if(t>=top){
-          clearInterval(otoTik); otoTik=null; try{ APP.gimbalDur(); }catch(h){}
-          E("gbOlcumOto").textContent="Otomatik ölçüm: yatay (55 sn, gimbalı kendisi çevirir)"; E("gbOlcum").disabled=false;
-          olcBitir("otomatik");
-        }
-      },500);
-    });
-    E("gbOlcumKopya").addEventListener("click",function(){
-      var m=olcVeri.join("\n"), b=E("gbOlcumKopya");
-      var bitti=function(){ b.textContent="Kopyalandı ("+(olcVeri.length-1)+" örnek)"; setTimeout(function(){ b.textContent="Ölçümü kopyala"; },2000); };
-      var elle=function(){ var x=document.createElement("textarea"); x.value=m; document.body.appendChild(x); x.select(); try{ document.execCommand("copy"); }catch(h){} x.remove(); bitti(); };
-      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(m).then(bitti).catch(elle); else elle();
-    });
-    document.addEventListener("visibilitychange",function(){ if(document.hidden) birak(); });
     function guncelle(){
       var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return; }
       var d=GB_DURUM[g.durum]||g.durum||"-";
@@ -2910,10 +2816,9 @@
       E("gbMod").textContent=g.modAd||"-";
       E("gbCevap").textContent=g.cevap?"geliyor":"yok";
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
-      E("gbA84").textContent=g.a84?g.a84.join(" "):"-";
       E("gbAci").textContent=(typeof g.yatay==="number"?"yatay "+Math.round(g.yatay)+"°":"yatay ?")+" · "+(typeof g.egme==="number"?"eğme "+Math.round(g.egme)+"°":"eğme ?")+(typeof g.roll==="number"?" · roll "+g.roll+"°":"")+(g.gidiyor?" · gidiyor…":"")+(g.sinir?" · sınır biliniyor":" · sınır öğrenilmedi");
-      E("gbQ").textContent=g.q?g.q.map(function(v){ return v.toFixed(3); }).join(" "):"-";
-      Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(b){ b.className=(parseInt(b.getAttribute("data-m"),10)===g.mod)?"secili":""; });
+      if(typeof g.ayar==="string"&&g.ayar) E("gbAyar").textContent=g.ayar;
+      E("gbTest").disabled=!!g.ayarliyor||g.durum!=="bagli";
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
       var oz=g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"")+"|"+(typeof g.yatay==="number"?Math.round(g.yatay/2):"")+"|"+(typeof g.egme==="number"?Math.round(g.egme/2):"")+"|"+!!g.gidiyor+"|"+(g.vardi||"")+"|"+!!g.sinir;
       if(oz!==gbSonOzet){ gbSonOzet=oz; if(akis) bildir(); }

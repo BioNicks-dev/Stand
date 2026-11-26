@@ -122,6 +122,7 @@ final class Kopru {
     @JavascriptInterface public void gimbal180(int yon) { Gimbal.yarimTur(yon); }
     @JavascriptInterface public void gimbalSinirUnut() { Gimbal.sinirUnut(); }
     @JavascriptInterface public void gimbalTest() { Gimbal.hareketTesti(); }
+    @JavascriptInterface public void gimbalDurGeri(int ms) { Gimbal.durGeri(ms); }
 
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");

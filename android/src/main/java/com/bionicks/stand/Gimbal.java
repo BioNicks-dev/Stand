@@ -166,6 +166,7 @@ final class Gimbal {
             o.put("gidiyor", g.gitAktif);
             if (g.varisZaman > 0 && SystemClock.elapsedRealtime() - g.varisZaman < 4000) o.put("vardi", g.gitAd);
             o.put("sinir", g.solVar);
+            o.put("ayar", g.ayarYazi); o.put("ayarliyor", g.testAktif);
             if (g.solVar) o.put("sol", Math.round(g.sol));
             int[] a = g.a84;
             if (a != null && SystemClock.elapsedRealtime() - g.a84Zaman < 3000) {
@@ -184,7 +185,7 @@ final class Gimbal {
         Gimbal g = ben;
         if (g == null) return;
         g.gitAktif = false;          // elle hareket otomatik gidişi keser
-        if (g.testAktif) { g.testAktif = false; g.durYontem = g.testEski; Kayit.yaz("Gimbal testi elle hareketle kesildi."); }
+        if (g.testAktif) { g.testAktif = false; g.durYontem = g.testEski; g.ayarYazi = "Ayar yarıda kesildi (elle hareket)."; Kayit.yaz("Gimbal ayarı elle hareketle kesildi."); }
         g.hx = sinirla(x); g.hy = sinirla(y);
         g.sonHareketKomutu = SystemClock.elapsedRealtime();
     }
@@ -196,6 +197,30 @@ final class Gimbal {
         g.sonHareketKomutu = 0;
     }
 
+    // 26 Kas 16:00: uzaktan bırakınca dur ve "geriMs" önceki açıya (izleyenin ekranda gördüğü yere) dön
+    static void durGeri(final int geriMs) {
+        final Gimbal g = ben;
+        if (g == null) return;
+        g.gitAktif = false; g.sonHareketKomutu = 0;
+        if (geriMs <= 0) return;
+        final long birakma = SystemClock.elapsedRealtime();
+        g.h.postDelayed(() -> {
+            if (g.gitAktif || g.sonHareketKomutu > 0 || g.testAktif) return;     // bu arada yeni komut geldi
+            long hedefT = birakma - geriMs;
+            int en = -1; long fark = Long.MAX_VALUE;
+            for (int k = 0; k < 128; k++) { if (g.gT[k] == 0) continue; long d = Math.abs(g.gT[k] - hedefT); if (d < fark) { fark = d; en = k; } }
+            if (en < 0 || fark > 400) return;
+            double yt = g.yatay(), eg = g.egme();
+            if (Double.isNaN(yt)) return;
+            double dy = sar(g.gY[en] - yt), de = Double.isNaN(eg) || Double.isNaN(g.gE[en]) ? 0 : g.gE[en] - eg;
+            if (Math.abs(dy) < 2 && Math.abs(de) < 2) return;                        // zaten yerinde
+            if (Math.abs(dy) > 60) return;                                            // mantıksız geri dönüş
+            g.hedefY = g.gY[en]; g.hedefE = Math.abs(de) < 2 ? Double.NaN : g.gE[en];
+            g.gitYonTercih = 0; g.gitAd = ""; g.gitSessiz = true;
+            g.gitBaslat();
+        }, 250);                                                                      // önce dursun
+    }
+
     // ---------- Aşama 3b: açıya git ----------
     // egme NaN ise eğme değişmez. ad: kayıt ve "vardı" bildirimi için.
     static void git(final double yatay, final double egme, final String ad) {
@@ -204,7 +229,7 @@ final class Gimbal {
         g.h.post(() -> {
             g.hedefY = sar(yatay);
             g.hedefE = Double.isNaN(egme) ? Double.NaN : Math.max(EGME_ALT, Math.min(EGME_UST, egme));
-            g.gitYonTercih = 0; g.gitAd = ad == null ? "" : ad;
+            g.gitYonTercih = 0; g.gitAd = ad == null ? "" : ad; g.gitSessiz = false;
             g.gitBaslat();
         });
     }
@@ -217,7 +242,7 @@ final class Gimbal {
             if (Double.isNaN(y)) { Kayit.yaz("Gimbal: açı henüz bilinmiyor."); return; }
             g.hedefY = sar(y + dy);
             g.hedefE = Double.isNaN(e) || de == 0 ? Double.NaN : Math.max(EGME_ALT, Math.min(EGME_UST, e + de));
-            g.gitYonTercih = dy > 0 ? 1 : (dy < 0 ? -1 : 0); g.gitAd = "";
+            g.gitYonTercih = dy > 0 ? 1 : (dy < 0 ? -1 : 0); g.gitAd = ""; g.gitSessiz = false;
             g.gitBaslat();
         });
     }
@@ -230,7 +255,7 @@ final class Gimbal {
             double y = g.yatay();
             if (Double.isNaN(y)) { Kayit.yaz("Gimbal: açı henüz bilinmiyor."); return; }
             g.hedefY = sar(y + 180); g.hedefE = Double.NaN;
-            g.gitYonTercih = yon >= 0 ? 1 : -1; g.gitAd = "180°";
+            g.gitYonTercih = yon >= 0 ? 1 : -1; g.gitAd = "180°"; g.gitSessiz = false;
             g.gitBaslat();
         });
     }
@@ -249,11 +274,14 @@ final class Gimbal {
         final Gimbal g = ben;
         if (g == null) return;
         g.h.post(() -> {
-            if (g.testAktif) { Kayit.yaz("Gimbal testi zaten çalışıyor."); return; }
-            if (!g.hazir || Double.isNaN(g.yatay()) || Double.isNaN(g.egme())) { Kayit.yaz("Gimbal testi: gimbal hazır değil ya da açı bilinmiyor."); return; }
+            if (g.testAktif) { Kayit.yaz("Gimbal ayarı zaten sürüyor."); return; }
+            String neden = !g.hazir ? "gimbal bağlı değil" : Double.isNaN(g.yatay()) ? "gimbal açısı gelmiyor" : Double.isNaN(g.egme()) ? "Pixel'in eğim sensörü okunmuyor" : null;
+            if (neden != null) { g.ayarYazi = "Başlamadı: " + neden + "."; Kayit.yaz("Gimbal ayarı başlamadı: " + neden + "."); return; }
+            if (g.mod != 1) { g.gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, g.takipHizi >= 0 ? g.takipHizi : 1 })); g.mod = 1; }
             g.testAktif = true; g.testNo = 0; g.testEski = g.durYontem; g.gitAktif = false; g.sonHareketKomutu = 0;
             g.testOzet.setLength(0);
-            Kayit.yaz("Gimbal testi başladı (~50 sn). Gimbala dokunmayın.");
+            g.ayarYazi = "Ayarlanıyor… (1/8) Gimbala dokunmayın.";
+            Kayit.yaz("Gimbal ayarı başladı (~50 sn). Gimbala dokunmayın.");
             g.h.postDelayed(g::testKos, 1500);
         });
     }
@@ -263,6 +291,7 @@ final class Gimbal {
         if (testNo >= TEST.length) { testBitir(); return; }
         int[] t = TEST[testNo];
         durYontem = t[2];
+        ayarYazi = "Ayarlanıyor… (" + (testNo + 1) + "/8) Gimbala dokunmayın.";
         tBasY = yatay(); tBasE = egme();
         final long bitis = SystemClock.elapsedRealtime() + (t[0] != 0 ? 1500 : 1000);   // eğme 1 sn (uca dayanmasın)
         Runnable it = new Runnable() { @Override public void run() {
@@ -294,7 +323,7 @@ final class Gimbal {
         if (!yatayTest) isaret *= egmeIsaret;
         double ileri = kayma * Math.signum(gitti == 0 ? isaret : gitti);  // + = aynı yönde devam etti
         tKayma[testNo] = ileri; tSure[testNo] = tSakin - tDurZaman;
-        String satir = "Test " + (testNo + 1) + " " + TEST_AD[yonNo] + " (" + (t[2] == 0 ? "A" : "B") + "): gitti " + f1(gitti) + "°, bırakınca " + f1(ileri) + "° daha, "
+        String satir = "Ayar " + (testNo + 1) + "/8 " + TEST_AD[yonNo] + " (" + (t[2] == 0 ? "A" : "B") + "): gitti " + f1(gitti) + "°, bırakınca " + f1(ileri) + "° daha, "
             + String.format(java.util.Locale.US, "%.1f", (tSakin - tDurZaman) / 1000.0) + " sn'de durdu, öbür eksen " + f1(oteki) + "°.";
         Kayit.yaz("Gimbal " + satir);
         if (testNo == 2 && Math.abs(gitti) > 3) {                        // yukarı komutu: eğme ölçümü hangi yöne?
@@ -312,7 +341,10 @@ final class Gimbal {
         int sec = b < a - 1 ? 1 : 0;
         durYontem = sec;
         if (ayar != null) ayar.edit().putInt("durYontem", sec).apply();
-        Kayit.yaz("Gimbal testi bitti. " + testOzet + "Bırakınca ortalama kayma: A " + f1(a / 4) + "°, B " + f1(b / 4) + "° → " + (sec == 0 ? "A" : "B") + " seçildi (kaydedildi).");
+        Kayit.yaz("Gimbal ayarı bitti. " + testOzet + "Bırakınca ortalama kayma: A " + f1(a / 4) + "°, B " + f1(b / 4) + "° → " + (sec == 0 ? "A" : "B") + " seçildi (kaydedildi).");
+        java.text.SimpleDateFormat sf = new java.text.SimpleDateFormat("d MMM HH:mm", new java.util.Locale("tr"));
+        ayarYazi = "Ayarlandı (" + sf.format(new java.util.Date()) + "): eğme yönü " + (egmeIsaret > 0 ? "normal" : "ters") + ", bırakınca kayma ~" + f1(Math.min(a, b) / 4).replace("+", "") + "°.";
+        if (ayar != null) ayar.edit().putString("ayarOzet", ayarYazi).apply();
     }
 
     private static String f1(double d) { return Double.isNaN(d) ? "?" : String.format(java.util.Locale.US, "%+.1f", d).replace('.', ','); }
@@ -327,7 +359,7 @@ final class Gimbal {
         gitAktif = true; gitBas = SystemClock.elapsedRealtime(); varisSay = 0; varisZaman = 0;
         takZaman = 0;
         akisMax = 0; aciMax = 0; oncekiAci = 0; gitDurKalk = 0; gitEpEnAz = Double.NaN; gitEpZaman = gitBas; gitYIsaret = 0;
-        Kayit.yaz("Gimbal: " + (gitAd.length() > 0 ? gitAd + " " : "") + "hedefe gidiyor: yatay " + Math.round(hedefY) + "°" + (Double.isNaN(hedefE) ? "" : ", eğme " + Math.round(hedefE) + "°") + ".");
+        if (!gitSessiz) Kayit.yaz("Gimbal: " + (gitAd.length() > 0 ? gitAd + " " : "") + "hedefe gidiyor: yatay " + Math.round(hedefY) + "°" + (Double.isNaN(hedefE) ? "" : ", eğme " + Math.round(hedefE) + "°") + ".");
     }
 
     // 0 = PF, 1 = PTF, 2 = L, 3 = POV
@@ -375,6 +407,7 @@ final class Gimbal {
             solVar = ayar.getBoolean("solVar2", false); sol = ayar.getFloat("sol2", 0f);
             egmeIsaret = ayar.getInt("egmeIsaret", 1) < 0 ? -1 : 1;
             durYontem = ayar.getInt("durYontem", 0) == 1 ? 1 : 0;
+            ayarYazi = ayar.getString("ayarOzet", "Henüz ayarlanmadı.");
         } catch (Exception e) { }
         try {
             sm = (SensorManager) c.getSystemService(Context.SENSOR_SERVICE);
@@ -649,6 +682,11 @@ final class Gimbal {
     private long sonAkis = 0, akisMax = 0, aciMax = 0, oncekiAci = 0; private int gitDurKalk = 0;
     // durdurma yöntemi: 0 = yüz yok (varsayılan), 1 = önce yüz ortada sonra yüz yok (Hohem Joy gibi)
     private int durYontem = 0;
+    // 26 Kas 16:00: "Gimbalı ayarla" ilerleme / sonuç yazısı (panelde görünür)
+    private volatile String ayarYazi = "";
+    // açı geçmişi (her 00 84 cevabında): "bıraktığın yerde dursun" için
+    private final long[] gT = new long[128]; private final double[] gY = new double[128], gE = new double[128]; private int gN = 0;
+    private boolean gitSessiz = false;
 
     // ---------- açılar ----------
     static double sar(double d) { d = ((d + 180) % 360 + 360) % 360 - 180; return d; }
@@ -704,8 +742,9 @@ final class Gimbal {
             // varış ancak durduktan sonra gelen 4 TAZE açı ölçümü de hedefteyse sayılır (gecikmeli ölçümle erken "vardı" demesin)
             if (a84Zaman != varisOlcum) { varisOlcum = a84Zaman; varisSay++; }
             if (varisSay >= 4) {
-                gitAktif = false; sonHareketKomutu = 0; varisZaman = simdi;
-                Kayit.yaz("Gimbal: vardı" + (gitAd.length() > 0 ? " (" + gitAd + ")" : "") + ": yatay " + Math.round(yt) + "°, eğme " + (Double.isNaN(eg) ? "?" : Math.round(eg) + "°") + ", " + String.format(java.util.Locale.US, "%.1f", (simdi - gitBas) / 1000.0) + " sn. " + tani());
+                gitAktif = false; sonHareketKomutu = 0; varisZaman = gitSessiz ? 0 : simdi;
+                if (gitSessiz) Kayit.yaz("Gimbal: bırakılan yere döndü (" + String.format(java.util.Locale.US, "%.1f", (simdi - gitBas) / 1000.0) + " sn).");
+                else Kayit.yaz("Gimbal: vardı" + (gitAd.length() > 0 ? " (" + gitAd + ")" : "") + ": yatay " + Math.round(yt) + "°, eğme " + (Double.isNaN(eg) ? "?" : Math.round(eg) + "°") + ", " + String.format(java.util.Locale.US, "%.1f", (simdi - gitBas) / 1000.0) + " sn. " + tani());
             } else sonHareketKomutu = 0;
             return;
         }
@@ -787,6 +826,7 @@ final class Gimbal {
             if (gitAktif && oncekiAci > 0) aciMax = Math.max(aciMax, t - oncekiAci);
             oncekiAci = t;
             a84 = a; a84Zaman = t;
+            int i = gN++ & 127; gT[i] = t; gY[i] = sar(-a[2] / 10.0); gE[i] = egme();
         } else if (grup == 0x00 && komut == 0x57 && veriBoy >= 2) {
             int m = v[v.length - 4] & 0xFF, hz = v[v.length - 3] & 0xFF;
             if (m <= 3) { if (m != mod && mod >= 0) Kayit.yaz("Gimbal: mod " + MOD_AD[m] + " oldu."); mod = m; }
