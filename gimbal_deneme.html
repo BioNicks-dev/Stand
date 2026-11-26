@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="Gimbal deneme · 25 Kas 19:16">
+<meta name="stand-surum" content="Gimbal deneme · 25 Kas 19:40">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Gimbal deneme (Hohem V3)</title>
 <style>
@@ -33,7 +33,7 @@
 <body>
 <main>
   <h1>Gimbal deneme · Hohem V3</h1>
-  <div class="surum" id="surumDamga">Gimbal deneme · 25 Kas 19:16</div>
+  <div class="surum" id="surumDamga">Gimbal deneme · 25 Kas 19:40</div>
 
   <div class="satir">
     <button id="baglan">Bağlan</button>
@@ -76,7 +76,7 @@
 </main>
 
 <script>
-var SAYFA_SURUM = "Gimbal deneme · 25 Kas 19:16";
+var SAYFA_SURUM = "Gimbal deneme · 25 Kas 19:40";
 
 // ---------- Paket yapisi ----------
 // AA 55 | uzunluk | 00 | grup | komut | veri... | toplam | FF
@@ -220,9 +220,15 @@ function baglan() {
   }).then(function () {
     if (!yazKar || !okuKar) throw new Error("FFE3/FFE4 bulunamadı");
     yaz("FFE3 (yazma) ve FFE4 (cevap) bulundu.");
-    return okuKar.startNotifications();
-  }).then(function () {
     okuKar.addEventListener("characteristicvaluechanged", gelen);
+    // Hohem Joy cevap kanalini hic "ac" demeden kullaniyor; gimbal bu istege cevap vermeyebilir.
+    // Bu yuzden en fazla 3 sn bekle, olmazsa cevapsiz devam et (komut gondermek icin gerekmiyor).
+    var zamanAsimi = bekle(3000).then(function () { return "zaman"; });
+    var ac = okuKar.startNotifications().then(function () { return "tamam"; }, function (e) { return "hata: " + e.message; });
+    return Promise.race([ac, zamanAsimi]);
+  }).then(function (sonuc) {
+    if (sonuc === "tamam") yaz("Cevap kanalı açıldı.");
+    else yaz("Cevap kanalı açılamadı (" + sonuc + "), cevapsız devam ediliyor.", "hata");
     durum("Bağlandı. Açılış paketleri gönderiliyor…");
     return sirayla(ACILIS.map(hexten), 40);
   }).then(function () {
