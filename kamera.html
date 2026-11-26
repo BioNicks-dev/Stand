@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:55</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 17:25</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -290,6 +290,11 @@
       <div class="durum" style="margin-top:8px">Ayar: <b id="gbAyar">-</b></div>
       <button id="gbTest" type="button">Gimbalı ayarla (~1 dk, gimbala dokunmayın)</button>
       <p class="not">Bir kez yapılır. Gimbal kendisi dört yöne gidip gelir; eğme yönünü ve bırakınca ne kadar kaydığını öğrenip kaydeder. Gimbal yeri değişince ya da hareket tuhaflaşınca tekrar yapılabilir.</p>
+      <div id="gbOgrKutu" class="durum gizli" style="margin-top:8px;font-size:22px;line-height:1.35;white-space:pre-line;font-weight:bold"></div>
+      <button id="gbOgren" type="button">Kumanda öğren (~3 dk)</button>
+      <button id="gbOgrAtla" type="button" class="gizli">Bu tuş yok / atla</button>
+      <button id="gbOgrDur" type="button" class="gizli">Öğrenmeyi bitir</button>
+      <p class="not">Kumanda öğren gimbala bir şey göndermez, sadece dinler. Ekranda yazan tuşa basın; uygulama sonraki adıma kendisi geçer. Bitince Kaydı kopyala.</p>
       <button id="gbSinirUnut" type="button">Yatay sınırı unut (yeniden öğrensin)</button>
       <button id="gbYeniden" type="button">Yeniden bağlan</button>
       <p class="not">Hohem Joy açıkken çakışabilir; denemede kapalı olsun. Yön tuşları basılı tutulduğu sürece döner, bırakınca durur. Komut 0,3 sn gelmezse gimbal kendiliğinden durur.</p>
@@ -364,7 +369,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 16:55";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 17:25";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2795,6 +2800,7 @@
     },100);
   }
   // ---------- 26 Kas: Hohem V3 gimbal test paneli (uygulama 26+) ----------
+  var gbOgreniyor=false;
   var GB_DURUM={kapali:"kapalı",izinYok:"Bluetooth izni yok",bluetoothKapali:"Bluetooth kapalı",araniyor:"aranıyor…",baglaniyor:"bağlanıyor…",bagli:"bağlı"};
   function gimbalKur(){
     E("gbKutu").className="bolum";
@@ -2806,8 +2812,22 @@
       try{ APP.gimbalTest(); }catch(h){ E("gbAyar").textContent="Başlamadı: "+h; }
       setTimeout(guncelle,300);
     });
+    // 26 Kas 17:25: Kumanda öğren
+    E("gbOgren").addEventListener("click",function(){
+      if(typeof APP.gimbalOgren!=="function"){ E("gbOgrKutu").className="durum"; E("gbOgrKutu").textContent="Bu düğme için uygulama güncellenmeli."; return; }
+      try{ APP.gimbalOgren(); }catch(h){} gbOgreniyor=true; sonDokunma=Date.now(); setTimeout(guncelle,300);
+    });
+    E("gbOgrAtla").addEventListener("click",function(){ try{ APP.gimbalOgrenAtla(); }catch(h){} sonDokunma=Date.now(); setTimeout(guncelle,250); });
+    E("gbOgrDur").addEventListener("click",function(){ try{ APP.gimbalOgrenDur(); }catch(h){} setTimeout(guncelle,300); });
+    setInterval(function(){ if(gbOgreniyor) guncelle(); },400);   // öğrenirken geri sayım akıcı olsun
     function guncelle(){
       var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return; }
+      gbOgreniyor=!!g.ogreniyor;
+      if(gbOgreniyor) sonDokunma=Date.now();          // öğrenirken beklemeye dönmesin
+      E("gbOgrKutu").className=g.ogren?"durum":"durum gizli"; if(g.ogren) E("gbOgrKutu").textContent=g.ogren;
+      E("gbOgrKutu").style.color=gbOgreniyor&&g.ogrEvre===1?"#0a7d2c":"";
+      E("gbOgren").className=gbOgreniyor?"gizli":""; E("gbOgrAtla").className=gbOgreniyor?"":"gizli"; E("gbOgrDur").className=gbOgreniyor?"":"gizli";
+      E("gbOgren").disabled=g.durum!=="bagli"||!!g.ayarliyor;
       var d=GB_DURUM[g.durum]||g.durum||"-";
       E("gbDurum").textContent=d+(g.ad?" ("+g.ad+")":"")+(g.hata?" · "+g.hata:"");
       E("gbDurum").className=g.durum==="bagli"?"iyi":(g.durum==="izinYok"||g.durum==="bluetoothKapali"?"kotu":"uyari");
@@ -2819,7 +2839,7 @@
       E("gbAci").textContent=(typeof g.yatay==="number"?"yatay "+Math.round(g.yatay)+"°":"yatay ?")+" · "+(typeof g.egme==="number"?"eğme "+Math.round(g.egme)+"°":"eğme ?")+(typeof g.roll==="number"?" · roll "+g.roll+"°":"")+(g.gidiyor?" · gidiyor…":"")+(g.sinir?" · sınır biliniyor":" · sınır öğrenilmedi");
       if(typeof g.ayar==="string"&&g.ayar) E("gbAyar").textContent=g.ayar;
       if(g.aciYok) E("gbAci").textContent=g.gucKapatAc?"gelmiyor · gimbalı güç tuşundan kapatıp açın":"gelmiyor · uygulama toparlamaya çalışıyor (15 sn)";
-      E("gbTest").disabled=!!g.ayarliyor||g.durum!=="bagli";
+      E("gbTest").disabled=!!g.ayarliyor||g.durum!=="bagli"||gbOgreniyor;
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
       var oz=g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"")+"|"+(typeof g.yatay==="number"?Math.round(g.yatay/2):"")+"|"+(typeof g.egme==="number"?Math.round(g.egme/2):"")+"|"+!!g.gidiyor+"|"+(g.vardi||"")+"|"+!!g.sinir;
       if(oz!==gbSonOzet){ gbSonOzet=oz; if(akis) bildir(); }

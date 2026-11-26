@@ -123,6 +123,10 @@ final class Kopru {
     @JavascriptInterface public void gimbalSinirUnut() { Gimbal.sinirUnut(); }
     @JavascriptInterface public void gimbalTest() { Gimbal.hareketTesti(); }
     @JavascriptInterface public void gimbalDurGeri(int ms) { Gimbal.durGeri(ms); }
+    // 26 Kas 17:25: Kumanda öğren (sadece dinler)
+    @JavascriptInterface public void gimbalOgren() { Gimbal.ogrenBasla(); }
+    @JavascriptInterface public void gimbalOgrenAtla() { Gimbal.ogrenAtla(); }
+    @JavascriptInterface public void gimbalOgrenDur() { Gimbal.ogrenDur(); }
 
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");
