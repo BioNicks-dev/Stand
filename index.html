@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="26 Kas 13:36">
+<meta name="stand-surum" content="26 Kas 15:10">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -372,6 +372,7 @@
     border:1px solid rgba(255,255,255,.4);font-size:14px;white-space:nowrap}
   #kKonumSerit button.ortak{border-style:dashed}
   #kKonumSerit button.sarj{border-color:#4ade80;color:#86efac;font-weight:600}
+  #kKonumSerit button.ekle{border-color:#60a5fa;color:#bfdbfe;font-weight:600}
   #kKonumSerit .bos{color:#fff;font-size:13px;padding:8px 10px;background:rgba(0,0,0,.55);border-radius:12px;white-space:nowrap}
   body.konumSeritAcik.buyukDuzen #kBilgi{top:calc(108px + var(--gu))}
   body.konumSeritAcik.buyukDuzen #kOda{top:calc(134px + var(--gu))}
@@ -626,7 +627,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 13:36</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 15:10</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -2894,7 +2895,7 @@
   function seritCiz(){
     var sr=E("kKonumSerit"); sr.innerHTML="";
     var l=konumSirali();
-    if(!l.length){ var b0=document.createElement("span"); b0.className="bos"; b0.textContent="Kayıtlı konum yok. Kaydetmek için ekranı küçült ya da dik tut."; sr.appendChild(b0); return; }
+    if(!l.length&&!gbAktif()){ var b0=document.createElement("span"); b0.className="bos"; b0.textContent="Kayıtlı konum yok. Kaydetmek için ekranı küçült ya da dik tut."; sr.appendChild(b0); return; }
     l.forEach(function(s){
       var kn=s.kn, b=document.createElement("button"); b.type="button";
       b.className=(s.ortak?"ortak":"")+(kn.sarj?" sarj":"");
@@ -2903,6 +2904,12 @@
       b.addEventListener("click",function(e){ e.stopPropagation(); if(b._uzun||Date.now()-konumUzunZaman<1500){ b._uzun=false; return; } konumaGit(kn); seritSure(3000); });
       sr.appendChild(b);
     });
+    // 26 Kas: V3 bağlıyken konum izlerken eklenir (Evi izle'den çıkmaya gerek yok)
+    if(gbAktif()){
+      var be=document.createElement("button"); be.type="button"; be.className="ekle"; be.textContent="+ Buraya konum ekle";
+      be.addEventListener("click",function(e){ e.stopPropagation(); seritSure(30000); konumEkle(function(){ seritCiz(); seritSure(); }); });
+      sr.appendChild(be);
+    }
   }
   E("kKonumBtn").addEventListener("click",function(e){
     e.stopPropagation();
@@ -2913,7 +2920,7 @@
   E("kKonumSerit").addEventListener("pointerdown",function(){ seritSure(); });
   E("kKonumSerit").addEventListener("scroll",function(){ seritSure(); },{passive:true});
 
-  E("konumEkleBtn").addEventListener("click",function(){
+  function konumEkle(bitti){
     if(!konumSurdurulebilir()){ bildiri("Standın yeri bilinmiyor, konum kaydedilemedi",0,"hata"); return; }
     var ad=prompt("Konum adı (örn. kanepe)"); if(!ad) return;
     ad=ad.trim().slice(0,16); if(!ad) return;
@@ -2925,8 +2932,12 @@
       kn.sahip=benimKimlik; kn.sahipAd=benimAdim();
       if(!ortakYaz(ortakKopya().concat([kn]))) return;
     } else { var l=konumListesi(); l.push(kn); konumYaz(l); konumlariCiz(); }
-    yaz("Konum kaydedildi"+(paylas?" (ortak)":"")+": "+ad+" = "+Math.round(kn.derece)+"° / "+kn.tilt+"°");
-  });
+    var ozet=kn.v3?("yatay "+Math.round(kn.v3.y)+"°, eğme "+Math.round(kn.v3.e)+"°"):(Math.round(kn.derece)+"° / "+kn.tilt+"°");
+    yaz("Konum kaydedildi"+(paylas?" (ortak)":"")+": "+ad+" = "+ozet);
+    if(grAcik) bildiri("Kaydedildi: "+ad,2500,"bilgi");
+    if(bitti) bitti();
+  }
+  E("konumEkleBtn").addEventListener("click",function(){ konumEkle(); });
   // Kart konuma giderken durumda "hedef", varınca 4 sn "vardi" gönderir: herkeste yazı çıkar
   var kdHedef="", kdVardi="", kdIlk=true, kyTik=null;
   function konumYazi(t,sure){
@@ -3749,7 +3760,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="26 Kas 13:36";
+  var SAYFA_SURUM="26 Kas 15:10";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

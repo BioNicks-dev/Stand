@@ -237,7 +237,7 @@ final class Gimbal {
     static void sinirUnut() {
         final Gimbal g = ben;
         if (g == null) return;
-        g.h.post(() -> { g.solVar = false; if (g.ayar != null) g.ayar.edit().putBoolean("solVar", false).apply(); Kayit.yaz("Gimbal: yatay sınır unutuldu, ilk dayanışta yeniden öğrenilecek."); });
+        g.h.post(() -> { g.solVar = false; if (g.ayar != null) g.ayar.edit().putBoolean("solVar2", false).apply(); Kayit.yaz("Gimbal: yatay sınır unutuldu, ilk dayanışta yeniden öğrenilecek."); });
     }
 
     private void gitBaslat() {
@@ -288,7 +288,7 @@ final class Gimbal {
         calisiyor = true;
         try {
             ayar = c.getSharedPreferences("gimbal", Context.MODE_PRIVATE);
-            solVar = ayar.getBoolean("solVar", false); sol = ayar.getFloat("sol", 0f);
+            solVar = ayar.getBoolean("solVar2", false); sol = ayar.getFloat("sol2", 0f);
         } catch (Exception e) { }
         try {
             sm = (SensorManager) c.getSystemService(Context.SENSOR_SERVICE);
@@ -453,6 +453,7 @@ final class Gimbal {
                 hazir = true; durum = "bagli"; sonHata = "";
                 Kayit.yaz("Gimbal: bağlandı (" + ad + "), açılış paketleri gönderiliyor.");
                 for (String p : ACILIS) kuyruk.add(hexten(p));
+                kuyruk.add(paket(0x00, 0x7C, new int[] { 0, 0, 1, 1 }));   // 26 Kas: PTF + orta takip hızı (uzaktan kontrol için)
                 yazNext();
             });
         }
@@ -512,16 +513,24 @@ final class Gimbal {
                 boolean istek = sonHareketKomutu > 0 && simdi - sonHareketKomutu <= HAREKET_ZAMAN;
                 if (istek) {
                     if (!hareketEdiyor) {
-                        hareketEdiyor = true;
+                        hareketEdiyor = true; hareketBas = simdi;
+                        // PF'de eğme kilitli, L'de hepsi kilitli: yüz takibi eğmiyor. Hareket için PTF gerekir.
+                        if (mod == 0 || mod == 2) {
+                            int hz = takipHizi >= 0 ? takipHizi : 1;
+                            gonder(paket(0x00, 0x7C, new int[] { 0, 0, 1, hz }));
+                            Kayit.yaz("Gimbal: mod " + MOD_AD[mod] + " idi, hareket için PTF'ye alındı.");
+                            mod = 1;
+                        }
                         gonder(paket(0x03, 0x2B, new int[] { 0, 0 }));     // tracker'ın kendi takibini durdur (Hohem Joy da yapıyor)
                         gonder(takip(0, 0, 0, 0));
                     }
                     if (kuyruk.size() < 3) gonder(takip(hx, hy, YUZ, YUZ));   // açı sorusuna yer kalsın
                 } else if (hareketEdiyor) {
+                    // 26 Kas: önce "yüz ortada" yollamak sola ve yukarıda fazla gitmeye yol açıyordu
+                    // (gimbalın merkezi tam 0 değil); doğrudan "yüz yok" ile dur.
                     hareketEdiyor = false;
                     kuyruk.clear();
-                    gonder(takip(0, 0, YUZ, YUZ)); gonder(takip(0, 0, YUZ, YUZ));
-                    gonder(takip(0, 0, 0, 0)); gonder(takip(0, 0, 0, 0));
+                    gonder(takip(0, 0, 0, 0)); gonder(takip(0, 0, 0, 0)); gonder(takip(0, 0, 0, 0));
                 }
                 // nabız: saniyede bir, 10 sn'de bir uzun nabız; 30 sn'de bir durum sorusu
                 // açı sorusu (00 84 cevabı) 200 ms'de bir
@@ -539,6 +548,7 @@ final class Gimbal {
         }
     };
     private int nabizSay = 0, aciSay = 0;
+    private long hareketBas = 0;
 
     // ---------- açılar ----------
     static double sar(double d) { d = ((d + 180) % 360 + 360) % 360 - 180; return d; }
@@ -592,7 +602,7 @@ final class Gimbal {
     }
 
     // Sınır koruması ve öğrenme (elle ve otomatik harekette): eğme ±40° dışına çıkmaz;
-    // yatay sınır biliniyorsa 2° kala durur; bilinmiyorsa takılınca (komut var, açı 0,8 sn değişmiyor) öğrenilir.
+    // yatay sınır biliniyorsa 2° kala durur; bilinmiyorsa takılınca (hız ≥ 100, harekete başladıktan 1,5 sn sonra, açı 1,5 sn değişmiyor) öğrenilir.
     private void sinirKoru(long simdi) {
         if (sonHareketKomutu == 0 || simdi - sonHareketKomutu > HAREKET_ZAMAN) { takZaman = 0; return; }
         double eg = egme();
@@ -609,15 +619,15 @@ final class Gimbal {
         }
         if (hx == 0 && hy == 0) { sonHareketKomutu = 0; takZaman = 0; return; }
         int yon = hx > 0 ? 1 : (hx < 0 ? -1 : 0);
-        if (Math.abs(hx) < 60 || yon == 0) { takZaman = 0; return; }
+        if (Math.abs(hx) < 100 || yon == 0 || simdi - hareketBas < 1500) { takZaman = 0; return; }   // harekete başlarken gecikme var
         if (takZaman == 0 || yon != takYon) { takZaman = simdi; takYatay = yt; takYon = yon; return; }
         if (Math.abs(sar(yt - takYatay)) > 1.0) { takZaman = simdi; takYatay = yt; return; }
-        if (simdi - takZaman > 800) {
+        if (simdi - takZaman > 1500) {
             // takıldı: mekanik sınır
             double yeniSol = yon < 0 ? yt : sar(yt - YATAY_ARALIK);
             boolean ilk = !solVar;
             sol = yeniSol; solVar = true; takZaman = 0;
-            if (ayar != null) ayar.edit().putBoolean("solVar", true).putFloat("sol", (float) sol).apply();
+            if (ayar != null) ayar.edit().putBoolean("solVar2", true).putFloat("sol2", (float) sol).apply();
             Kayit.yaz("Gimbal: " + (yon < 0 ? "sol" : "sağ") + " sınıra dayandı (yatay " + Math.round(yt) + "°), sınır " + (ilk ? "öğrenildi" : "tazelendi") + ".");
             hx = 0; if (hy == 0) sonHareketKomutu = 0;
         }
