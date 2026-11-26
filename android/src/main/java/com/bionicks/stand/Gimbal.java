@@ -76,6 +76,8 @@ final class Gimbal {
     private boolean taraniyor = false, calisiyor = false, hazir = false, yaziyor = false;
     private final ArrayDeque<byte[]> kuyruk = new ArrayDeque<>();
     private long yazmaBasi = 0;
+    private boolean servisAramaBasladi = false;
+    private final java.io.ByteArrayOutputStream parca = new java.io.ByteArrayOutputStream();
 
     // durum (sayfa okur)
     private volatile String durum = "kapali", ad = "", sonHata = "";
@@ -308,7 +310,7 @@ final class Gimbal {
         try { ad = d.getName(); } catch (Exception e) { ad = "?"; }
         durum = "baglaniyor";
         Kayit.yaz("Gimbal: " + ad + " bulundu (" + nereden + "), bağlanılıyor.");
-        hazir = false;
+        hazir = false; servisAramaBasladi = false; parca.reset();
         gatt = d.connectGatt(c, false, cb, BluetoothDevice.TRANSPORT_LE);
         final BluetoothGatt bu = gatt;
         // 15 sn içinde hazır olmazsa bırak, yeniden ara
@@ -332,13 +334,25 @@ final class Gimbal {
             h.post(() -> {
                 if (g != gatt) return;
                 if (yeni == BluetoothProfile.STATE_CONNECTED) {
-                    try { g.discoverServices(); } catch (Exception e) { }
+                    // Uygulama 28: Hohem Joy gibi büyük paket izni iste (açı cevabı 36 bayt, varsayılan 20)
+                    boolean mtu = false;
+                    try { mtu = g.requestMtu(247); } catch (Exception e) { }
+                    if (!mtu) { try { g.discoverServices(); } catch (Exception e) { } }
+                    else h.postDelayed(() -> { if (g == gatt && !servisAramaBasladi) { servisAramaBasladi = true; try { g.discoverServices(); } catch (Exception e) { } } }, 2500);
                 } else if (yeni == BluetoothProfile.STATE_DISCONNECTED) {
                     boolean hazirdi = hazir;
                     kapat("koptu, kod " + st);
                     if (!hazirdi) sonHata = "bağlanamadı (kod " + st + ")";
                     h.postDelayed(Gimbal.this::ara, 3000);
                 }
+            });
+        }
+
+        @Override public void onMtuChanged(final BluetoothGatt g, final int mtu, final int st) {
+            h.post(() -> {
+                if (g != gatt) return;
+                Kayit.yaz("Gimbal: paket boyu " + mtu + (st == BluetoothGatt.GATT_SUCCESS ? "" : " (hata " + st + ")") + ".");
+                if (!servisAramaBasladi) { servisAramaBasladi = true; try { g.discoverServices(); } catch (Exception e) { } }
             });
         }
 
@@ -442,7 +456,27 @@ final class Gimbal {
     private int nabizSay = 0, aciSay = 0;
 
     // Gimbalın cevapları
-    private void cevap(byte[] v) {
+    // Bölünmüş gelen paketleri birleştir: AA 55 L ... (toplam L + 2 bayt)
+    private void cevap(byte[] gelenParca) {
+        if (gelenParca == null || gelenParca.length == 0) return;
+        parca.write(gelenParca, 0, gelenParca.length);
+        byte[] b = parca.toByteArray();
+        int i = 0;
+        while (b.length - i >= 3) {
+            if ((b[i] & 0xFF) != 0xAA || (b[i + 1] & 0xFF) != 0x55) { i++; continue; }   // başı bulana kadar at
+            int boy = (b[i + 2] & 0xFF) + 2;
+            if (boy < 8 || boy > 300) { i++; continue; }
+            if (b.length - i < boy) break;                                                     // kalanı bekle
+            byte[] tam = new byte[boy];
+            System.arraycopy(b, i, tam, 0, boy);
+            paketIsle(tam);
+            i += boy;
+        }
+        parca.reset();
+        if (i < b.length && b.length - i < 600) parca.write(b, i, b.length - i);
+    }
+
+    private void paketIsle(byte[] v) {
         if (v == null || v.length < 8) return;
         gelen++;
         sonCevap = SystemClock.elapsedRealtime();
