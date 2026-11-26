@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 01:20</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 02:15</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -283,7 +283,7 @@
       <div class="ic">
       <div class="durum">
         Bağlantı: <b id="gbDurum">-</b><br>
-        Gimbal pili (ham): <b id="gbPil">-</b> · Mod: <b id="gbMod">-</b><br>
+        Gimbal pili: <b id="gbPil">-</b> · Mod: <b id="gbMod">-</b><br>
         <span class="not">Cevap: <b id="gbCevap">-</b> · Giden: <b id="gbGiden">0</b> · Gelen: <b id="gbGelen">0</b></span>
       </div>
       <div id="gbYon">
@@ -377,7 +377,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 01:20";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 02:15";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2768,7 +2768,7 @@
 
   // ---------- 26 Kas: Seda'nın sayfasından gimbal (Aşama 2) ----------
   // Sayfa basılı tutarken ~150 ms'de bir {t:"gimbal",x,y} yollar, bırakınca {t:"gimbal",dur:1}.
-  // İnternet gecikmesi olmasın diye son komut burada 100 ms'de bir tekrarlanır; 700 ms yeni komut gelmezse durur.
+  // İnternet gecikmesi olmasın diye son komut burada 100 ms'de bir tekrarlanır; 400 ms yeni komut gelmezse durur (26 Kas: 700'den indirildi, fazla gidiyordu).
   var gbSonOzet="", gbUzakX=0, gbUzakY=0, gbUzakSon=0, gbUzakTik=null;
   function gimbalVar(){ return !!(APP&&typeof APP.gimbalDurum==="function"); }
   function gimbalOzet(){
@@ -2783,14 +2783,14 @@
   function gimbalUzak(m){
     if(!gimbalVar()) return;
     if(m.mod!=null){ try{ APP.gimbalMod(Number(m.mod)); }catch(h){} yaz("Stand sayfası: gimbal modu "+["PF","PTF","L","POV"][Number(m.mod)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
-    if(m.yon!=null){ try{ APP.gimbalYon(Number(m.yon)); }catch(h){} yaz("Stand sayfası: gimbal yönü "+["portre","landscape","ters landscape"][Number(m.yon)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
+    if(m.yon!=null){ try{ APP.gimbalYon(Number(m.yon)); }catch(h){} yaz("Stand sayfası: gimbal yönü "+["landscape","portre","ters landscape"][Number(m.yon)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
     if(m.dur){ gimbalUzakDur(); return; }
     gbUzakX=Math.max(-400,Math.min(400,Number(m.x)||0)); gbUzakY=Math.max(-400,Math.min(400,Number(m.y)||0));
     if(!gbUzakX&&!gbUzakY){ gimbalUzakDur(); return; }
     gbUzakSon=Date.now();
     try{ APP.gimbalHareket(gbUzakX,gbUzakY); }catch(h){}
     if(!gbUzakTik) gbUzakTik=setInterval(function(){
-      if(!gbUzakSon||Date.now()-gbUzakSon>700){ gimbalUzakDur(); return; }
+      if(!gbUzakSon||Date.now()-gbUzakSon>400){ gimbalUzakDur(); return; }
       try{ APP.gimbalHareket(gbUzakX,gbUzakY); }catch(h){}
     },100);
   }
@@ -2815,8 +2815,8 @@
     Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(b){
       b.addEventListener("click",function(){ try{ APP.gimbalMod(parseInt(b.getAttribute("data-m"),10)); }catch(h){} });
     });
-    E("gbPortre").addEventListener("click",function(){ try{ APP.gimbalYon(0); }catch(h){} });
-    E("gbYatay").addEventListener("click",function(){ try{ APP.gimbalYon(1); }catch(h){} });
+    E("gbPortre").addEventListener("click",function(){ try{ APP.gimbalYon(1); }catch(h){} });   // 26 Kas: 1 = portre, 0 = landscape (denemede ters çıktı)
+    E("gbYatay").addEventListener("click",function(){ try{ APP.gimbalYon(0); }catch(h){} });
     E("gbTers").addEventListener("click",function(){ try{ APP.gimbalYon(2); }catch(h){} });
     E("gbYeniden").addEventListener("click",function(){ try{ APP.gimbalYeniden(); }catch(h){} yaz("Gimbal: yeniden bağlanılıyor."); });
     document.addEventListener("visibilitychange",function(){ if(document.hidden) birak(); });
@@ -2826,7 +2826,7 @@
       E("gbDurum").textContent=d+(g.ad?" ("+g.ad+")":"")+(g.hata?" · "+g.hata:"");
       E("gbDurum").className=g.durum==="bagli"?"iyi":(g.durum==="izinYok"||g.durum==="bluetoothKapali"?"kotu":"uyari");
       E("gbOzet").textContent=g.durum==="bagli"?"· bağlı":"· "+d;
-      E("gbPil").textContent=g.pilMv>0?g.pilMv:"-";
+      E("gbPil").textContent=g.pilMv>0?("~%"+Math.max(0,Math.min(100,Math.round((g.pilMv/1000-6.6)/1.8*100)))+" ("+(g.pilMv/1000).toFixed(2).replace(".",",")+" V)"):"-";
       E("gbMod").textContent=g.modAd||"-";
       E("gbCevap").textContent=g.cevap?"geliyor":"yok";
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
