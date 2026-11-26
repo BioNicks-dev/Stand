@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 02:31</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 02:59</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -311,7 +311,8 @@
         <span class="not">Pixel sensörü: <span id="gbQ">-</span></span>
       </div>
       <button id="gbOlcum" type="button">Ölçümü başlat (60 sn)</button>
-      <p class="not">Ölçüm sırasında gimbalı joystick'le yavaşça her yöne gezdirin (sağ, sol, yukarı, aşağı, sonra ortaya). Satırlar Kayıt'a "GK" diye düşer; stand sayfasında Kayıt'ı kopyalayıp gönderin.</p>
+      <button id="gbOlcumKopya" type="button" disabled>Ölçümü kopyala</button>
+      <p class="not">Ölçüm sırasında gimbalı joystick'le yavaşça her yöne gezdirin (sağ, sol, yukarı, aşağı, sonra ortaya). Bitince "Ölçümü kopyala"ya basıp metni Claude'a yapıştırın.</p>
       <p class="not">Hohem Joy açıkken çakışabilir; denemede kapalı olsun. Yön tuşları basılı tutulduğu sürece döner, bırakınca durur. Komut 0,3 sn gelmezse gimbal kendiliğinden durur.</p>
       </div>
     </details>
@@ -384,7 +385,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 02:31";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 02:59";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -398,7 +399,7 @@
   // Son satırlar hafızada da tutulur: stand sayfasındaki Kayıt > Pixel sekmesi bunları ister (21 Eki)
   var pkHafiza=[], pkNo=0;
   function yaz(m){
-    var k=E("kayit"); k.textContent=saat()+" "+m+"\n"+k.textContent.slice(0,3000);
+    var k=E("kayit"); k.textContent=saat()+" "+m+"\n"+k.textContent.slice(0,12000);
     pkNo++; pkHafiza.push([pkNo,Date.now(),String(m)]); if(pkHafiza.length>150) pkHafiza.shift();
   }
   function kayitKopyalaYap(){
@@ -2827,19 +2828,33 @@
     E("gbTers").addEventListener("click",function(){ try{ APP.gimbalYon(2); }catch(h){} });
     E("gbYeniden").addEventListener("click",function(){ try{ APP.gimbalYeniden(); }catch(h){} yaz("Gimbal: yeniden bağlanılıyor."); });
     // Aşama 3a: 60 sn boyunca 0,5 sn'de bir gimbal ham sayıları + Pixel sensörü; 2 sn'de bir tek satır (4 örnek) Kayıt'a
-    var olcTik=null;
+    // ölçüm Pixel'in hafızasında tutulur; bitince "Ölçümü kopyala" hepsini tek seferde panoya alır
+    var olcTik=null, olcVeri=[];
+    function olcBitir(neden){
+      clearInterval(olcTik); olcTik=null;
+      E("gbOlcum").textContent="Ölçümü başlat (60 sn)";
+      E("gbOlcumKopya").disabled=!olcVeri.length;
+      yaz("Gimbal ölçümü bitti ("+neden+"): "+olcVeri.length+" örnek. \"Ölçümü kopyala\" ile alın.");
+    }
     E("gbOlcum").addEventListener("click",function(){
-      if(olcTik){ clearInterval(olcTik); olcTik=null; E("gbOlcum").textContent="Ölçümü başlat (60 sn)"; yaz("GK bitti (elle)."); return; }
-      var bas=Date.now(), paket=[];
-      yaz("GK başladı: t(ms) | gimbal 14 sayı | Pixel q (w x y z)");
+      if(olcTik){ olcBitir("elle"); return; }
+      var bas=Date.now(); olcVeri=["GK "+SURUM+" · t(ms) | gimbal 14 sayı | Pixel q (w x y z)"];
+      E("gbOlcumKopya").disabled=true;
+      yaz("Gimbal ölçümü başladı (60 sn).");
       E("gbOlcum").textContent="Ölçüm sürüyor… (durdurmak için dokun)";
       olcTik=setInterval(function(){
         var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){}
         var t=Date.now()-bas;
-        if(g.a84&&g.q) paket.push(t+"|"+g.a84.join(",")+"|"+g.q.join(","));
-        if(paket.length>=4){ yaz("GK "+paket.join(" ; ")); paket=[]; }
-        if(t>=60000){ if(paket.length) yaz("GK "+paket.join(" ; ")); clearInterval(olcTik); olcTik=null; E("gbOlcum").textContent="Ölçümü başlat (60 sn)"; yaz("GK bitti."); }
+        if(g.a84&&g.q) olcVeri.push(t+"|"+g.a84.join(",")+"|"+g.q.join(","));
+        E("gbOlcum").textContent="Ölçüm sürüyor… "+Math.max(0,Math.ceil((60000-t)/1000))+" sn (durdurmak için dokun)";
+        if(t>=60000) olcBitir("60 sn");
       },500);
+    });
+    E("gbOlcumKopya").addEventListener("click",function(){
+      var m=olcVeri.join("\n"), b=E("gbOlcumKopya");
+      var bitti=function(){ b.textContent="Kopyalandı ("+(olcVeri.length-1)+" örnek)"; setTimeout(function(){ b.textContent="Ölçümü kopyala"; },2000); };
+      var elle=function(){ var x=document.createElement("textarea"); x.value=m; document.body.appendChild(x); x.select(); try{ document.execCommand("copy"); }catch(h){} x.remove(); bitti(); };
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(m).then(bitti).catch(elle); else elle();
     });
     document.addEventListener("visibilitychange",function(){ if(document.hidden) birak(); });
     function guncelle(){
