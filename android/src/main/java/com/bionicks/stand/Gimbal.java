@@ -684,19 +684,20 @@ final class Gimbal {
                 // açı sorusu (00 84 cevabı) 200 ms'de bir
                 aciSay += (int) HAREKET_ARA;
                 // 26 Kas 17:25: açı sorusu kuyruğun en önüne (hareket paketlerinin arkasında beklemesin)
-                if (aciSay >= 150) { aciSay = 0; kuyruk.addFirst(hexten("AA550600078491FF")); yazNext(); }
+                if (aciSay >= 150 && !taramaAktif && !deneAktif) { aciSay = 0; kuyruk.addFirst(hexten("AA550600078491FF")); yazNext(); }
                 saniye += (int) HAREKET_ARA;
                 if (saniye >= 1000) {
                     saniye = 0;
                     nabizSay++;
                     gonder(hexten("AA550600074956FF"));
-                    if (nabizSay % 30 == 0) gonder(hexten("AA550600075764FF"));
+                    if (nabizSay % 30 == 0 && !taramaAktif && !deneAktif) gonder(hexten("AA550600075764FF"));
                 }
             }
             h.postDelayed(this, HAREKET_ARA);
         }
     };
     private void aciKontrol(long simdi) {
+        if (taramaAktif || deneAktif || ogrAktif) { hazirZaman = simdi; return; }   // öğrenirken (okuma, uyutma) açı kontrolü yok
         long son = Math.max(a84Zaman, hazirZaman);
         if (simdi - son < 6000 || simdi - aciKurtarmaZaman < 6000) return;
         aciKurtarmaZaman = simdi;
@@ -899,16 +900,44 @@ final class Gimbal {
     // ---------- 26 Kas 17:25: Kumanda öğren (sadece dinler, gimbala yeni bir şey göndermez) ----------
     // Her adım: 4 sn "dokunmayın" (normalde gelenler), sonra 6–8 sn "şimdi basın". Basma penceresinde yeni gelen ya da
     // içeriği değişen paketler adımın satırına yazılır. Açı (00 84) ve pil (00 49) cevapları sık geldiği için kaydedilmez.
+    // 26 Kas 18:20: adımlar kılavuzdaki gerçek tuş adlarıyla. Tür: 0 = dinle (siz basarsınız), 1 = tara (uygulama sorar, dokunmayın),
+    // 2 = uyut, 3 = uyandır (uygulama yakalanan bekleme paketini gönderir), 4 = ışık komutu dene (uygulama dener).
+    // Listeye girmeyenler (bilerek): Fonksiyon 5/7 kez ve yan tekerlek 5/7 kez (eşleşmeyi siler), Mod 5 kez (kalibrasyon),
+    // deklanşöre ve güç tuşuna uzun basış (kapatır).
     private static final String[] OGR_TALIMAT = {
-        "Kumandada IŞIK tuşuna 1 kez basın", "IŞIK tuşuna 2 kez basın", "IŞIK tuşuna uzun basın (2 sn)",
-        "Kumandada ▲ tuşuna 1 kez basın", "▼ tuşuna 1 kez basın",
-        "TAKİBİ AÇIN (takip tuşu)", "TAKİBİ KAPATIN",
-        "TETİĞE 2 kez basın (ortalar)", "TETİĞE uzun basın (kilit), sonra bırakın",
-        "M tuşuna 1 kez basın (mod değişir)",
-        "GÜÇ tuşuna ÇİFT basın (bekleme)", "GÜÇ tuşuna yine ÇİFT basın (uyanma)" };
-    private static final String[] OGR_AD = { "Işık 1 kez", "Işık 2 kez", "Işık uzun", "▲", "▼", "Takip aç", "Takip kapat",
-        "Tetik 2 kez", "Tetik uzun", "M 1 kez", "Güç çift (bekleme)", "Güç çift (uyanma)" };
-    private static final int[] OGR_SURE = { 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 8, 10 };
+        "Dokunmayın: ışık KAPALIYKEN ayarlar okunuyor",
+        "Dokunmayın: ikinci okuma (karşılaştırma için)",
+        "Kumandada JOYSTICK'e UZUN basın: AI kameranın ışığı AÇILSIN",
+        "Dokunmayın: ışık AÇIKKEN ayarlar okunuyor",
+        "Kumandada AYAR tuşuna 1 kez basın (ışık parlaklığı değişir)",
+        "Dokunmayın: ayarlar okunuyor",
+        "Kumandada AYAR tuşuna 2 kez basın (ışık rengi değişir)",
+        "Dokunmayın: ayarlar okunuyor",
+        "Kumandada JOYSTICK'e UZUN basın: ışık KAPANSIN",
+        "Dokunmayın: uygulama ışığı kendisi açmayı deniyor. Işık yanarsa söyleyin",
+        "Gimbalda YAN TEKERLEĞE UZUN basın (ışık açılır)",
+        "YAN TEKERLEĞİ yukarı çevirin (parlaklık)",
+        "YAN TEKERLEĞE 2 kez basın (renk)",
+        "YAN TEKERLEĞE UZUN basın (ışık kapanır)",
+        "Kumandada JOYSTICK'e 2 kez basın (zoom ↔ roll)",
+        "Kumandada AYAR tuşuna UZUN basın (roll döner)",
+        "Kumandada FONKSİYON tuşuna 2 kez basın (ortalar)",
+        "FONKSİYON tuşuna UZUN basın (kilit), sonra bırakın",
+        "Kumandada MOD tuşuna 1 kez basın (mod değişir)",
+        "MOD tuşuna 2 kez basın (dikey ↔ yatay)",
+        "MOD tuşuna 3 kez basın (180° roll)",
+        "Kumandada DEKLANŞÖR tuşuna 1 kez basın",
+        "Gimbalda GÜÇ tuşuna 2 kez basın (bekleme)",
+        "GÜÇ tuşuna yine 2 kez basın (uyanma)",
+        "Dokunmayın: uygulama gimbalı UYUTUYOR",
+        "Dokunmayın: uygulama gimbalı UYANDIRIYOR" };
+    private static final String[] OGR_AD = { "Okuma 1 (ışık kapalı)", "Okuma 2 (ışık kapalı)", "Joystick uzun (ışık aç)", "Okuma 3 (ışık açık)",
+        "Ayar 1 kez (parlaklık)", "Okuma 4 (parlaklık)", "Ayar 2 kez (renk)", "Okuma 5 (renk)", "Joystick uzun (ışık kapa)", "Işık komutu denemesi",
+        "Tekerlek uzun (ışık aç)", "Tekerlek yukarı", "Tekerlek 2 kez (renk)", "Tekerlek uzun (ışık kapa)",
+        "Joystick 2 kez", "Ayar uzun (roll)", "Fonksiyon 2 kez", "Fonksiyon uzun", "Mod 1 kez", "Mod 2 kez", "Mod 3 kez", "Deklanşör 1 kez",
+        "Güç 2 kez (bekleme)", "Güç 2 kez (uyanma)", "Uygulama uyuttu", "Uygulama uyandırdı" };
+    private static final int[] OGR_TUR = { 1, 1, 0, 1, 0, 1, 0, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 3 };
+    private static final int[] OGR_SURE = { 30, 30, 7, 30, 7, 30, 7, 30, 7, 40, 7, 7, 7, 7, 6, 8, 6, 7, 6, 6, 8, 6, 8, 10, 8, 10 };
     private static final int OGR_SESSIZ = 4;
     private volatile boolean ogrAktif = false; private volatile int ogrNo = 0, ogrEvre = 0, ogrKalan = 0;
     private long ogrEvreBas = 0; private volatile String ogrYazi = "";
@@ -923,7 +952,9 @@ final class Gimbal {
             if (g.ogrAktif) return;
             if (!g.hazir) { g.ogrYazi = "Başlamadı: gimbal bağlı değil."; Kayit.yaz("Kumanda öğren başlamadı: gimbal bağlı değil."); return; }
             g.ogrAktif = true; g.ogrNo = 0; g.ogrBulunan = 0; g.ogrNormal.clear(); g.ogrNormalGK.clear();
-            Kayit.yaz("Kumanda öğren başladı (12 adım, ~3 dk). Gimbala bir şey gönderilmiyor, sadece dinleniyor.");
+            for (int k = 0; k < 6; k++) g.tara[k].clear();
+            g.ogrSonuc.setLength(0); g.isikKomut = "";
+            Kayit.yaz("Kumanda öğren başladı (" + OGR_TALIMAT.length + " adım, ~6 dk).");
             g.ogrEvreBasla(0);
             g.h.postDelayed(g.ogrDongu, 200);
         });
@@ -939,7 +970,8 @@ final class Gimbal {
     private final Runnable ogrDongu = new Runnable() { @Override public void run() {
         if (!ogrAktif) return;
         long n = SystemClock.elapsedRealtime();
-        int sure = ogrEvre == 0 ? OGR_SESSIZ : OGR_SURE[ogrNo];
+        int tur = OGR_TUR[ogrNo];
+        int sure = ogrEvre == 0 ? (tur == 0 ? OGR_SESSIZ : 1) : OGR_SURE[ogrNo];
         long gecen = n - ogrEvreBas;
         ogrKalan = (int) Math.max(1, (sure * 1000 - gecen + 999) / 1000);
         String t = OGR_TALIMAT[ogrNo];
@@ -947,8 +979,20 @@ final class Gimbal {
         if (ogrEvre == 0 && gecen >= sure * 1000L) {
             for (String p : ogrPencere.keySet()) { ogrNormal.add(p); ogrNormalGK.add(gk(p)); }
             ogrEvreBasla(1);
-        } else if (ogrEvre == 1 && (gecen >= sure * 1000L || ogrAtla)) {
-            ogrAdimYaz();
+            if (tur == 1) taramaBasla(taraNo(ogrNo));
+            else if (tur == 2) gonder(hexten("AA550E0000990301000000000000ABFF"));     // yakalanan "beklemeye geç"
+            else if (tur == 3) gonder(hexten("AA550E0000990302000000000000ACFF"));     // yakalanan "uyan"
+            else if (tur == 4) isikDene();
+        } else if (ogrEvre == 1 && (gecen >= sure * 1000L || ogrAtla || (tur == 1 && !taramaAktif && gecen > 1500) || (tur == 4 && !deneAktif && gecen > 1500))) {
+            if (tur == 1) taramaAktif = false;
+            if (tur == 4) deneAktif = false;
+            if (tur == 2 || tur == 3) {
+                boolean geldi = false; String bek = tur == 2 ? "AA550E0000990301" : "AA550E0000990302";
+                for (String p : ogrPencere.keySet()) if (p.startsWith(bek)) geldi = true;
+                String r = (tur == 2 ? "Uyutma" : "Uyandırma") + ": " + (geldi ? "gimbal cevap verdi ✓" : "gimbaldan cevap gelmedi");
+                Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". ");
+            }
+            if (tur == 0 || tur == 2 || tur == 3) ogrAdimYaz();
             ogrNo++;
             if (ogrNo >= OGR_TALIMAT.length) { ogrBitir("bitti"); return; }
             ogrEvreBasla(0);
@@ -993,10 +1037,147 @@ final class Gimbal {
     }
 
     private void ogrBitir(String neden) {
-        ogrAktif = false; ogrPencere.clear();
-        ogrYazi = "Kumanda öğren " + neden + ": " + ogrBulunan + " adımda yeni paket var. Kaydı kopyalayıp Claude'a verin.";
+        ogrAktif = false; ogrPencere.clear(); taramaAktif = false; deneAktif = false;
+        String fark = taramaFarki();
+        if (fark.length() > 0) Kayit.yaz("Öğren okuma sonucu: " + fark);
+        ogrYazi = "Kumanda öğren " + neden + ". " + (isikKomut.length() > 0 ? "IŞIK KOMUTU BULUNDU. " : "") + ogrSonuc
+            + ogrBulunan + " adımda yeni paket var. Kaydı kopyalayıp Claude'a verin.";
         Kayit.yaz(ogrYazi);
     }
+
+    // ---------- 26 Kas 18:20: okuma taraması ----------
+    // Gimbala "07 xx" soruları sorulur (00..FF, açı ve pil hariç); her cevap komut numarasına göre saklanır. Işık kapalı/açık,
+    // parlaklık ve renk değişince hangi cevabın değiştiği bulunur. Soru göndermek bir ayarı değiştirmez (açı, pil, durum hep böyle).
+    @SuppressWarnings("unchecked")
+    private final java.util.HashMap<String, String>[] tara = new java.util.HashMap[] { new java.util.HashMap<String, String>(),
+        new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>() };
+    private volatile boolean taramaAktif = false, deneAktif = false; private int taramaKume = 0, taramaSira = 0;
+    private final StringBuilder ogrSonuc = new StringBuilder(); private String isikKomut = "";
+    private static int taraNo(int adim) { return adim == 0 ? 0 : adim == 1 ? 1 : adim == 3 ? 2 : adim == 5 ? 3 : 4; }
+
+    private void taramaBasla(int kume) {
+        taramaKume = kume; taramaSira = 0; tara[kume].clear(); taramaAktif = true;
+        h.postDelayed(taramaAdim, 300);
+    }
+
+    private final Runnable taramaAdim = new Runnable() { @Override public void run() {
+        if (!taramaAktif || !ogrAktif) return;
+        while (taramaSira < 256 && (taramaSira == 0x49 || taramaSira == 0x84 || taramaSira == 0x60 || taramaSira == 0x1A || taramaSira == 0x98 || taramaSira == 0x99)) taramaSira++;
+        if (taramaSira >= 256) { h.postDelayed(() -> { taramaAktif = false; Kayit.yaz("Öğren: okuma " + (taramaKume + 1) + " bitti, " + tara[taramaKume].size() + " cevap."); }, 1200); return; }
+        ogrYazi = (ogrNo + 1) + "/" + OGR_TALIMAT.length + " · " + OGR_TALIMAT[ogrNo] + " (" + (taramaSira * 100 / 256) + "%)";
+        gonder(paket(0x07, taramaSira, new int[0]));
+        taramaSira++;
+        h.postDelayed(this, 60);
+    } };
+
+    // paketIsle'den: tarama sürerken her cevabı "grup komut" anahtarıyla sakla
+    private void taramaKaydet(int grup, int komut, byte[] v) {
+        if (!taramaAktif) return;
+        if (grup == 0x00 && (komut == 0x84 || komut == 0x49 || komut == 0x60)) return;
+        StringBuilder sb = new StringBuilder();
+        for (byte x : v) sb.append(String.format("%02X", x & 0xFF));
+        tara[taramaKume].put(String.format("%02X %02X", grup, komut), sb.toString());
+    }
+
+    private static int[] veriOf(String hex) {
+        byte[] b = hexten(hex);
+        if (b == null || b.length < 8) return new int[0];
+        int[] d = new int[b.length - 8];
+        for (int i = 0; i < d.length; i++) d[i] = b[6 + i] & 0xFF;
+        return d;
+    }
+
+    // a ile b arasında değişen anahtarlar (kendiliğinden değişenler = 1. ve 2. okuma farkı hariç)
+    private java.util.ArrayList<String> degisen(int a, int b) {
+        java.util.ArrayList<String> l = new java.util.ArrayList<>();
+        java.util.TreeSet<String> k = new java.util.TreeSet<>(tara[a].keySet()); k.addAll(tara[b].keySet());
+        for (String x : k) {
+            String p0 = tara[0].get(x), p1 = tara[1].get(x);
+            if (p0 == null ? p1 != null : !p0.equals(p1)) continue;          // kendiliğinden değişiyor
+            String pa = tara[a].get(x), pb = tara[b].get(x);
+            if (pa == null || pb == null || !pa.equals(pb)) l.add(x);
+        }
+        return l;
+    }
+
+    private String taramaFarki() {
+        if (tara[0].isEmpty() || tara[2].isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        sb.append("cevap veren soru ").append(tara[0].size()).append(". ");
+        String[] ad = { "Işık açılınca", "Parlaklıkta", "Renkte" };
+        int[][] ab = { { 1, 2 }, { 2, 3 }, { 3, 4 } };
+        for (int i = 0; i < 3; i++) {
+            if (tara[ab[i][1]].isEmpty()) continue;
+            java.util.ArrayList<String> l = degisen(ab[i][0], ab[i][1]);
+            sb.append(ad[i]).append(" değişen: ");
+            if (l.isEmpty()) sb.append("yok. ");
+            else for (int k = 0; k < Math.min(4, l.size()); k++) {
+                String x = l.get(k);
+                sb.append(x).append(" ").append(tara[ab[i][0]].get(x)).append(" → ").append(tara[ab[i][1]].get(x)).append(k < Math.min(4, l.size()) - 1 ? "; " : ". ");
+            }
+        }
+        return sb.toString();
+    }
+
+    // ---------- 26 Kas 18:20: ışığı uygulamadan açmayı dene ----------
+    // Işık açılınca değişen her cevap için: "açık" hâlindeki veriyi aynı komut numarasıyla AI kamera grubundan (03) ve
+    // gimbal grubundan (00) gönder, sonra tekrar sor; cevap "açık"a döndüyse komut bulundu. Fabrika ayarı (1A), bekleme (98/99)
+    // ve hareket/mod/yön komutları denenmez.
+    private final java.util.ArrayList<String[]> denePlan = new java.util.ArrayList<>(); private int deneSira = 0;
+    private void isikDene() {
+        denePlan.clear(); deneSira = 0;
+        java.util.ArrayList<String> l = tara[2].isEmpty() ? new java.util.ArrayList<String>() : degisen(1, 2);
+        int[] yasak = { 0x1A, 0x98, 0x99, 0x9A, 0x60, 0x7C, 0x79, 0x7A, 0xC1, 0xCB };
+        for (String x : l) {
+            int c = Integer.parseInt(x.substring(3, 5), 16);
+            boolean y = false; for (int z : yasak) if (z == c) y = true;
+            if (y || denePlan.size() >= 8) continue;
+            for (String gr : new String[] { "03", "00" }) denePlan.add(new String[] { gr, x.substring(3, 5), tara[2].get(x), tara[1].get(x), x });
+        }
+        if (denePlan.isEmpty()) { String r = "Işık denemesi: denenecek aday yok (ışık açılınca hiçbir cevap değişmedi)"; Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". "); return; }
+        deneAktif = true;
+        Kayit.yaz("Öğren: ışık için " + denePlan.size() + " deneme yapılacak.");
+        h.postDelayed(deneAdim, 500);
+    }
+
+    private final Runnable deneAdim = new Runnable() { @Override public void run() {
+        if (!deneAktif || !ogrAktif) return;
+        if (deneSira >= denePlan.size() * 2) {
+            deneAktif = false;
+            if (isikKomut.length() == 0) { String r = "Işık denemesi: hiçbir aday ışığı açmadı"; Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". "); }
+            return;
+        }
+        String[] d = denePlan.get(deneSira / 2);
+        int c = Integer.parseInt(d[1], 16);
+        if (deneSira % 2 == 0) {                                   // gönder
+            byte[] p = paket(Integer.parseInt(d[0], 16), c, veriOf(d[2]));
+            tara[5].remove(d[4]);
+            taramaKume = 5; taramaAktif = false;
+            gonder(p);
+            ogrYazi = (ogrNo + 1) + "/" + OGR_TALIMAT.length + " · " + OGR_TALIMAT[ogrNo] + " (" + (deneSira / 2 + 1) + "/" + denePlan.size() + ")";
+            Kayit.yaz("Öğren: deneme " + (deneSira / 2 + 1) + ": " + hex(p) + " gönderildi.");
+            deneSira++;
+            h.postDelayed(this, 800);
+        } else {                                                   // sor ve bak
+            tara[5].clear(); taramaKume = 5; taramaAktif = true;
+            gonder(paket(0x07, c, new int[0]));
+            h.postDelayed(() -> {
+                taramaAktif = false;
+                String cev = tara[5].get(d[4]);
+                if (cev != null && cev.equals(d[2]) && isikKomut.length() == 0) {
+                    isikKomut = hex(paket(Integer.parseInt(d[0], 16), c, veriOf(d[2])));
+                    String kapa = hex(paket(Integer.parseInt(d[0], 16), c, veriOf(d[3])));
+                    String r = "IŞIK KOMUTU BULUNDU: aç = " + isikKomut + ", kapa (tahmin) = " + kapa;
+                    Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". ");
+                    gonder(hexten(kapa));
+                    deneSira = denePlan.size() * 2;
+                } else deneSira++;
+                h.post(deneAdim);
+            }, 700);
+        }
+    } };
+
+    private static String hex(byte[] b) { StringBuilder sb = new StringBuilder(); for (byte x : b) sb.append(String.format("%02X", x & 0xFF)); return sb.toString(); }
 
     private static int rampa(int simdiki, int hedef) {
         if (hedef == 0) return 0;
@@ -1077,6 +1258,7 @@ final class Gimbal {
         int grup = v[4] & 0xFF, komut = v[5] & 0xFF;
         int veriBoy = v.length - 8;            // AA 55 L 00 G C ... S FF
         if (ogrAktif && !(grup == 0x00 && (komut == 0x84 || komut == 0x49))) ogrKaydet("", v);
+        if (taramaAktif) taramaKaydet(grup, komut, v);
         if (grup == 0x00 && komut == 0x49 && veriBoy >= 4) {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
         } else if (grup == 0x00 && komut == 0x84 && veriBoy >= 28) {
