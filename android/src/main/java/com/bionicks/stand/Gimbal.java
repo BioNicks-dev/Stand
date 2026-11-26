@@ -17,6 +17,10 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -25,6 +29,7 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 // Uygulama 26: Hohem iSteady V3 gimbalını Pixel kendisi yönetir (kart gerekmez).
@@ -78,6 +83,21 @@ final class Gimbal {
     private volatile long gelen = 0, giden = 0, sonCevap = 0;
     private volatile boolean izinYok = false;
 
+    // Uygulama 27 (Aşama 3a): açı. Gimbalın 00 84 cevabındaki 14 sayı (16 bit, işaretli) ve
+    // Pixel'in kendi sensörünün (oyun dönüş vektörü, pusulasız) dörtlüsü yan yana; eşleştirip açıyı çözeceğiz.
+    private volatile int[] a84 = null;
+    private volatile long a84Zaman = 0;
+    private volatile float[] q = null;
+    private SensorManager sm;
+    private final SensorEventListener sensorCb = new SensorEventListener() {
+        @Override public void onSensorChanged(SensorEvent e) {
+            float[] r = new float[4];
+            SensorManager.getQuaternionFromVector(r, e.values);   // w, x, y, z
+            q = r;
+        }
+        @Override public void onAccuracyChanged(Sensor s, int a) { }
+    };
+
     // hareket
     private volatile int hx = 0, hy = 0;
     private volatile long sonHareketKomutu = 0;
@@ -100,7 +120,7 @@ final class Gimbal {
     static synchronized void durdur() {
         if (ben == null) return;
         final Gimbal g = ben;
-        g.h.post(() -> { g.calisiyor = false; g.kapat("durduruldu"); g.durum = "kapali"; });
+        g.h.post(() -> { g.calisiyor = false; g.kapat("durduruldu"); g.durum = "kapali"; try { if (g.sm != null) g.sm.unregisterListener(g.sensorCb); } catch (Exception e) { } });
     }
 
     static String durumJson() {
@@ -119,6 +139,14 @@ final class Gimbal {
             o.put("giden", g.giden);
             o.put("hareket", g.hareketEdiyor);
             o.put("hata", g.sonHata);
+            int[] a = g.a84;
+            if (a != null && SystemClock.elapsedRealtime() - g.a84Zaman < 3000) {
+                JSONArray j = new JSONArray(); for (int v : a) j.put(v); o.put("a84", j);
+            }
+            float[] r = g.q;
+            if (r != null) {
+                JSONArray j = new JSONArray(); for (float v : r) j.put(Math.round(v * 10000) / 10000.0); o.put("q", j);
+            }
         } catch (Exception e) { }
         return o.toString();
     }
@@ -148,13 +176,13 @@ final class Gimbal {
         });
     }
 
-    // 0 = portre, 1 = landscape (tracker altta), 2 = landscape (tracker üstte, "ters")
+    // 0 = landscape, 1 = portre, 2 = ters landscape (26 Kas denemesiyle düzeltildi)
     static void yon(final int y) {
         final Gimbal g = ben;
         if (g == null || y < 0 || y > 2) return;
         g.h.post(() -> {
             g.gonder(paket(0x00, 0x9A, new int[] { 0x0A, y, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0 }));
-            Kayit.yaz("Gimbal: yön " + (y == 0 ? "portre" : y == 1 ? "landscape" : "ters landscape") + ".");
+            Kayit.yaz("Gimbal: yön " + (y == 1 ? "portre" : y == 0 ? "landscape" : "ters landscape") + ".");
         });
     }
 
@@ -177,6 +205,12 @@ final class Gimbal {
     private void calis() {
         if (calisiyor) return;
         calisiyor = true;
+        try {
+            sm = (SensorManager) c.getSystemService(Context.SENSOR_SERVICE);
+            Sensor s = sm == null ? null : sm.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
+            if (s == null && sm != null) s = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            if (s != null) sm.registerListener(sensorCb, s, SensorManager.SENSOR_DELAY_UI, h);
+        } catch (Exception e) { }
         h.post(dongu);
         ara();
     }
@@ -391,19 +425,21 @@ final class Gimbal {
                     gonder(takip(0, 0, 0, 0)); gonder(takip(0, 0, 0, 0));
                 }
                 // nabız: saniyede bir, 10 sn'de bir uzun nabız; 30 sn'de bir durum sorusu
+                // açı sorusu (00 84 cevabı) 200 ms'de bir
+                aciSay += (int) HAREKET_ARA;
+                if (aciSay >= 200) { aciSay = 0; if (kuyruk.size() < 4) gonder(hexten("AA550600078491FF")); }
                 saniye += (int) HAREKET_ARA;
                 if (saniye >= 1000) {
                     saniye = 0;
                     nabizSay++;
-                    if (nabizSay % 10 == 0) gonder(hexten("AA550600078491FF"));
-                    else gonder(hexten("AA550600074956FF"));
+                    gonder(hexten("AA550600074956FF"));
                     if (nabizSay % 30 == 0) gonder(hexten("AA550600075764FF"));
                 }
             }
             h.postDelayed(this, HAREKET_ARA);
         }
     };
-    private int nabizSay = 0;
+    private int nabizSay = 0, aciSay = 0;
 
     // Gimbalın cevapları
     private void cevap(byte[] v) {
@@ -415,6 +451,10 @@ final class Gimbal {
         int veriBoy = v.length - 8;            // AA 55 L 00 G C ... S FF
         if (grup == 0x00 && komut == 0x49 && veriBoy >= 4) {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
+        } else if (grup == 0x00 && komut == 0x84 && veriBoy >= 28) {
+            int[] a = new int[14];
+            for (int i = 0; i < 14; i++) a[i] = (short) (((v[6 + i * 2] & 0xFF) << 8) | (v[7 + i * 2] & 0xFF));
+            a84 = a; a84Zaman = SystemClock.elapsedRealtime();
         } else if (grup == 0x00 && komut == 0x57 && veriBoy >= 2) {
             int m = v[v.length - 4] & 0xFF, hz = v[v.length - 3] & 0xFF;
             if (m <= 3) { if (m != mod && mod >= 0) Kayit.yaz("Gimbal: mod " + MOD_AD[m] + " oldu."); mod = m; }

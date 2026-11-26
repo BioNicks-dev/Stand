@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 02:15</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 02:31</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -305,6 +305,13 @@
         <button type="button" id="gbPortre">Portre</button><button type="button" id="gbYatay">Landscape</button><button type="button" id="gbTers">Ters</button>
       </div>
       <button id="gbYeniden" type="button">Yeniden bağlan</button>
+      <div class="durum" style="margin-top:10px">
+        <b>Açı ölçümü (Aşama 3a)</b><br>
+        <span class="not">Gimbal (ham): <span id="gbA84">-</span></span><br>
+        <span class="not">Pixel sensörü: <span id="gbQ">-</span></span>
+      </div>
+      <button id="gbOlcum" type="button">Ölçümü başlat (60 sn)</button>
+      <p class="not">Ölçüm sırasında gimbalı joystick'le yavaşça her yöne gezdirin (sağ, sol, yukarı, aşağı, sonra ortaya). Satırlar Kayıt'a "GK" diye düşer; stand sayfasında Kayıt'ı kopyalayıp gönderin.</p>
       <p class="not">Hohem Joy açıkken çakışabilir; denemede kapalı olsun. Yön tuşları basılı tutulduğu sürece döner, bırakınca durur. Komut 0,3 sn gelmezse gimbal kendiliğinden durur.</p>
       </div>
     </details>
@@ -377,7 +384,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 02:15";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 02:31";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2819,6 +2826,21 @@
     E("gbYatay").addEventListener("click",function(){ try{ APP.gimbalYon(0); }catch(h){} });
     E("gbTers").addEventListener("click",function(){ try{ APP.gimbalYon(2); }catch(h){} });
     E("gbYeniden").addEventListener("click",function(){ try{ APP.gimbalYeniden(); }catch(h){} yaz("Gimbal: yeniden bağlanılıyor."); });
+    // Aşama 3a: 60 sn boyunca 0,5 sn'de bir gimbal ham sayıları + Pixel sensörü; 2 sn'de bir tek satır (4 örnek) Kayıt'a
+    var olcTik=null;
+    E("gbOlcum").addEventListener("click",function(){
+      if(olcTik){ clearInterval(olcTik); olcTik=null; E("gbOlcum").textContent="Ölçümü başlat (60 sn)"; yaz("GK bitti (elle)."); return; }
+      var bas=Date.now(), paket=[];
+      yaz("GK başladı: t(ms) | gimbal 14 sayı | Pixel q (w x y z)");
+      E("gbOlcum").textContent="Ölçüm sürüyor… (durdurmak için dokun)";
+      olcTik=setInterval(function(){
+        var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){}
+        var t=Date.now()-bas;
+        if(g.a84&&g.q) paket.push(t+"|"+g.a84.join(",")+"|"+g.q.join(","));
+        if(paket.length>=4){ yaz("GK "+paket.join(" ; ")); paket=[]; }
+        if(t>=60000){ if(paket.length) yaz("GK "+paket.join(" ; ")); clearInterval(olcTik); olcTik=null; E("gbOlcum").textContent="Ölçümü başlat (60 sn)"; yaz("GK bitti."); }
+      },500);
+    });
     document.addEventListener("visibilitychange",function(){ if(document.hidden) birak(); });
     function guncelle(){
       var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return; }
@@ -2830,6 +2852,8 @@
       E("gbMod").textContent=g.modAd||"-";
       E("gbCevap").textContent=g.cevap?"geliyor":"yok";
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
+      E("gbA84").textContent=g.a84?g.a84.join(" "):"-";
+      E("gbQ").textContent=g.q?g.q.map(function(v){ return v.toFixed(3); }).join(" "):"-";
       Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(b){ b.className=(parseInt(b.getAttribute("data-m"),10)===g.mod)?"secili":""; });
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
       var oz=g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"");
