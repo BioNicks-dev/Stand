@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 10:32</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 13:36</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -284,6 +284,7 @@
       <div class="durum">
         Bağlantı: <b id="gbDurum">-</b><br>
         Gimbal pili: <b id="gbPil">-</b> · Mod: <b id="gbMod">-</b><br>
+        Açı: <b id="gbAci">-</b><br>
         <span class="not">Cevap: <b id="gbCevap">-</b> · Giden: <b id="gbGiden">0</b> · Gelen: <b id="gbGelen">0</b></span>
       </div>
       <div id="gbYon">
@@ -304,6 +305,8 @@
       <div class="gbSira">
         <button type="button" id="gbPortre">Portre</button><button type="button" id="gbYatay">Landscape</button><button type="button" id="gbTers">Ters</button>
       </div>
+      <div class="gbSira"><button type="button" id="gbSag180">Sağdan 180°</button><button type="button" id="gbSol180">Soldan 180°</button><button type="button" id="gbOrtala">Düz bak (eğme 0°)</button></div>
+      <button id="gbSinirUnut" type="button">Yatay sınırı unut (yeniden öğrensin)</button>
       <button id="gbYeniden" type="button">Yeniden bağlan</button>
       <div class="durum" style="margin-top:10px">
         <b>Açı ölçümü (Aşama 3a)</b><br>
@@ -386,7 +389,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 10:32";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 13:36";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2784,7 +2787,8 @@
   function gimbalOzet(){
     if(!gimbalVar()) return null;
     var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return null; }
-    return {durum:g.durum||"", pil:g.pilMv>0?g.pilMv:null, mod:(typeof g.mod==="number"&&g.mod>=0)?g.mod:null};
+    return {durum:g.durum||"", pil:g.pilMv>0?g.pilMv:null, mod:(typeof g.mod==="number"&&g.mod>=0)?g.mod:null,
+      yatay:(typeof g.yatay==="number")?g.yatay:null, egme:(typeof g.egme==="number")?g.egme:null, gidiyor:!!g.gidiyor, vardi:g.vardi||null, sinir:!!g.sinir};
   }
   function gimbalUzakDur(){
     if(gbUzakTik){ clearInterval(gbUzakTik); gbUzakTik=null; }
@@ -2794,6 +2798,11 @@
     if(!gimbalVar()) return;
     if(m.mod!=null){ try{ APP.gimbalMod(Number(m.mod)); }catch(h){} yaz("Stand sayfası: gimbal modu "+["PF","PTF","L","POV"][Number(m.mod)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
     if(m.yon!=null){ try{ APP.gimbalYon(Number(m.yon)); }catch(h){} yaz("Stand sayfası: gimbal yönü "+["landscape","portre","ters landscape"][Number(m.yon)]+(m.ad?" ("+m.ad+")":"")+"."); return; }
+    // 26 Kas (Aşama 3b): açıya git, göreli, 180, sınırı unut
+    if(m.git){ gimbalUzakDur(); try{ APP.gimbalGit(Number(m.git.yatay)||0, m.git.egme==null?-999:Number(m.git.egme), String(m.git.ad||"")); }catch(h){} yaz("Stand sayfası: gimbal "+(m.git.ad?"\""+m.git.ad+"\" konumuna":"hedefe")+" gidiyor"+(m.ad?" ("+m.ad+")":"")+"."); return; }
+    if(m.goreli){ gimbalUzakDur(); try{ APP.gimbalGoreli(Number(m.goreli.y)||0, Number(m.goreli.e)||0); }catch(h){} return; }
+    if(m.c180){ gimbalUzakDur(); try{ APP.gimbal180(m.c180>0?1:-1); }catch(h){} yaz("Stand sayfası: gimbal 180°"+(m.ad?" ("+m.ad+")":"")+"."); return; }
+    if(m.sinirUnut){ try{ APP.gimbalSinirUnut(); }catch(h){} return; }
     if(m.dur){ gimbalUzakDur(); return; }
     gbUzakX=Math.max(-400,Math.min(400,Number(m.x)||0)); gbUzakY=Math.max(-400,Math.min(400,Number(m.y)||0));
     if(!gbUzakX&&!gbUzakY){ gimbalUzakDur(); return; }
@@ -2829,6 +2838,10 @@
     E("gbYatay").addEventListener("click",function(){ try{ APP.gimbalYon(0); }catch(h){} });
     E("gbTers").addEventListener("click",function(){ try{ APP.gimbalYon(2); }catch(h){} });
     E("gbYeniden").addEventListener("click",function(){ try{ APP.gimbalYeniden(); }catch(h){} yaz("Gimbal: yeniden bağlanılıyor."); });
+    E("gbSag180").addEventListener("click",function(){ try{ APP.gimbal180(1); }catch(h){} });
+    E("gbSol180").addEventListener("click",function(){ try{ APP.gimbal180(-1); }catch(h){} });
+    E("gbOrtala").addEventListener("click",function(){ var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){} if(typeof g.yatay==="number") try{ APP.gimbalGit(g.yatay,0,"düz"); }catch(h){} });
+    E("gbSinirUnut").addEventListener("click",function(){ try{ APP.gimbalSinirUnut(); }catch(h){} });
     // Aşama 3a: 60 sn boyunca 0,5 sn'de bir gimbal ham sayıları + Pixel sensörü; 2 sn'de bir tek satır (4 örnek) Kayıt'a
     // ölçüm Pixel'in hafızasında tutulur; bitince "Ölçümü kopyala" hepsini tek seferde panoya alır
     var olcTik=null, olcVeri=[];
@@ -2896,10 +2909,11 @@
       E("gbCevap").textContent=g.cevap?"geliyor":"yok";
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
       E("gbA84").textContent=g.a84?g.a84.join(" "):"-";
+      E("gbAci").textContent=(typeof g.yatay==="number"?"yatay "+Math.round(g.yatay)+"°":"yatay ?")+" · "+(typeof g.egme==="number"?"eğme "+Math.round(g.egme)+"°":"eğme ?")+(typeof g.roll==="number"?" · roll "+g.roll+"°":"")+(g.gidiyor?" · gidiyor…":"")+(g.sinir?" · sınır biliniyor":" · sınır öğrenilmedi");
       E("gbQ").textContent=g.q?g.q.map(function(v){ return v.toFixed(3); }).join(" "):"-";
       Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(b){ b.className=(parseInt(b.getAttribute("data-m"),10)===g.mod)?"secili":""; });
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
-      var oz=g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"");
+      var oz=g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"")+"|"+(typeof g.yatay==="number"?Math.round(g.yatay/2):"")+"|"+(typeof g.egme==="number"?Math.round(g.egme/2):"")+"|"+!!g.gidiyor+"|"+(g.vardi||"")+"|"+!!g.sinir;
       if(oz!==gbSonOzet){ gbSonOzet=oz; if(akis) bildir(); }
     }
     guncelle(); setInterval(guncelle,1000);

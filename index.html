@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="26 Kas 10:32">
+<meta name="stand-surum" content="26 Kas 13:36">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -626,7 +626,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 10:32</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 13:36</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1337,7 +1337,14 @@
     if(gbAktif()){
       if(k.t==="dur"){ gbDur(); return true; }
       if(k.t==="joy") return true;   // joystick gbJoy ile gider
-      if(STAND_KOMUTLARI[k.t]){ bildiri("Bu düğme V3'te henüz yok (konumlar sonraki aşamada)",0,"bilgi"); return false; }
+      if(!kontrolVarMi()) return false;
+      // 26 Kas (Aşama 3b): açıya göre düğmeler Pixel'e gider
+      if(k.t==="sag"||k.t==="sol"){ grTakipBekle(15); grGonder({t:"gimbal",c180:k.t==="sag"?1:-1,ad:benimAdim()}); return true; }
+      if(k.t==="azsag"||k.t==="azsol"){ grTakipBekle(15); grGonder({t:"gimbal",goreli:{y:k.t==="azsag"?10:-10,e:0},ad:benimAdim()}); return true; }
+      if(k.t==="azyuk"||k.t==="azasa"){ grTakipBekle(15); grGonder({t:"gimbal",goreli:{y:0,e:k.t==="azyuk"?8:-8},ad:benimAdim()}); return true; }
+      if(k.t==="ev"){ return gbBaslangicaGit(); }
+      if(k.t==="sifirla"){ return true; }
+      if(STAND_KOMUTLARI[k.t]){ bildiri("Bu komut V3'te yok",0,"bilgi"); return false; }
     }
     // stand hareketleri sadece kontrol sahibinden (dur ve joystick bırakma herkese açık)
     if(rol==="uzak"&&STAND_KOMUTLARI[k.t]&&!(k.t==="joy"&&k.x===ORTA&&k.y===ORTA)&&!kontrolVarMi()){ if(ayarIcinde()) bildiri("Stand kontrolü şu an sende değil",0,"hata"); return false; }
@@ -2668,8 +2675,8 @@
   // ---------- 26 Kas: Hohem V3 (Pixel'deki uygulama yönetiyor) ----------
   // Pixel "yetenek" mesajında gimbal bilgisini yollar; bağlıysa joystick, Dur, mod ve yön gimbala gider (goruntu/k).
   // Joystick ne kadar itilirse gimbal o kadar hızlı döner (sapma 40-400).
-  var gbSonGonder=0, gbEgmeYon=0, gbEgmeBas=0, gbEgmeKilit=false;
-  var GB_YATAY_EN=250, GB_DIKEY_EN=150, GB_EGME_SURE=2500;   // 26 Kas: hız sınırları; eğme 2,5 sn'den uzun aynı yöne gitmez
+  var gbSonVardi="", gbSonGonder=0, gbEgmeYon=0, gbEgmeBas=0, gbEgmeKilit=false;
+  var GB_YATAY_EN=250, GB_DIKEY_EN=150, GB_EGME_SURE=1e9;   // 26 Kas 3b: 2,5 sn kuralı kapandı, Pixel ±40° eğme sınırını ve yatay mekanik sınırı kendisi koruyor   // 26 Kas: hız sınırları; eğme 2,5 sn'den uzun aynı yöne gitmez
   function gbAktif(){ return !!(grAcik&&grYet&&grYet.gimbal&&grYet.gimbal.durum==="bagli"); }
   function gbHiz(v,en){ var a=Math.abs(v); if(a<0.12) return 0; return Math.round((v>0?1:-1)*(30+(Math.min(1,a)-0.12)/0.88*(en-30))); }
   // 26 Kas: 2 hücreli lityum pilin boşalma eğrisi (hücre başına volt → %); 6,54 V doğrusalda %0 çıkıyordu, gimbal ışığı ise henüz kırmızı sabitti
@@ -2689,14 +2696,25 @@
     gbSonGonder=Date.now();
     grGonder({t:"gimbal",x:x,y:y,ad:benimAdim()});
   }
+  // V3 açıları (Pixel'in yetenek mesajından): yatay sağa +, eğme yukarı +
+  function gbAci(){ var g=grYet&&grYet.gimbal; return g&&typeof g.yatay==="number"?{y:g.yatay,e:(typeof g.egme==="number"?g.egme:0)}:null; }
+  var gbBas=null;   // bu oturumun ilk bakışı (Başlangıç düğmesi)
+  function gbBaslangicaGit(){
+    if(!gbBas){ bildiri("Başlangıç henüz bilinmiyor",0,"bilgi"); return false; }
+    grTakipBekle(15); grGonder({t:"gimbal",git:{yatay:gbBas.y,egme:gbBas.e,ad:"Başlangıç"},ad:benimAdim()}); return true;
+  }
   function gbDur(){ gbSonGonder=0; gbEgmeYon=0; gbEgmeKilit=false; grGonder({t:"gimbal",dur:1}); }
   function gbCiz(){
     var a=gbAktif(), g=grYet&&grYet.gimbal;
     E("gbIzgara").classList.toggle("gizle",!a);
-    E("standIzgara").classList.toggle("gizle",a);
+    E("standIzgara").classList.toggle("gizle",false);   // 26 Kas 3b: Sol/Sağ 180 ve Başlangıç V3'te de çalışıyor
     if(!a) return;
     try{ guncelle(); }catch(h){}
+    if(!gbBas&&typeof g.yatay==="number") gbBas={y:g.yatay,e:(typeof g.egme==="number"?g.egme:0)};
+    if(g.vardi&&g.vardi!==gbSonVardi){ bildiri("✓ Vardı"+(g.vardi&&g.vardi!=="düz"?": "+g.vardi:""),2500,"bilgi"); yaz("Gimbal vardı: "+g.vardi); }
+    gbSonVardi=g.vardi||"";
     var b="Gimbal (V3) bağlı";
+    if(typeof g.yatay==="number") b+=" · "+Math.round(g.yatay)+"° / "+(typeof g.egme==="number"?Math.round(g.egme):"?")+"°"+(g.gidiyor?" · gidiyor…":"");
     if(g.pil) b+=" · pil ~%"+gbPilYuzde(g.pil)+" ("+(g.pil/1000).toFixed(2).replace(".",",")+" V)";
     E("gbBilgi").textContent=b;
     Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
@@ -2760,8 +2778,15 @@
   }
   function ortakKopya(){ return ortakKonumlar.map(function(k){ return Object.assign({},k); }); }
   function ortakYetki(kn){ return yonetici()||kn.sahip===benimKimlik; }
-  function konumSurdurulebilir(){ return rol==="evde"||(sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE); }
+  function konumSurdurulebilir(){ if(gbAktif()) return !!gbAci(); return rol==="evde"||(sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE); }
   function konumaGit(kn){
+    if(gbAktif()){   // 26 Kas 3b: V3 konumu (v3:{y,e}); Mota konumu V3'te anlamsız
+      if(!kn.v3){ bildiri("\""+kn.ad+"\" Mota için kaydedilmiş. V3'te kullanmak için önce gimbalı oraya çevirip konuma uzun basın.",0,"bilgi"); return; }
+      if(!kontrolVarMi()) return;
+      grTakipBekle(15); grGonder({t:"gimbal",git:{yatay:kn.v3.y,egme:kn.v3.e,ad:String(kn.ad).slice(0,16)},ad:benimAdim()});
+      bildiri("Gidiliyor: "+kn.ad,2000,"bilgi");
+      return;
+    }
     var k={t:"konum",derece:kn.derece,ad:String(kn.ad).slice(0,16)};
     if(kn.tilt!=null) k.tilt=kn.tilt;
     if(kn.sarj){ k.coz=1; k.sarj=1; }   // 3 Kas: kart şarja oturmayı arar (kafa aşağıda gelir, yavaşça kalkar)
@@ -2774,14 +2799,16 @@
   }
   function konumGuncelle(kn,ortak){
     if(!konumSurdurulebilir()){ bildiri("Standın yeri bilinmiyor, konum güncellenemedi",0,"hata"); return; }
-    var yeni={derece:derece360(netDonus),tilt:Math.round(netTilt)}, eski={derece:kn.derece,tilt:kn.tilt};
+    var a3=gbAktif()?gbAci():null;
+    var yeni=a3?{derece:derece360(a3.y),tilt:Math.round(a3.e),v3:{y:Math.round(a3.y*10)/10,e:Math.round(a3.e*10)/10}}:{derece:derece360(netDonus),tilt:Math.round(netTilt),v3:kn.v3},
+        eski={derece:kn.derece,tilt:kn.tilt,v3:kn.v3};
     function uygula(d){
       if(ortak){
         var l=ortakKopya(), o=l.filter(function(x){ return x.id===kn.id; })[0]; if(!o) return false;
-        o.derece=d.derece; o.tilt=d.tilt; return ortakYaz(l);
+        o.derece=d.derece; o.tilt=d.tilt; if(d.v3) o.v3=d.v3; else delete o.v3; return ortakYaz(l);
       }
       var l2=konumListesi(), y=l2.filter(function(x){ return x.id===kn.id; })[0]; if(!y) return false;
-      y.derece=d.derece; y.tilt=d.tilt; konumYaz(l2); konumlariCiz(); return true;
+      y.derece=d.derece; y.tilt=d.tilt; if(d.v3) y.v3=d.v3; else delete y.v3; konumYaz(l2); konumlariCiz(); return true;
     }
     if(ortak&&!ortakYetki(kn)){ bildiri("Bu ortak konumu sadece "+(kn.sahipAd||"paylaşan")+" ya da yönetici güncelleyebilir",0,"hata"); return; }
     if(!uygula(yeni)) return;
@@ -2849,7 +2876,7 @@
       // Ayarlar'daki liste (yönetici): paylaş, şarj yeri, sil
       var satir=document.createElement("div"); satir.className="konumSil";
       var ad=document.createElement("span");
-      ad.textContent=(kn.sarj?"⚡ ":"")+kn.ad+" · "+Math.round(derece360(kn.derece))+"° / "+(kn.tilt==null?"eğme yok":Math.round(kn.tilt)+"°");
+      ad.textContent=(kn.sarj?"⚡ ":"")+(kn.v3?"V3 · ":"")+kn.ad+" · "+(kn.v3?Math.round(kn.v3.y)+"° / "+Math.round(kn.v3.e)+"°":Math.round(derece360(kn.derece))+"° / "+(kn.tilt==null?"eğme yok":Math.round(kn.tilt)+"°"));
       if(ortak){ var e=document.createElement("div"); e.className="etiket"; e.textContent="Ortak · "+(kn.sahipAd||"?"); ad.appendChild(e); }
       var dg=document.createElement("span"); dg.className="dgm";
       function dugme(t,f){ var x=document.createElement("button"); x.className="kucuk"; x.textContent=t; x.addEventListener("click",f); dg.appendChild(x); }
@@ -2890,7 +2917,9 @@
     if(!konumSurdurulebilir()){ bildiri("Standın yeri bilinmiyor, konum kaydedilemedi",0,"hata"); return; }
     var ad=prompt("Konum adı (örn. kanepe)"); if(!ad) return;
     ad=ad.trim().slice(0,16); if(!ad) return;
-    var kn={id:konumKimlik(),ad:ad,derece:derece360(netDonus),tilt:Math.round(netTilt)};
+    var a3=gbAktif()?gbAci():null;
+    var kn=a3?{id:konumKimlik(),ad:ad,derece:derece360(a3.y),tilt:Math.round(a3.e),v3:{y:Math.round(a3.y*10)/10,e:Math.round(a3.e*10)/10}}
+             :{id:konumKimlik(),ad:ad,derece:derece360(netDonus),tilt:Math.round(netTilt)};
     var paylas=rol==="uzak"&&istemci&&istemci.connected&&confirm("\""+ad+"\" herkesin listesinde de görünsün mü?\n\nTamam: paylaş\nVazgeç: sadece bu telefonda");
     if(paylas){
       kn.sahip=benimKimlik; kn.sahipAd=benimAdim();
@@ -2965,7 +2994,7 @@
     if(!yonetici()) return;
     evUzunTik=setTimeout(function(){
       evUzunOldu=true;
-      komutGonder({t:"sifirla"}); oturumBas={d:0,t:0};
+      if(gbAktif()){ var a0=gbAci(); if(a0) gbBas=a0; } else { komutGonder({t:"sifirla"}); oturumBas={d:0,t:0}; }
       if(navigator.vibrate) navigator.vibrate(60);
       yaz("Burası yeni başlangıç yapıldı.");
       if(grAcik) grKisaYazi("Burası yeni başlangıç",2000);
@@ -2975,7 +3004,8 @@
   E("evBtn").addEventListener("contextmenu",function(e){ e.preventDefault(); });
   E("evBtn").onclick=function(){
     if(evUzunOldu){ evUzunOldu=false; return; }
-    if(oturumBas) komutGonder({t:"konum",derece:oturumBas.d,tilt:oturumBas.t,ad:"Başlangıç"});
+    if(gbAktif()) komutGonder({t:"ev"});
+    else if(oturumBas) komutGonder({t:"konum",derece:oturumBas.d,tilt:oturumBas.t,ad:"Başlangıç"});
     else komutGonder({t:"ev"});
   };
   E("durBtn").onclick=function(){ komutGonder({t:"dur"}); };
@@ -3719,7 +3749,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="26 Kas 10:32";
+  var SAYFA_SURUM="26 Kas 13:36";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -4153,7 +4183,7 @@
     if(gsAktif) gsBitir("görüşmeyi bitirdin",true);
     gkIptal();
     grBagKapat(true);
-    grAcik=false;
+    grAcik=false; gbBas=null;
     gbCiz();
     document.body.classList.remove("kameraModu");
     E("kameraAlan").classList.add("gizle");

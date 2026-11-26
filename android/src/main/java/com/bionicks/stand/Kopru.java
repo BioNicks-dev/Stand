@@ -116,6 +116,11 @@ final class Kopru {
     @JavascriptInterface public void gimbalYon(int y) { Gimbal.yon(y); }
     @JavascriptInterface public void gimbalHam(String hex) { Gimbal.ham(hex); }
     @JavascriptInterface public void gimbalYeniden() { Gimbal.yenidenBaglan(); }
+    // Uygulama 29: açıya git (eğme -999 = değiştirme)
+    @JavascriptInterface public void gimbalGit(double yatay, double egme, String ad) { Gimbal.git(yatay, egme <= -900 ? Double.NaN : egme, ad); }
+    @JavascriptInterface public void gimbalGoreli(double dy, double de) { Gimbal.goreli(dy, de); }
+    @JavascriptInterface public void gimbal180(int yon) { Gimbal.yarimTur(yon); }
+    @JavascriptInterface public void gimbalSinirUnut() { Gimbal.sinirUnut(); }
 
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");
