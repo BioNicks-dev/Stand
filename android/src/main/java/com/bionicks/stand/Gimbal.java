@@ -164,6 +164,7 @@ final class Gimbal {
             if (!Double.isNaN(eg)) o.put("egme", Math.round(eg * 10) / 10.0);
             double rl = g.roll(); if (!Double.isNaN(rl)) o.put("roll", Math.round(rl));
             o.put("gidiyor", g.gitAktif);
+            if (g.sonTani.length() > 0) o.put("tani", g.sonTani);
             if (g.varisZaman > 0 && SystemClock.elapsedRealtime() - g.varisZaman < 4000) o.put("vardi", g.gitAd);
             o.put("sinir", g.solVar);
             o.put("paketBoyu", g.paketBoyu);
@@ -364,7 +365,7 @@ final class Gimbal {
     private void gitBaslat() {
         gitAktif = true; gitBas = SystemClock.elapsedRealtime(); varisSay = 0; varisZaman = 0;
         takZaman = 0;
-        akisMax = 0; aciMax = 0; oncekiAci = 0; gitDurKalk = 0; gitEpEnAz = Double.NaN; gitEpZaman = gitBas; gitYIsaret = 0;
+        akisMax = 0; aciMax = 0; oncekiAci = 0; gitDurKalk = 0; aciBekle = 0; gitEpEnAz = Double.NaN; gitEpZaman = gitBas; gitYIsaret = 0;
         if (!gitSessiz) Kayit.yaz("Gimbal: " + (gitAd.length() > 0 ? gitAd + " " : "") + "hedefe gidiyor: yatay " + Math.round(hedefY) + "°" + (Double.isNaN(hedefE) ? "" : ", eğme " + Math.round(hedefE) + "°") + ".");
     }
 
@@ -712,6 +713,8 @@ final class Gimbal {
     private int durYontem = 0;
     // 26 Kas 16:40: takip hızı (Follow Speed). Orta (1) gecikmeli: komut 1,5 sn geç başlıyor, bırakınca 1,4 sn devam ediyor.
     private int istenenHiz = 2;
+    // 26 Kas 16:50: son gidişin tanısı (Seda sayfasının kaydına da gider); açı beklerken durmadan devam sayısı
+    private volatile String sonTani = ""; private int aciBekle = 0;
     // 26 Kas 16:00: "Gimbalı ayarla" ilerleme / sonuç yazısı (panelde görünür)
     private volatile String ayarYazi = "";
     // açı geçmişi (her 00 84 cevabında): "bıraktığın yerde dursun" için
@@ -743,7 +746,11 @@ final class Gimbal {
 
     // Açıya git: her 30 ms. Uzakken hızlı, yaklaşınca yavaş; durduktan sonra 4 taze ölçüm ±1,5° içindeyse "vardı".
     private void gitAdim(long simdi) {
-        if (!aciTaze()) return;                         // taze açı yoksa bekle (eski komut 0,3 sn'de kendiliğinden durur)
+        if (!aciTaze()) {
+            // 26 Kas 16:50: açı biraz gecikti diye durup kalkma (takılarak ilerleme). 1,5 sn'ye kadar son komutla devam.
+            if ((hx != 0 || hy != 0) && simdi - a84Zaman < 1500) { if (sonHareketKomutu > 0 && simdi - sonHareketKomutu > 200) aciBekle++; sonHareketKomutu = simdi; }
+            return;
+        }
         double yt = yatay(), eg = egme();
         if (simdi - gitBas > 30000) { gitAktif = false; sonHareketKomutu = 0; Kayit.yaz("Gimbal: hedefe 30 sn'de ulaşılamadı, durdu. " + tani()); return; }
         double ey;
@@ -781,11 +788,22 @@ final class Gimbal {
             return;
         }
         varisSay = 0;
-        hx = x; hy = y; sonHareketKomutu = simdi;
+        // yumuşak hız değişimi: 30 ms'de en çok 20 (0 → 250 yaklaşık 0,4 sn); ani hız sıçramaları gimbalı sarsıyordu
+        hx = rampa(hx, x); hy = rampa(hy, y); sonHareketKomutu = simdi;
+    }
+
+    private static int rampa(int simdiki, int hedef) {
+        if (hedef == 0) return 0;
+        if (simdiki != 0 && Integer.signum(simdiki) != Integer.signum(hedef)) simdiki = 0;
+        if (Math.abs(hedef) <= Math.abs(simdiki)) return hedef;                       // yavaşlama hemen
+        int adim = 20;
+        int m = Math.max(Math.abs(simdiki), 25) + adim;                               // ilk adım küçük ama hemen kıpırdasın
+        return Integer.signum(hedef) * Math.min(Math.abs(hedef), m);
     }
 
     private String tani() {
-        return "(akış boşluğu en çok " + akisMax + " ms, açı boşluğu en çok " + aciMax + " ms, yolda durup kalkma " + gitDurKalk + ")";
+        sonTani = "akış boşluğu en çok " + akisMax + " ms, açı boşluğu en çok " + aciMax + " ms, açı bekleme " + aciBekle + ", yolda durup kalkma " + gitDurKalk;
+        return "(" + sonTani + ")";
     }
 
     // Sınır koruması ve öğrenme (elle ve otomatik harekette): eğme ±40° dışına çıkmaz;

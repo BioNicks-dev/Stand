@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:45</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 16:55</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -364,7 +364,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 16:45";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 16:55";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2764,7 +2764,7 @@
     if(!gimbalVar()) return null;
     var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return null; }
     return {durum:g.durum||"", pil:g.pilMv>0?g.pilMv:null, mod:(typeof g.mod==="number"&&g.mod>=0)?g.mod:null,
-      yatay:(typeof g.yatay==="number")?g.yatay:null, egme:(typeof g.egme==="number")?g.egme:null, gidiyor:!!g.gidiyor, vardi:g.vardi||null, sinir:!!g.sinir};
+      yatay:(typeof g.yatay==="number")?g.yatay:null, egme:(typeof g.egme==="number")?g.egme:null, gidiyor:!!g.gidiyor, vardi:g.vardi||null, sinir:!!g.sinir, tani:g.vardi&&g.tani?g.tani:null};
   }
   function gimbalUzakDur(){
     if(gbUzakTik){ clearInterval(gbUzakTik); gbUzakTik=null; }
