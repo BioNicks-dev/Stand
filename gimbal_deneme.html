@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="Gimbal deneme · 25 Kas 19:46">
+<meta name="stand-surum" content="Gimbal deneme · 25 Kas 19:52">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Gimbal deneme (Hohem V3)</title>
 <style>
@@ -18,7 +18,8 @@
   .satir>*{flex:1}
   #durum{padding:8px 10px;border-radius:10px;background:#222;font-size:14px}
   .yon{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:repeat(3,84px);gap:8px;margin:12px 0}
-  .yon button{font-size:30px}
+  .yon button{font-size:30px;touch-action:none}
+  #hamTekrar{touch-action:none}
   #dur{grid-column:2;grid-row:2;font-size:15px;background:#5a1a1a}
   #yukari{grid-column:2;grid-row:1}#sol{grid-column:1;grid-row:2}#sag{grid-column:3;grid-row:2}#asagi{grid-column:2;grid-row:3}
   label{font-size:14px;color:#bbb}
@@ -33,7 +34,7 @@
 <body>
 <main>
   <h1>Gimbal deneme · Hohem V3</h1>
-  <div class="surum" id="surumDamga">Gimbal deneme · 25 Kas 19:46</div>
+  <div class="surum" id="surumDamga">Gimbal deneme · 25 Kas 19:52</div>
 
   <div class="satir">
     <button id="baglan">Bağlan</button>
@@ -47,6 +48,10 @@
     <button id="dur" disabled>Hepsini<br>durdur</button>
     <button id="sag" disabled>▶</button>
     <button id="asagi" disabled>▼</button>
+  </div>
+
+  <div class="satir">
+    <button id="otoDeneme" disabled>Otomatik deneme: 3 sn sağ → 3 sn sol → 2 sn yukarı → 2 sn aşağı</button>
   </div>
 
   <label for="sapma">Sapma (büyüdükçe hızlanıyor mu?): <b id="sapmaYazi">150</b></label>
@@ -76,7 +81,7 @@
 </main>
 
 <script>
-var SAYFA_SURUM = "Gimbal deneme · 25 Kas 19:46";
+var SAYFA_SURUM = "Gimbal deneme · 25 Kas 19:52";
 
 // ---------- Paket yapisi ----------
 // AA 55 | uzunluk | 00 | grup | komut | veri... | toplam | FF
@@ -265,7 +270,7 @@ function kes() {
 }
 
 function dugmeler(acik) {
-  ["yukari", "asagi", "sol", "sag", "dur", "hamGonder", "hamTekrar"].forEach(function (id) {
+  ["yukari", "asagi", "sol", "sag", "dur", "hamGonder", "hamTekrar", "otoDeneme"].forEach(function (id) {
     document.getElementById(id).disabled = !acik;
   });
   document.getElementById("kes").disabled = !acik;
@@ -321,7 +326,23 @@ basiliTut("hamTekrar", function (d) {
   hareketZamanlayici = setInterval(function () { gonder(b, true); }, 30);
 });
 
-document.getElementById("dur").addEventListener("click", function () { hareketBitir(); yaz("Hepsini durdur.", "not"); });
+// Basili tutmadan deneme: sirayla yonleri kendisi calistirir
+var otoIptal = false;
+document.getElementById("otoDeneme").addEventListener("click", function () {
+  otoIptal = false;
+  var adimlar = [["sag", 3000], ["sol", 3000], ["yukari", 2000], ["asagi", 2000]];
+  var p = Promise.resolve();
+  adimlar.forEach(function (a) {
+    p = p.then(function () {
+      if (otoIptal || !yazKar) return;
+      hareketBaslat(a[0], document.getElementById(a[0]));
+      return bekle(a[1]).then(function () { hareketBitir(); return bekle(1500); });
+    });
+  });
+  p.then(function () { yaz(otoIptal ? "Otomatik deneme durduruldu." : "Otomatik deneme bitti.", "not"); });
+});
+
+document.getElementById("dur").addEventListener("click", function () { otoIptal = true; hareketBitir(); yaz("Hepsini durdur.", "not"); });
 document.getElementById("baglan").addEventListener("click", baglan);
 document.getElementById("kes").addEventListener("click", kes);
 document.getElementById("temizle").addEventListener("click", function () { kayitEl.innerHTML = ""; });
