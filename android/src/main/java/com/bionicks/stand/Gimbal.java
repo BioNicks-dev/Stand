@@ -83,6 +83,7 @@ final class Gimbal {
     // durum (sayfa okur)
     private volatile String durum = "kapali", ad = "", sonHata = "";
     private volatile int pilMv = -1, mod = -1, takipHizi = -1;
+    private volatile String pil49 = "";
     private volatile long gelen = 0, giden = 0, sonCevap = 0;
     private volatile boolean izinYok = false;
 
@@ -961,6 +962,11 @@ final class Gimbal {
         int veriBoy = v.length - 8;            // AA 55 L 00 G C ... S FF
         if (grup == 0x00 && komut == 0x49 && veriBoy >= 4) {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
+            // 27 Kas: şarj işareti aranıyor. Voltaj baytları (8,9) hariç paketin geri kalanı değişirse kayda yazılır (sadece dinler).
+            StringBuilder h = new StringBuilder();
+            for (int k = 6; k < v.length - 2; k++) { if (k == 8 || k == 9) h.append("__"); else h.append(String.format("%02X", v[k] & 0xFF)); }
+            String hs = h.toString();
+            if (!hs.equals(pil49)) { pil49 = hs; Kayit.yaz("Gimbal pil paketi (" + pilMv + " mV): " + hs); }
         } else if (grup == 0x00 && komut == 0x84 && veriBoy >= 28) {
             int[] a = new int[14];
             for (int i = 0; i < 14; i++) a[i] = (short) (((v[6 + i * 2] & 0xFF) << 8) | (v[7 + i * 2] & 0xFF));
