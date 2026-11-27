@@ -40,4 +40,4 @@ echo "Gönderilenler:"; git diff --cached --name-only | sed 's/^/  - /'
 git commit -q -m "$ACIKLAMA, $DAMGA"
 git -c push.negotiate=true push -q origin main
 echo "TAMAM: GitHub'a gönderildi."
-# Uygulama dosyası (android/) değiştiyse derleme başlar: bash araclar/derleme.sh
+# Uygulama dosyası (android/) değiştiyse: 1) bash araclar/derleme.sh  2) Chrome: araclar/pixel_guncelle.js  3) 1 dk sonra kayit_oku.js ile sürümü gör
