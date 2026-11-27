@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 17:17">
+<meta name="stand-surum" content="27 Kas 17:47">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -648,7 +648,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 17:17</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 17:47</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -696,6 +696,9 @@
     </div>
     <div class="gbSira uc gizle" id="gbKartSira">
       <button type="button" data-k="-" aria-label="Roll sola (basılı tut: sürekli)">◀ Roll</button><button type="button" id="gbIsikBtn">Işık</button><button type="button" data-k="+" aria-label="Roll sağa (basılı tut: sürekli)">Roll ▶</button>
+    </div>
+    <div class="gbSira uc gizle" id="gbIsikSira">
+      <button type="button" data-p="-" aria-label="Işık parlaklığı azalt (basılı tut)">Parlaklık −</button><button type="button" id="gbRenkBtn">Renk</button><button type="button" data-p="+" aria-label="Işık parlaklığı artır (basılı tut)">Parlaklık +</button>
     </div>
   </div>
   <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
@@ -2880,7 +2883,8 @@
     if(typeof g.roll==="number") b+=" · roll "+Math.round(g.roll)+"°";
     E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g));
     var ib=E("gbIsikBtn"), iv=g.kart&&typeof g.kart.i==="boolean"?g.kart.i:null;   // ışık durumu gimbalın kendi bildirimi; bilinmiyorsa sadece "Işık"
-    ib.textContent=iv===null?"Işık":(iv?"Işık açık":"Işık kapalı"); ib.classList.toggle("secili",iv===true);   // 27 Kas: kumanda kartı hazırsa ışık + roll
+    ib.textContent=iv===null?"Işık":(iv?"Işık açık":"Işık kapalı"); ib.classList.toggle("secili",iv===true);
+    E("gbIsikSira").classList.toggle("gizle",!(g.kart&&g.kart.g&&iv===true));   // parlaklık/renk sadece ışık açıkken çalışır   // 27 Kas: kumanda kartı hazırsa ışık + roll
     E("gbBilgi").textContent=b;
     if(E("gbModlar")) Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
   }
@@ -2901,6 +2905,20 @@
       o.preventDefault(); try{ d.setPointerCapture(o.pointerId); }catch(h){}
       gbRollBit();
       var k="rollbas"+d.getAttribute("data-k");
+      grGonder({t:"gimbal",kart:k,ad:benimAdim()});
+      gbRollTik=setInterval(function(){ grGonder({t:"gimbal",kart:k}); },500);
+    });
+    ["pointerup","pointercancel","lostpointercapture"].forEach(function(t){ d.addEventListener(t,gbRollBit); });
+  });
+  // 27 Kas: ışık parlaklığı (basılı tut) ve renk; kumanda kaydından (ışık modunda üçgenler 10/11)
+  E("gbRenkBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"renk",ad:benimAdim()}); };
+  Array.prototype.forEach.call(E("gbIsikSira").querySelectorAll("button[data-p]"),function(d){
+    d.style.touchAction="none";
+    d.addEventListener("pointerdown",function(o){
+      if(!gbAktif()||!kontrolVarMi()) return;
+      o.preventDefault(); try{ d.setPointerCapture(o.pointerId); }catch(h){}
+      gbRollBit();
+      var k="parbas"+d.getAttribute("data-p");
       grGonder({t:"gimbal",kart:k,ad:benimAdim()});
       gbRollTik=setInterval(function(){ grGonder({t:"gimbal",kart:k}); },500);
     });
@@ -3949,7 +3967,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 17:17";
+  var SAYFA_SURUM="27 Kas 17:47";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

@@ -64,7 +64,8 @@ final class KumandaKarti {
         KumandaKarti k = ben;
         if (k == null || s == null) return;
         if (!(s.equals("isik") || s.equals("rollbas+") || s.equals("rollbas-") || s.equals("rollbit")
-              || s.equals("roll+") || s.equals("roll-"))) return;
+              || s.equals("roll+") || s.equals("roll-")
+              || s.equals("parbas+") || s.equals("parbas-") || s.equals("parbit") || s.equals("renk"))) return;
         final byte[] b = s.getBytes(StandardCharsets.UTF_8);
         k.h.post(() -> { if (k.hazir) { if (k.kuyruk.size() > 10) k.kuyruk.clear(); k.kuyruk.add(b); k.yazNext(); } });
     }
