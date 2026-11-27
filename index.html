@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 01:27">
+<meta name="stand-surum" content="27 Kas 01:32">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -641,7 +641,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 01:27</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 01:32</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -653,6 +653,7 @@
     <div class="gosterge"><span>Stand</span><b id="gStand" class="soluk">bilinmiyor</b></div>
     <div class="gosterge" id="izinKutu" role="button" tabindex="0" aria-label="Uzaktan kontrol iznini aç veya kapat"><span>İzin</span><b id="gIzin" class="soluk">kapalı</b></div>
     <div class="gosterge" id="pixelKutu" role="button" tabindex="0" aria-label="Pixel durumu. Turuncuyken dokununca Pixel'de takip ve fener kapanır. Yönetici uzun basınca ev kamerası kapanır ya da açılır."><span id="pixelBaslik">Pixel</span><b id="gPixel" class="soluk">bilinmiyor</b></div>
+    <div class="gosterge sadeceV3" id="gbKutu"><span>Gimbal</span><b id="gGimbal" class="soluk">bağlı değil</b></div>
     <div class="gosterge"><span>Uzak bağlantı</span><b id="gUzak" class="soluk">kapalı</b></div>
     <div class="gosterge"><span>Sunucu</span><b id="gSunucu" class="soluk">çevrimdışı</b></div>
     <div class="gosterge gizle" id="tbKutu" role="button" tabindex="0" aria-label="Terbiyeci durumu. İki kez dokununca Terbiyeci açılır ya da kapanır. Uzun basınca Terbiyeci günlüğü açılır."><span id="tbKutuBaslik">Terbiyeci</span><b id="gTb" class="soluk">bilinmiyor</b></div>
@@ -2807,6 +2808,11 @@
     if(a!==gbKonumCizildi) konumlariCiz();
     if(a&&!gbPingTik){ gbPing(); gbPingTik=setInterval(gbPing,5000); } else if(!a&&gbPingTik){ clearInterval(gbPingTik); gbPingTik=null; gbRtt=[]; }
     E("gbIzgara").classList.toggle("gizle",!a);
+    // 27 Kas: gimbal pili ana ekranda (%20 altı sarı, %10 altı kırmızı)
+    var gpy=a&&g&&g.pil?gbPilYuzde(g.pil):null;
+    if(!a) goster("gGimbal","bağlı değil","soluk");
+    else if(gpy===null) goster("gGimbal","bağlı","iyi");
+    else goster("gGimbal","pil ~%"+gpy,gpy<10?"kotu":(gpy<20?"amber":"iyi"));
     E("standIzgara").classList.toggle("gizle",false);   // 26 Kas 3b: Sol/Sağ 180 ve Başlangıç V3'te de çalışıyor
     if(!a) return;
     try{ guncelle(); }catch(h){}
@@ -3868,7 +3874,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 01:27";
+  var SAYFA_SURUM="27 Kas 01:32";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
