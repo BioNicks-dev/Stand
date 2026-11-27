@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 01:37">
+<meta name="stand-surum" content="27 Kas 01:53">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -641,7 +641,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 01:37</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 01:53</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1474,7 +1474,7 @@
       }
       if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
       if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} try{ gbKutuYaz(); }catch(h){} pixelKutusu(); return; }
-      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); gmArayuz(); try{ turUygula(); }catch(h){} return; }
+      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); gmArayuz(); try{ turUygula(); }catch(h){} try{ gbKutuYaz(); }catch(h){} return; }
       if(konu.slice(-8)==="/kamkapi"){ var kk=null; try{ kk=JSON.parse(veri.toString()); }catch(h){} kamKapiGeldi(kk); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       if(konu.slice(-6)==="/arama"){ gsMesaj(veri.toString()); return; }
@@ -2809,6 +2809,7 @@
     if(a) var_=true, p=g.pil?gbPilYuzde(g.pil):null;
     else if(d&&d.d==="bagli") var_=true, p=(typeof d.p==="number")?d.p:null;
     else if(d&&d.d==="yok") var_=false;
+    else if(bekciDurum&&bekciDurum.gb) var_=bekciDurum.gb==="bagli";   // kamera sayfası kapalıyken bekçinin bildirdiği
     if(var_===null) goster("gGimbal","bilinmiyor","soluk");
     else if(!var_) goster("gGimbal","bağlı değil","kotu");
     else if(p===null) goster("gGimbal","bağlı","iyi");
@@ -3881,7 +3882,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 01:37";
+  var SAYFA_SURUM="27 Kas 01:53";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
