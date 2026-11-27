@@ -284,6 +284,7 @@ public class Bekci extends Service {
             if (bagli && (simdi - sonPil > PIL_ARA || gs != sonGbS)) { sonGbS = gs; durumGonder(); }
             boolean gbSimdi = "bagli".equals(Gimbal.durumKisa());          // 27 Kas: gimbal bağlanınca/kopunca Stand sayfasına haber
             if (bagli && gbSimdi != sonGbBagli) { sonGbBagli = gbSimdi; durumGonder(); }
+            Uyari.pilKontrol(gbSimdi, Gimbal.pilKisa(), gs);                  // 27 Kas: gimbal pili 7,09 V altına inince ntfy (şarjdayken değil, bir kez)
             long surumAra = hizli() ? 25000L : gmBitis > System.currentTimeMillis() ? 2 * 60000L : 6 * 3600000L;
             if (sonSurumBakis == 0 || simdi - sonSurumBakis > surumAra) { sonSurumBakis = simdi; Guncelle.bak(Bekci.this); }
             else if (Guncelle.hazirSurum > 0) guncellemeIndi(Guncelle.hazirSurum);   // indiğinde Pixel meşguldüyse boşalınca

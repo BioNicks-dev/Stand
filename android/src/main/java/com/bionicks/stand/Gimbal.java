@@ -701,6 +701,7 @@ final class Gimbal {
         } else if (aciKurtarma == 2) {
             aciKurtarma = 3;
             Kayit.yaz("Gimbal: açı yeniden bağlanınca da gelmedi. Gimbalı güç tuşundan kapatıp açın.");
+            Uyari.aciGelmiyor();   // 27 Kas: kimse izlemiyorken telefona ntfy uyarısı (tek çare güç tuşu)
         }
         // 2: bir kez yeniden bağlandı, yine olmazsa döngüye girme (yeniden bağlanınca sayaç sıfırlanır)
     }
