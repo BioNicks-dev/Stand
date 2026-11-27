@@ -189,6 +189,9 @@ public class Bekci extends Service {
     }
 
     // Arama.java için: sunucuya kısa mesaj (ağ işi kendi iş parçacığında)
+    // 27 Kas: gimbal şarjı değişince Gimbal.java hemen çağırır (30 sn beklemeden)
+    static void gimbalDegisti() { Bekci b = ben; if (b != null) b.durumGonder(); }
+
     static void gonder(final String konuSonu, final String govde, final boolean sakla) {
         final Bekci b = ben;
         if (b == null) return;

@@ -967,7 +967,7 @@ final class Gimbal {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
             // 27 Kas: pil paketinin ilk veri baytı şarj: 01 kablo takılı, 00 değil (iki takma, bir çıkarmayla doğrulandı)
             boolean sj = (v[6] & 0xFF) == 1;
-            if (sarj != null && sarj != sj) Kayit.yaz(sj ? "Gimbal: şarj başladı." : "Gimbal: şarj bitti (kablo çıktı).");
+            if (sarj != null && sarj != sj) { Kayit.yaz(sj ? "Gimbal: şarj başladı." : "Gimbal: şarj bitti (kablo çıktı)."); sarj = sj; Bekci.gimbalDegisti(); }
             sarj = sj;
         } else if (grup == 0x00 && komut == 0x84 && veriBoy >= 28) {
             int[] a = new int[14];

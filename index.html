@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 02:06">
+<meta name="stand-surum" content="27 Kas 02:13">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -641,7 +641,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 02:06</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 02:13</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1558,7 +1558,7 @@
       yazi="kapalı ("+(yk?"sen kapattın":"yönetici kapattı")+")"+iz; sinif="kotu"; hazir=false;
     }
     goster("gPixel",yazi,sinif);
-    var pp=hazir?pixelPil():null;
+    var pp=(hazir||(d&&d.d!=="kapali"))?pixelPil():null;   // 27 Kas: izlenirken de göster
     if(pp){
       var sp=document.createElement("span"); sp.className="pil"+(pp.y<20&&!pp.s?" dusuk":"");
       sp.textContent=" · %"+pp.y+(pp.s?" ⚡":""); E("gPixel").appendChild(sp);
@@ -2805,11 +2805,13 @@
   function gbPong(m){ var d=Date.now()-Number(m.n); if(!(d>0&&d<5000)) return; gbRtt.push(d); if(gbRtt.length>7) gbRtt.shift(); }
   // 27 Kas: ana ekrandaki Gimbal kutusu. Evi izle açıksa canlı veriden, değilse Pixel'in bildirdiğinden (pixelDurum.gb)
   function gbKutuYaz(){
-    var a=gbAktif(), g=grYet&&grYet.gimbal, d=pixelDurum&&pixelDurum.d!=="kapali"?pixelDurum.gb:null, p=null, var_=null, sj=false;
+    var a=gbAktif(), g=grYet&&grYet.gimbal, p=null, var_=null, sj=false;
+    var d=pixelDurum&&pixelDurum.d!=="kapali"&&pixelDurum.gb?pixelDurum.gb:null, dz=d?(Number(pixelDurum.z)||pixelDurumGeldi):0;
+    var bk=bekciDurum&&bekciDurum.gb?bekciDurum:null, bz=bk?(Number(bk.z)||bekciDurumGeldi):0;
+    if(d&&bk&&bz>dz) d=null;   // 27 Kas: hangisi daha yeniyse o
     if(a) var_=true, p=g.pil?gbPilYuzde(g.pil):null, sj=!!g.sarj;
-    else if(d&&d.d==="bagli") var_=true, p=(typeof d.p==="number")?d.p:null, sj=!!d.s;
-    else if(d&&d.d==="yok") var_=false;
-    else if(bekciDurum&&bekciDurum.gb){ var_=bekciDurum.gb==="bagli"; if(var_&&bekciDurum.gbMv>0) p=gbPilYuzde(bekciDurum.gbMv); sj=!!bekciDurum.gbS; }   // kamera sayfası kapalıyken bekçinin bildirdiği
+    else if(d) var_=d.d==="bagli", p=(var_&&typeof d.p==="number")?d.p:null, sj=!!d.s;
+    else if(bk){ var_=bk.gb==="bagli"; if(var_&&bk.gbMv>0) p=gbPilYuzde(bk.gbMv); sj=!!bk.gbS; }
     if(var_===null) goster("gGimbal","bilinmiyor","soluk");
     else if(!var_) goster("gGimbal","bağlı değil","kotu");
     else if(p===null) goster("gGimbal","bağlı","iyi");
@@ -3883,7 +3885,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 02:06";
+  var SAYFA_SURUM="27 Kas 02:13";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
