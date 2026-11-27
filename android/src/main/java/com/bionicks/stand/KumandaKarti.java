@@ -36,7 +36,7 @@ final class KumandaKarti {
     private BluetoothGattCharacteristic komutKar;
     private boolean calisiyor = false, hazir = false, yaziyor = false;
     private final ArrayDeque<byte[]> kuyruk = new ArrayDeque<>();
-    private volatile boolean gimbalKartta = false;
+    private volatile boolean gimbalKartta = false, kumandaKartta = false;
     private volatile int isik = -1;   // 27 Kas: gimbalın kumandaya bildirdiği ışık (tür 03 mesajı 13. bayt: 01 açık, 00 kapalı; denemeyle doğrulandı). -1 bilinmiyor
     private volatile long sonDurum = 0;
     private volatile String surum = "", sonH2 = "", sonH3 = "";
@@ -78,6 +78,7 @@ final class KumandaKarti {
             boolean taze = k != null && SystemClock.elapsedRealtime() - k.sonDurum < 40000;
             o.put("b", b);
             o.put("g", b && taze && k.gimbalKartta);
+            o.put("k", b && taze && k.kumandaKartta);   // 27 Kas (Aşama 2): gerçek kumanda karta bağlı
             if (b && taze && k.gimbalKartta && k.isik >= 0) o.put("i", k.isik == 1);
         } catch (Exception e) { }
         return o.toString();
@@ -171,6 +172,9 @@ final class KumandaKarti {
         if (s.startsWith("D ")) {
             sonDurum = SystemClock.elapsedRealtime();
             boolean g = s.contains("g=1");
+            boolean km = s.contains(" k=1");
+            if (km != kumandaKartta) Kayit.yaz("Kumanda kartı: gerçek kumanda " + (km ? "karta bağlandı" : "karta bağlı değil") + ".");
+            kumandaKartta = km;
             if (!g) isik = -1;
             if (g != gimbalKartta) Kayit.yaz("Kumanda kartı: gimbal " + (g ? "karta bağlı" : "karta bağlı değil") + ".");
             gimbalKartta = g;
@@ -190,6 +194,8 @@ final class KumandaKarti {
                 if (tur3) sonH3 = hx; else sonH2 = hx;
                 Kayit.yaz("Kumanda kartı: gimbal durumu " + hx);
             }
+        } else if (s.startsWith("K ")) {
+            Kayit.yaz("Kumanda tuşu: " + s.substring(2));   // kumandanın gimbala yolladığı tuş mesajı (kart iletti)
         } else if (s.length() > 0) {
             Kayit.yaz("Kumanda kartı: " + s);
         }
