@@ -680,6 +680,7 @@ final class Gimbal {
                     saniye = 0;
                     nabizSay++;
                     gonder(hexten("AA550600074956FF"));
+                    if (nabizSay % 2 == 0) gonder(paket(0x07, 0x2B, new int[0]));   // 27 Kas: AI kamera durumu sorusu (sadece okur), cevabı kayda yazılır
                     if (nabizSay % 30 == 0) gonder(hexten("AA550600075764FF"));
                 }
             }
@@ -957,6 +958,17 @@ final class Gimbal {
         if (i < b.length && b.length - i < 600) parca.write(b, i, b.length - i);
     }
 
+    private final java.util.HashMap<Integer, String> sonOlay = new java.util.HashMap<>();
+    private void olayYaz(int grup, int komut, byte[] v) {
+        StringBuilder sb = new StringBuilder();
+        for (byte x : v) sb.append(String.format("%02X", x));
+        String t = sb.toString();
+        int an = (grup << 8) | komut;
+        if (t.equals(sonOlay.get(an))) return;
+        sonOlay.put(an, t);
+        Kayit.yaz("Gimbal bildirimi " + String.format("%02X %02X", grup, komut) + ": " + t);
+    }
+
     private void paketIsle(byte[] v) {
         if (v == null || v.length < 8) return;
         gelen++;
@@ -964,6 +976,7 @@ final class Gimbal {
         if ((v[0] & 0xFF) != 0xAA || (v[1] & 0xFF) != 0x55) return;
         int grup = v[4] & 0xFF, komut = v[5] & 0xFF;
         int veriBoy = v.length - 8;            // AA 55 L 00 G C ... S FF
+        if (komut == 0x2B || komut == 0xA5 || komut == 0x99 || komut == 0xEA) olayYaz(grup, komut, v);   // 27 Kas: AI/tuş/uyanma bildirimleri, değişince kayda
         if (grup == 0x00 && komut == 0x49 && veriBoy >= 4) {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
             // 27 Kas: pil paketinin ilk veri baytı şarj: 01 kablo takılı, 00 değil (iki takma, bir çıkarmayla doğrulandı)
