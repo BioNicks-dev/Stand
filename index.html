@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 16:13">
+<meta name="stand-surum" content="27 Kas 17:17">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -648,7 +648,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 16:13</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 17:17</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -2878,7 +2878,9 @@
     if(g.pil) b+=" · pil ~%"+gbPilYuzde(g.pil)+" ("+(g.pil/1000).toFixed(2).replace(".",",")+" V)";
     if(g.sarj) b+=" · ⚡ şarjda";
     if(typeof g.roll==="number") b+=" · roll "+Math.round(g.roll)+"°";
-    E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g));   // 27 Kas: kumanda kartı hazırsa ışık + roll
+    E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g));
+    var ib=E("gbIsikBtn"), iv=g.kart&&typeof g.kart.i==="boolean"?g.kart.i:null;   // ışık durumu gimbalın kendi bildirimi; bilinmiyorsa sadece "Işık"
+    ib.textContent=iv===null?"Işık":(iv?"Işık açık":"Işık kapalı"); ib.classList.toggle("secili",iv===true);   // 27 Kas: kumanda kartı hazırsa ışık + roll
     E("gbBilgi").textContent=b;
     if(E("gbModlar")) Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
   }
@@ -3947,7 +3949,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 16:13";
+  var SAYFA_SURUM="27 Kas 17:17";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

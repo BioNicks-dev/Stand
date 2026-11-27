@@ -37,6 +37,7 @@ final class KumandaKarti {
     private boolean calisiyor = false, hazir = false, yaziyor = false;
     private final ArrayDeque<byte[]> kuyruk = new ArrayDeque<>();
     private volatile boolean gimbalKartta = false;
+    private volatile int isik = -1;   // 27 Kas: gimbalın kumandaya bildirdiği ışık (tür 03 mesajı 13. bayt: 01 açık, 00 kapalı; denemeyle doğrulandı). -1 bilinmiyor
     private volatile long sonDurum = 0;
     private volatile String surum = "", sonH2 = "", sonH3 = "";
 
@@ -77,6 +78,7 @@ final class KumandaKarti {
             boolean taze = k != null && SystemClock.elapsedRealtime() - k.sonDurum < 40000;
             o.put("b", b);
             o.put("g", b && taze && k.gimbalKartta);
+            if (b && taze && k.gimbalKartta && k.isik >= 0) o.put("i", k.isik == 1);
         } catch (Exception e) { }
         return o.toString();
     }
@@ -169,6 +171,7 @@ final class KumandaKarti {
         if (s.startsWith("D ")) {
             sonDurum = SystemClock.elapsedRealtime();
             boolean g = s.contains("g=1");
+            if (!g) isik = -1;
             if (g != gimbalKartta) Kayit.yaz("Kumanda kartı: gimbal " + (g ? "karta bağlı" : "karta bağlı değil") + ".");
             gimbalKartta = g;
             int i = s.indexOf(" s=");
@@ -177,6 +180,11 @@ final class KumandaKarti {
         } else if (s.startsWith("H ")) {
             // gimbal -> kumanda durum mesajı (değişince gelir). Işık baytını bulmak için kayda yazılır.
             String hx = s.substring(2);
+            // AA CC 12 00 00 03 ... : bayt 12 ışık
+            if (hx.length() >= 40 && hx.startsWith("AACC12") && hx.startsWith("03", 10)) {
+                int yeni = hx.startsWith("01", 24) ? 1 : (hx.startsWith("00", 24) ? 0 : -1);
+                if (yeni >= 0 && yeni != isik) { isik = yeni; Kayit.yaz("Kumanda kartı: gimbal ışığı " + (yeni == 1 ? "açık" : "kapalı") + "."); }
+            }
             boolean tur3 = hx.length() > 11 && hx.startsWith("03", 10);
             if (tur3 ? !hx.equals(sonH3) : !hx.equals(sonH2)) {
                 if (tur3) sonH3 = hx; else sonH2 = hx;

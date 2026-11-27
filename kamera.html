@@ -397,7 +397,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="27 Kas 16:13";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="27 Kas 17:17";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2857,7 +2857,7 @@
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
       var ko=kartOzet();
       if(ko){ E("gbKart").textContent=!ko.b?"bağlı değil":(ko.g?"hazır (gimbal kartta)":"karta bağlı, gimbal kartta değil"); E("gbKart").className=!ko.b?"":(ko.g?"iyi":"uyari"); }
-      var oz=(ko?(ko.b?1:0)+""+(ko.g?1:0):"-")+"|"+(typeof g.roll==="number"?Math.round(g.roll/2):"")+"|"+g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"")+"|"+(typeof g.yatay==="number"?Math.round(g.yatay/2):"")+"|"+(typeof g.egme==="number"?Math.round(g.egme/2):"")+"|"+!!g.gidiyor+"|"+(g.vardi||"")+"|"+!!g.sinir;
+      var oz=(ko?(ko.b?1:0)+""+(ko.g?1:0)+(ko.i===true?"a":ko.i===false?"k":""):"-")+"|"+(typeof g.roll==="number"?Math.round(g.roll/2):"")+"|"+g.durum+"|"+g.mod+"|"+(g.pilMv>0?Math.round(g.pilMv/100):"")+"|"+(typeof g.yatay==="number"?Math.round(g.yatay/2):"")+"|"+(typeof g.egme==="number"?Math.round(g.egme/2):"")+"|"+!!g.gidiyor+"|"+(g.vardi||"")+"|"+!!g.sinir;
       if(oz!==gbSonOzet){ gbSonOzet=oz; if(akis) bildir(); }
     }
     guncelle(); setInterval(guncelle,1000);
