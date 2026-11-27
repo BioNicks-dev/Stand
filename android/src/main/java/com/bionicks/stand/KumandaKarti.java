@@ -109,9 +109,16 @@ final class KumandaKarti {
         @Override public void onConnectionStateChange(final BluetoothGatt g, final int st, final int yeni) {
             h.post(() -> {
                 if (g != gatt) return;
-                if (yeni == BluetoothProfile.STATE_CONNECTED) { try { g.discoverServices(); } catch (Exception e) { } }
+                if (yeni == BluetoothProfile.STATE_CONNECTED) {
+                    // 27 Kas: varsayılan paket 20 bayt; gimbal durum mesajı (40+ harf) kesiliyordu
+                    boolean m = false; try { m = g.requestMtu(247); } catch (Exception e) { }
+                    if (!m) { try { g.discoverServices(); } catch (Exception e) { } }
+                }
                 else if (yeni == BluetoothProfile.STATE_DISCONNECTED) { kapat(); h.postDelayed(KumandaKarti.this::baglan, 5000); }
             });
+        }
+        @Override public void onMtuChanged(final BluetoothGatt g, final int mtu, final int st) {
+            h.post(() -> { if (g == gatt) { try { g.discoverServices(); } catch (Exception e) { } } });
         }
         @Override public void onServicesDiscovered(final BluetoothGatt g, final int st) {
             h.post(() -> {
