@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 15:05">
+<meta name="stand-surum" content="27 Kas 16:13">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -648,7 +648,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 15:05</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 16:13</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -693,6 +693,9 @@
     <div class="gbBilgi" id="gbBilgi">Gimbal (V3)</div>
     <div class="gbSira uc">
       <button type="button" data-y="1">Dikey</button><button type="button" data-y="0">Yatay</button><button type="button" data-y="2">Ters yatay</button>
+    </div>
+    <div class="gbSira uc gizle" id="gbKartSira">
+      <button type="button" data-k="-" aria-label="Roll sola (basılı tut: sürekli)">◀ Roll</button><button type="button" id="gbIsikBtn">Işık</button><button type="button" data-k="+" aria-label="Roll sağa (basılı tut: sürekli)">Roll ▶</button>
     </div>
   </div>
   <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
@@ -2874,6 +2877,8 @@
     if(typeof g.yatay==="number") b+=" · "+Math.round(g.yatay)+"° / "+(typeof g.egme==="number"?Math.round(g.egme):"?")+"°"+(g.gidiyor?" · gidiyor…":"");
     if(g.pil) b+=" · pil ~%"+gbPilYuzde(g.pil)+" ("+(g.pil/1000).toFixed(2).replace(".",",")+" V)";
     if(g.sarj) b+=" · ⚡ şarjda";
+    if(typeof g.roll==="number") b+=" · roll "+Math.round(g.roll)+"°";
+    E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g));   // 27 Kas: kumanda kartı hazırsa ışık + roll
     E("gbBilgi").textContent=b;
     if(E("gbModlar")) Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
   }
@@ -2882,6 +2887,22 @@
   });
   Array.prototype.forEach.call(E("gbIzgara").querySelectorAll("button[data-y]"),function(d){
     d.onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",yon:Number(d.getAttribute("data-y")),ad:benimAdim()}); bildiri("Gimbal: "+d.textContent,2000,"bilgi"); };
+  });
+  // 27 Kas: kumanda kartı üzerinden ışık ve roll (dokun: küçük adım, basılı tut: sürekli; kart 1,5 sn tazelenmezse durur)
+  E("gbIsikBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"isik",ad:benimAdim()}); bildiri("Gimbal ışığı",1500,"bilgi"); };
+  var gbRollTik=null;
+  function gbRollBit(){ if(!gbRollTik) return; clearInterval(gbRollTik); gbRollTik=null; grGonder({t:"gimbal",kart:"rollbit"}); }
+  Array.prototype.forEach.call(E("gbKartSira").querySelectorAll("button[data-k]"),function(d){
+    d.style.touchAction="none";
+    d.addEventListener("pointerdown",function(o){
+      if(!gbAktif()||!kontrolVarMi()) return;
+      o.preventDefault(); try{ d.setPointerCapture(o.pointerId); }catch(h){}
+      gbRollBit();
+      var k="rollbas"+d.getAttribute("data-k");
+      grGonder({t:"gimbal",kart:k,ad:benimAdim()});
+      gbRollTik=setInterval(function(){ grGonder({t:"gimbal",kart:k}); },500);
+    });
+    ["pointerup","pointercancel","lostpointercapture"].forEach(function(t){ d.addEventListener(t,gbRollBit); });
   });
   padEl.addEventListener("pointerdown",function(o){
     if(rol==="evde"&&(!rxKarakter||mesgul)&&!gbAktif()) return;
@@ -3926,7 +3947,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 15:05";
+  var SAYFA_SURUM="27 Kas 16:13";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

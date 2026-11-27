@@ -122,6 +122,9 @@ final class Kopru {
     @JavascriptInterface public void gimbalSinirUnut() { Gimbal.sinirUnut(); }
     @JavascriptInterface public void gimbalTest() { Gimbal.hareketTesti(); }
     @JavascriptInterface public void gimbalDurGeri(int ms) { Gimbal.durGeri(ms); }
+    // 27 Kas: kumanda kartı (ışık, roll)
+    @JavascriptInterface public String kartDurum() { return KumandaKarti.durumJson(); }
+    @JavascriptInterface public void kartKomut(String k) { KumandaKarti.komut(k); }
 
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");

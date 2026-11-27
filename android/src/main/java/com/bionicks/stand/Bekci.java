@@ -111,6 +111,7 @@ public class Bekci extends Service {
             registerReceiver(sarjAlici, sf);
             Sayfa.hazirla(this);
             Gimbal.baslat(this);   // uygulama 26: Hohem V3
+            KumandaKarti.baslat(this);   // 27 Kas: ışık ve roll için Bluetooth kartı (kumanda köprüsü)
             dinle();
             h.postDelayed(kontrol, 30000);
         }
@@ -330,6 +331,7 @@ public class Bekci extends Service {
         if (islemci != null && islemci.isHeld()) islemci.release();
         Sayfa.kapat();
         Gimbal.durdur();
+        KumandaKarti.durdur();
         super.onDestroy();
     }
 
