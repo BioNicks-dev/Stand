@@ -144,6 +144,9 @@ final class Gimbal {
         g.h.post(() -> { g.calisiyor = false; g.kapat("durduruldu"); g.durum = "kapali"; try { if (g.sm != null) g.sm.unregisterListener(g.sensorCb); } catch (Exception e) { } });
     }
 
+    // 27 Kas: bekçinin durumu için kısa bilgi (Stand sayfası, Evi izle kapalıyken de V3 düzenini seçebilsin)
+    static String durumKisa() { Gimbal g = ben; return g == null ? "kapali" : g.durum; }
+
     static String durumJson() {
         JSONObject o = new JSONObject();
         Gimbal g = ben;

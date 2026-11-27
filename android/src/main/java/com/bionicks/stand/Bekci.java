@@ -59,6 +59,7 @@ public class Bekci extends Service {
     private static volatile long hizliBitis = 0, sonHizliIstek = 0;
     static boolean hizli() { return hizliBitis > System.currentTimeMillis(); }
     private long sonSurumBakis = 0;
+    private boolean sonGbBagli = false;
     private static int uyandirilanSurum = 0, bekleyenYazilan = 0;
     private static final long PIL_ARA = 30 * 60 * 1000L;
 
@@ -166,6 +167,7 @@ public class Bekci extends Service {
             o.put("uyg", Guncelle.benimSurum(this));                       // 27 Kas: Stand sayfasının Güncelleme bölümü gösterir
             if (Guncelle.hazirSurum > 0) o.put("indi", Guncelle.hazirSurum);
             if (hizli()) o.put("hizli", hizliBitis);
+            o.put("gb", Gimbal.durumKisa());                               // 27 Kas: "bagli" ise Stand sayfası V3 düzenini açar
             BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
             int y = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
             Intent pil = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
@@ -268,6 +270,8 @@ public class Bekci extends Service {
             if (!calisiyor) return;
             long simdi = SystemClock.elapsedRealtime();
             if (bagli && simdi - sonPil > PIL_ARA) durumGonder();
+            boolean gbSimdi = "bagli".equals(Gimbal.durumKisa());          // 27 Kas: gimbal bağlanınca/kopunca Stand sayfasına haber
+            if (bagli && gbSimdi != sonGbBagli) { sonGbBagli = gbSimdi; durumGonder(); }
             long surumAra = hizli() ? 25000L : gmBitis > System.currentTimeMillis() ? 2 * 60000L : 6 * 3600000L;
             if (sonSurumBakis == 0 || simdi - sonSurumBakis > surumAra) { sonSurumBakis = simdi; Guncelle.bak(Bekci.this); }
             else if (Guncelle.hazirSurum > 0) guncellemeIndi(Guncelle.hazirSurum);   // indiğinde Pixel meşguldüyse boşalınca

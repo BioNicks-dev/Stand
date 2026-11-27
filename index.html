@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 00:50">
+<meta name="stand-surum" content="27 Kas 01:00">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -305,6 +305,18 @@
   .secilir{-webkit-user-select:text;user-select:text}
   .ustLink{color:var(--ink-soft);text-decoration:none;font-size:14px;border:1px solid var(--line-strong);border-radius:var(--radius);padding:7px 10px;white-space:nowrap}
   .gizle{display:none !important}
+  /* 27 Kas: stand türüne göre düzen (Otomatik / V3 / Mota) */
+  body.turV3 .sadeceMota, body.turMota .sadeceV3{display:none !important}
+  .turSec{font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink);margin-left:auto;margin-right:8px;max-width:150px}
+  /* 27 Kas: ayarlar dört grup, bölümler kapalı başlar */
+  h2.grupBaslik{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-soft);margin:22px 0 6px}
+  details.ayarBolum{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin:0 0 8px}
+  details.ayarBolum>summary{list-style:none;cursor:pointer;padding:12px;font-weight:600;display:flex;align-items:center}
+  details.ayarBolum>summary::-webkit-details-marker{display:none}
+  details.ayarBolum>summary::after{content:"";margin-left:auto;width:8px;height:8px;border-right:2px solid var(--ink-soft);border-bottom:2px solid var(--ink-soft);transform:rotate(45deg);transition:transform .2s}
+  details.ayarBolum[open]>summary::after{transform:rotate(-135deg)}
+  .ayarIc{padding:0 12px 12px}
+  .ayarIc>.panel{background:var(--bg);margin-bottom:0}
   /* çizgi simgeler (19 Eki): kapalıysa üstü çizili */
   .ik{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;flex:none;pointer-events:none}
   .ik .cz{display:none} .kapali>.ik .cz{display:block}
@@ -617,7 +629,7 @@
     <button id="kGorBtn" aria-label="Görüntüyü aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-gor"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Görüntü</span></button>
     <button id="kFenerBtn" aria-label="Feneri aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-fener"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Fener</span></button>
     <button id="kKonumBtn" type="button" aria-label="Konumlar" aria-expanded="false"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.3" fill="currentColor"/></svg><span>Konum</span></button>
-    <button id="kTakipBtn" aria-label="İnsan / kedi takibini aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-takip"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Takip</span></button>
+    <button id="kTakipBtn" class="sadeceMota" aria-label="İnsan / kedi takibini aç veya kapat" disabled><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-takip"/><line class="cz" x1="3" y1="3" x2="21" y2="21"/></svg><span>Takip</span></button>
   </div>
 </div>
 
@@ -625,10 +637,11 @@
 <div class="wrap gizle" id="ana">
   <header>
     <h1>Stand kumandası</h1>
+    <select class="turSec" id="standTurSec" aria-label="Stand türü"><option value="oto">Otomatik</option><option value="v3">V3 (gimbal)</option><option value="mota">Mota</option></select>
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 00:50</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 01:00</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -643,13 +656,13 @@
     <div class="gosterge"><span>Uzak bağlantı</span><b id="gUzak" class="soluk">kapalı</b></div>
     <div class="gosterge"><span>Sunucu</span><b id="gSunucu" class="soluk">çevrimdışı</b></div>
     <div class="gosterge gizle" id="tbKutu" role="button" tabindex="0" aria-label="Terbiyeci durumu. İki kez dokununca Terbiyeci açılır ya da kapanır. Uzun basınca Terbiyeci günlüğü açılır."><span id="tbKutuBaslik">Terbiyeci</span><b id="gTb" class="soluk">bilinmiyor</b></div>
-    <div class="gosterge btKutu gizle" id="btKutu" role="button" tabindex="0" aria-label="Bluetooth durumu. Dokununca Bluetooth kartını yeniden başlatmayı sorar.">
+    <div class="gosterge btKutu gizle sadeceMota" id="btKutu" role="button" tabindex="0" aria-label="Bluetooth durumu. Dokununca Bluetooth kartını yeniden başlatmayı sorar.">
       <div><span>Bluetooth · iPhone</span><b id="gIphone" class="soluk">bilinmiyor</b></div>
       <div><span>Kumanda</span><b id="gKumanda" class="soluk">bilinmiyor</b></div>
     </div>
   </div>
 
-  <div class="panel gizle" id="baglanPanel">
+  <div class="panel gizle sadeceMota" id="baglanPanel">
     <button class="genis vurgu" id="baglanBtn">Standa bağlan</button>
     <div class="izgara2" style="margin-top:8px">
       <button class="kucuk gizle" id="sonBtn">Son cihaza bağlan</button>
@@ -679,7 +692,7 @@
 
   <div class="konumlar" id="konumlar"></div>
 
-  <div class="panel gizle" id="iphonePanel" style="padding:10px">
+  <div class="panel gizle sadeceMota" id="iphonePanel" style="padding:10px">
     <div class="satir" style="padding:0 0 8px;align-items:center">
       <span>iPhone kamerası</span>
       <button class="kucuk kameraIzin sadeceYonetici" id="kameraIzinBtn">Kamera izni: kapalı</button>
@@ -716,14 +729,14 @@
   <button class="genis dur" id="durBtn">Dur</button>
 
   <div class="izgara2" id="altDugmeler" style="margin-top:10px">
-    <button class="kucuk sadeceYonetici" id="sifirlaBtn">Başlangıç yap</button>
+    <button class="kucuk sadeceYonetici sadeceMota" id="sifirlaBtn">Başlangıç yap</button>
     <button class="kucuk" id="konumEkleBtn">Konumu kaydet</button>
   </div>
 
   <div class="altbilgi" id="altbilgi"></div>
 </div>
 
-<!-- ============ AYARLAR VE KALİBRASYON ============ -->
+<!-- ============ AYARLAR (27 Kas: dört grup, bölümler kapalı başlar) ============ -->
 <div id="ayarlar" class="gizle">
   <div class="wrap">
     <header>
@@ -732,25 +745,45 @@
       <button class="ikon" id="ayarKapatBtn" aria-label="Kapat">✕</button>
     </header>
 
-    <div class="sadeceYonetici">
-    <h2>İnce ayar</h2>
+    <h2 class="grupBaslik">Stand <span class="not" id="ayarTurYazi"></span></h2>
+    <details class="ayarBolum sadeceYonetici" id="ayInce">
+      <summary>İnce ayar</summary>
+      <div class="ayarIc">
     <div class="izgara2">
       <button id="azSolBtn">Az sola</button>
       <button id="azSagBtn">Az sağa</button>
       <button id="azYukBtn">Az yukarı</button>
       <button id="azAsaBtn">Az aşağı</button>
     </div>
-
-    <h2>Konum</h2>
+      </div>
+    </details>
+    <details class="ayarBolum sadeceYonetici" id="ayKonum">
+      <summary>Konumlar</summary>
+      <div class="ayarIc">
     <div class="panel">
-      <div class="satir"><span>Başlangıca göre dönüş</span><b id="donus">0°</b></div>
-      <div class="satir"><span>Eğme</span><b id="tiltDeger">0°</b></div>
+      <div class="satir sadeceMota"><span>Başlangıca göre dönüş</span><b id="donus">0°</b></div>
+      <div class="satir sadeceMota"><span>Eğme</span><b id="tiltDeger">0°</b></div>
       <div id="konumSilListe"></div>
     </div>
-    </div>
-
-    <div class="sadeceKopru">
-    <h2>Kalibrasyon</h2>
+      </div>
+    </details>
+    <details class="ayarBolum" id="ayKontrol">
+      <summary>Kontrol</summary>
+      <div class="ayarIc">
+        <div class="panel">
+          <label>Sayfadaki yön tuşları: yatay ters (ev kamerasını etkilemez)<input type="checkbox" id="tersX"></label>
+          <label>Sayfadaki yön tuşları: dikey ters (ev kamerasını etkilemez)<input type="checkbox" id="tersY"></label>
+          <label>Saat kumandası (⏭ sağa dön, ⏮ sola dön, ⏯ 180°; tekrar basınca durur)<input type="checkbox" id="saatAcik"></label>
+          <p class="not" id="saatDurum" style="margin:0 0 8px"></p>
+          <label class="sadeceYonetici">Kontrolü sadece Evi izle'deyken al (stand sayfasındayken kontrol ortak, kimse izin istemez)<input type="checkbox" id="kontrolIzle" checked></label>
+          <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
+          <label class="sadeceKopru sadeceMota">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
+        </div>
+      </div>
+    </details>
+    <details class="ayarBolum sadeceKopru sadeceMota" id="ayKal">
+      <summary>Kalibrasyon (Mota)</summary>
+      <div class="ayarIc">
     <div class="panel">
       <label style="border-top:none">Dönüş hızı (° / sn)<input type="number" id="hizInput" value="27" min="5" max="360" step="1"></label>
       <label>Eğme hızı (° / sn)<input type="number" id="tiltHizInput" value="27" min="2" max="180" step="1"></label>
@@ -758,31 +791,12 @@
       <label>Gönderim aralığı (ms)<input type="number" id="araInput" value="120" min="40" max="500" step="10"></label>
       <button class="genis kucuk" id="olcBtn" style="margin-top:6px">2 sn sağa (ölçüm)</button>
     </div>
-    </div>
-
-    <h2>Kullanım</h2>
-    <div class="panel">
-      <label style="border-top:none">Adın (diğer telefonlarda ve Pixel'de görünür)<input type="text" id="adInput" maxlength="16" placeholder="ör. Ayşe" autocomplete="off" autocapitalize="words" spellcheck="false"></label>
-      <label>Sayfası kapalı olanı nasıl çaldırsın<select id="gsCaldir"><option value="wa">WhatsApp'tan (Pixel arar)</option><option value="kestirme">Kestirmeyle ("Stand Ara", eski)</option><option value="yok">Çaldırma (sayfasını açınca çalar)</option></select></label>
-      <label>Sayfadaki yön tuşları: yatay ters (ev kamerasını etkilemez)<input type="checkbox" id="tersX"></label>
-      <label>Sayfadaki yön tuşları: dikey ters (ev kamerasını etkilemez)<input type="checkbox" id="tersY"></label>
-      <label>Ev kamerası düzeni<select id="kamDuzen"><option value="buyuk">Büyük (kontroller görüntüde)</option><option value="klasik">Klasik</option></select></label>
-      <label>Ev kamerası: 8 sn dokunulmazsa sadece görüntü kalsın (Büyük düzende)<input type="checkbox" id="sadeGoruntu" checked></label>
-      <label>Ev kamerası takibi: kimi<select id="takipHedef"><option value="herkes">Herkes (en büyük olan)</option><option value="insan">Sadece insan</option><option value="kedi">Sadece kedi</option></select></label>
-      <label>Ev kamerası takipte otomatik zoom<input type="checkbox" id="takipZoom"></label>
-      <label>Ev kamerasında tanıma kutularını göster<input type="checkbox" id="kutuGoster" checked></label>
-      <label class="sadeceKopru">Hazır bekle (standı hiç uyutma)<input type="checkbox" id="uyanikTut"></label>
-      <label>Ekran açık kalsın<input type="checkbox" id="ekranAcik" checked></label>
-      <label>Saat kumandası (⏭ sağa dön, ⏮ sola dön, ⏯ 180°; tekrar basınca durur)<input type="checkbox" id="saatAcik"></label>
-      <p class="not" id="saatDurum" style="margin:0 0 8px"></p>
-      <label class="sadeceYonetici">Kontrolü sadece Evi izle'deyken al (stand sayfasındayken kontrol ortak, kimse izin istemez)<input type="checkbox" id="kontrolIzle" checked></label>
-      <label class="sadeceYonetici">Evin sesi (Pixel mikrofonu; Evi izle açıkken değişir)<select id="mikGucSec" disabled><option value="1">Normal</option><option value="2">Yüksek</option><option value="3">Çok yüksek</option></select></label>
-      <label class="sadeceYonetici">Arama zili<input type="checkbox" id="aramaZil" checked></label>
-      <label class="sadeceYonetici">Arama titreşimi<input type="checkbox" id="aramaTitresim" checked></label>
-    </div>
-
-    <div id="kartAyarBolum" class="gizle">
-      <h2>Kart ayarları</h2>
+      </div>
+    </details>
+    <div id="kartAyarBolum" class="gizle sadeceMota">
+    <details class="ayarBolum" id="ayKart">
+      <summary>Kart ve kumanda (Mota)</summary>
+      <div class="ayarIc">
       <div class="panel">
         <label style="border-top:none">Fiziksel kumanda (MOTA): yatay ters<input type="checkbox" id="kumTersX"></label>
         <label>Fiziksel kumanda (MOTA): dikey ters<input type="checkbox" id="kumTersY"></label>
@@ -813,8 +827,11 @@
       <p class="not">Stand bağlıyken kart kumandayı kendiliğinden aramaz (arama standı düşürüyordu). Kumanda kopmuşsa önce kumandayı açın, sonra bu düğmeye basın.</p>
       <button class="genis" id="btYenidenBtn" style="margin-top:8px">Bluetooth kartını yeniden başlat</button>
       <p class="not">iPhone veya kumanda bağlanamıyorsa kullanın. Bağlantılar kısa süre kopar, 15–20 saniyede kendiliğinden geri gelir.</p>
-
-      <h2>İmleç ayarı (iPhone)</h2>
+      </div>
+    </details>
+    <details class="ayarBolum" id="ayImlec">
+      <summary>İmleç ayarı (iPhone)</summary>
+      <div class="ayarIc">
       <div class="panel">
         <label style="border-top:none">Hedef<select id="kalHedef">
           <option value="1">Kamera çevirme simgesi</option><option value="3">Küçük pencere</option>
@@ -834,10 +851,167 @@
         </div>
         <p class="not">WhatsApp görüşmesi açık ve menü görünürken başlatın. İmleç bir kez köşeden gelir, sonra oklarla olduğu yerden kayar. Hedefin üstüne gelince Kaydet'e basın. Uyandırma noktası: sağ altta, ana görüntü üzerinde, hiçbir düğmeye ve küçük pencereye denk gelmeyen boş bir yer.</p>
       </div>
+      </div>
+    </details>
     </div>
+    <details class="ayarBolum sadeceYonetici sadeceMota" id="ayKopru">
+      <summary>Bluetooth köprüsü (yedek, Mota)</summary>
+      <div class="ayarIc">
+        <div class="panel">
+        <p class="not" style="margin-top:0" id="kopruNot">Sadece kart çalışmazsa: Android telefon (Chrome) standa kendisi bağlanır ve diğer telefonlar onun üzerinden kontrol eder. Kart açıkken kullanmayın.</p>
+        <button class="genis kucuk" id="kopruBtn" style="margin-top:8px">Bu telefonu köprü yap</button>
+        </div>
+      </div>
+    </details>
 
-    <div class="sadeceYonetici">
-    <h2 class="baslikSatir">Kayıt <button class="kucuk yardimBtn" id="kayitYardimBtn" aria-label="Serial Monitor komutları" aria-expanded="false">?</button></h2>
+    <h2 class="grupBaslik">Görüşme ve ev kamerası</h2>
+    <details class="ayarBolum" id="ayGorusme">
+      <summary>Görüşme</summary>
+      <div class="ayarIc">
+        <div class="panel">
+          <label>Adın (diğer telefonlarda ve Pixel'de görünür)<input type="text" id="adInput" maxlength="16" placeholder="ör. Ayşe" autocomplete="off" autocapitalize="words" spellcheck="false"></label>
+          <label>Sayfası kapalı olanı nasıl çaldırsın<select id="gsCaldir"><option value="wa">WhatsApp'tan (Pixel arar)</option><option value="kestirme">Kestirmeyle ("Stand Ara", eski)</option><option value="yok">Çaldırma (sayfasını açınca çalar)</option></select></label>
+          <label class="sadeceYonetici">Arama zili<input type="checkbox" id="aramaZil" checked></label>
+          <label class="sadeceYonetici">Arama titreşimi<input type="checkbox" id="aramaTitresim" checked></label>
+        </div>
+        <div class="panel sadeceYonetici" style="margin-top:8px">
+        <div class="satir" style="margin-top:8px"><span>"Stand WhatsApp" kestirmesinin adresi</span><button class="kucuk" id="gsWaAdresBtn" style="width:auto">Kopyala</button></div>
+        <p class="not" style="margin:2px 0 0">Bu telefondaki adın için (<span id="gsWaAdresAd">-</span>). iPhone'daki kestirmeye yapıştırılır. Başka biri için adresin sonundaki <b>-ara-…</b> kısmına onun adını küçük harfle yaz (ör. -ara-seda).</p>
+        </div>
+      </div>
+    </details>
+    <details class="ayarBolum" id="ayEvKam">
+      <summary>Ev kamerası</summary>
+      <div class="ayarIc">
+        <div class="panel">
+          <label>Ev kamerası düzeni<select id="kamDuzen"><option value="buyuk">Büyük (kontroller görüntüde)</option><option value="klasik">Klasik</option></select></label>
+          <label>Ev kamerası: 8 sn dokunulmazsa sadece görüntü kalsın (Büyük düzende)<input type="checkbox" id="sadeGoruntu" checked></label>
+          <label>Ev kamerasında tanıma kutularını göster<input type="checkbox" id="kutuGoster" checked></label>
+          <label class="sadeceYonetici">Evin sesi (Pixel mikrofonu; Evi izle açıkken değişir)<select id="mikGucSec" disabled><option value="1">Normal</option><option value="2">Yüksek</option><option value="3">Çok yüksek</option></select></label>
+        </div>
+        <div class="panel sadeceMota" style="margin-top:8px">
+          <label>Ev kamerası takibi: kimi<select id="takipHedef"><option value="herkes">Herkes (en büyük olan)</option><option value="insan">Sadece insan</option><option value="kedi">Sadece kedi</option></select></label>
+          <label>Ev kamerası takipte otomatik zoom<input type="checkbox" id="takipZoom"></label>
+        </div>
+      </div>
+    </details>
+
+    <h2 class="grupBaslik sadeceYonetici">Güvenlik</h2>
+    <details class="ayarBolum sadeceYonetici" id="ayGizlilik">
+      <summary>Gizlilik</summary>
+      <div class="ayarIc">
+        <div class="panel">
+        <p class="not" style="margin:0 0 6px">Başkası Evi izle'ye bağlanırken aşağıdaki durumlarda telefonuna ntfy bildirimi gelir. 15 sn içinde engellemezsen bağlanır. Bildirim konusu bu bölümün altında.</p>
+        <label style="border-top:none">Gizlilik kuralı<input type="checkbox" id="gkAcik"></label>
+        <label>Evdeyken sor (XR karta bağlıysa)<input type="checkbox" id="gkEvde"></label>
+        <label>Hafta içi bu saatlerde sor (Florida saati)<input type="checkbox" id="gkHi"></label>
+        <div class="satir"><span>Başlangıç</span><input type="time" id="gkBas"></div>
+        <div class="satir"><span>Bitiş (ertesi sabah olabilir)</span><input type="time" id="gkBit"></div>
+        <label>Hafta sonu tüm gün sor<input type="checkbox" id="gkHs"></label>
+        <label>Stand sayfam açıkken sormadan bağlansın<input type="checkbox" id="gkSayfa"></label>
+        <label>Biri izleyip çıkınca sessiz özet gönder<input type="checkbox" id="gkOzet"></label>
+        <p class="not" style="margin:0 0 4px">Sen değil de başkası (ör. Seda) Evi izle'den çıkınca "Seda izledi · 4 dk" bildirimi gelir; ses ve titreşim yok, sadece listede durur. Saat ve evde kuralına bakmaz.</p>
+        <label>İzin süresi (kopup dönerse yeniden sorulmaz)<select id="gkSure"><option value="5">5 dk</option><option value="15">15 dk</option><option value="30">30 dk</option><option value="60">60 dk</option></select></label>
+        <p class="not" id="gkDurum"></p>
+        </div>
+        <div class="panel" style="margin-top:8px">
+          <h3 class="bildBaslik" style="margin-top:0">Bildirim (ntfy)</h3>
+        <p class="not" style="margin:0 0 4px">Bildirimler telefonundaki ntfy uygulamasına gelir. Her biri için: Oluştur'a bas, Kopyala ile konuyu al, ntfy'de bu konuya abone ol, sonra Deneme'ye bas.</p>
+        <p class="not" style="margin:0 0 4px">Biri Evi izle'ye bağlanırken sorar.</p>
+        <div class="satir"><span>Konu</span><b id="gkKonu" class="secilir">yok</b></div>
+        <div class="izgara3" style="margin-top:6px">
+          <button class="kucuk" id="gkOlusturBtn">Oluştur</button>
+          <button class="kucuk" id="gkKopyalaBtn">Kopyala</button>
+          <button class="kucuk" id="gkDenemeBtn">Deneme</button>
+        </div>
+        </div>
+      </div>
+    </details>
+    <details class="ayarBolum sadeceYonetici" id="ayTerbiyeci">
+      <summary>Terbiyeci</summary>
+      <div class="ayarIc">
+        <div class="panel">
+        <p class="not" style="margin:0 0 6px">Pixel, kedinin tezgaha ya da masaya çıkmasını izler ve sana haber verir. Pixel bekleme modundayken ve kimse Evi izle'de değilken çalışır.</p>
+        <label style="border-top:none">Terbiyeci<input type="checkbox" id="tbAcik"></label>
+        <div class="satir"><span>Durum</span><b id="tbDurum">-</b></div>
+        <div class="satir"><span>Bugün</span><b id="tbBugunY">-</b></div>
+        <p class="not" id="tbUyari"></p>
+        <details class="tbAc">
+          <summary>Alanlar</summary>
+          <p class="not" style="margin:0 0 8px">Kırmızı alan, kedinin ayaklarının basacağı yerdir. Tezgah için tezgahın üst yüzeyini, masa için masanın kenarını boydan boya çiz. Yeri alana katma, yoksa yerdeki kedi ya da oyuncak da sayılır. Çizmek için önce Pixel'den görüntüleri al.</p>
+          <button class="kucuk genis" id="tbFotoBtn">Görüntüleri al</button>
+        <div id="tbCizim" class="gizle">
+          <p class="not">Görüntüler kilitli durur, yanlışlıkla dokunmak bir şey değiştirmez. Çiz'e bas, görüntünün üstünde parmağını sürükle; parmağını kaldırınca kilitlenir. Silmek için Çiz'e basıp görüntüye kısa dokun. Bitince Alanları kaydet'e bas.</p>
+          <div class="tbIkili">
+            <div><b>Tezgah (arka kamera)</b><canvas id="tbCanEnv"></canvas><button class="kucuk genis" id="tbSilEnv">Çiz</button></div>
+            <div><b>Masa (ön kamera)</b><canvas id="tbCanUser"></canvas><button class="kucuk genis" id="tbSilUser">Çiz</button></div>
+          </div>
+          <button class="genis" id="tbKaydetBtn" style="margin-top:8px">Alanları kaydet</button>
+        </div>
+        </details>
+        <details class="tbAc">
+          <summary>Kurallar</summary>
+          <label>Masada kedi kameraya çok yakınsa da say<input type="checkbox" id="tbBuyuk"></label>
+          <p class="not" style="margin:0 0 4px">Kedi ön kameranın önüne gelip görüntüyü kaplarsa, ayakları görünmese de sayılır.</p>
+          <label>Ne zaman çalışsın<select id="tbGunSec"><option value="hi">Hafta içi</option><option value="her">Her gün</option><option value="hs">Hafta sonu</option><option value="hep">Her zaman</option></select></label>
+          <div class="satir" id="tbBasSatir"><span>Başlangıç</span><input type="time" id="tbBas"></div>
+          <div class="satir" id="tbBitSatir"><span>Bitiş (ertesi sabah olabilir)</span><input type="time" id="tbBit"></div>
+          <p class="not" style="margin:0 0 4px">Terbiyeci sadece bu saatlerde çalışır (Pixel'in saati, Florida). Saat dışında kameralar kapalı kalır, Pixel dinlenir.</p>
+          <label>Pil koruması<select id="tbPil"><option value="0">Kapalı</option><option value="20">%20</option><option value="30">%30</option><option value="40">%40</option><option value="50">%50</option></select></label>
+          <p class="not" style="margin:0">Pixel şarjda değilken pil bu seviyeye inerse Terbiyeci durur ve sana haber verir. Şarja takınca kendiliğinden devam eder.</p>
+          <label>Nöbet (1 dk izle, 1 dk dinlen)<select id="tbHafif"><option value="pil">Pildeyken</option><option value="hep">Her zaman</option><option value="yok">Kapalı</option></select></label>
+          <p class="not" style="margin:0 0 4px">Nöbette kameralar 1 dk izler, 1 dk dinlenir; kedi görülürken ya da hareket varken dinlenmez. Bildirim en fazla 1 dk gecikebilir. "Pildeyken" seçiliyse şarjdayken kesintisiz izler. Her durumda görüntü küçük (320×240, saniyede 2 kare); kedi görülünce o kamera büyür ki fotoğraf ve video net olsun.</p>
+          <label>Evdeyken dur (XR karta bağlıysa)<input type="checkbox" id="tbEvde"></label>
+          <label>Sabah başlayınca haber ver<input type="checkbox" id="tbBasBildir"></label>
+          <p class="not" style="margin:0 0 4px">Terbiyeci günün ilk kez kendiliğinden başladığında bildirim gelir (elle açınca gelmez).</p>
+          <p class="not">Ayrıca her zaman: tanıma sadece hareket olunca çalışır, ev 2 dk karanlık kalırsa kameralar kapanır, Pixel çok zorlanırsa 5 dk mola verir.</p>
+          <label>Bir ziyarette en fazla bildirim<select id="tbBildirimSec"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
+          <p class="not" style="margin:0">Kedi çıkınca fotoğraf ve video, 2. dakikada fotoğraf ve video, sonra 5., 10. ve 15. dakikada sadece fotoğraf (seçtiğin sayıya kadar). Kedi inince "indi" bildirimi her zaman gelir. Masa ve tezgah ayrı sayılır. Bildirim konusu bu bölümün altında, günlük Kayıt'ın Terbiyeci sekmesinde. Terbiyeci'yi elle açınca saat dışında da 15 dk çalışır (geliştirme modu açıksa onun sonuna kadar), sonra saat düzenine döner.</p>
+        </details>
+        </div>
+        <div class="panel" style="margin-top:8px">
+          <h3 class="bildBaslik" style="margin-top:0">Bildirim (ntfy)</h3>
+        <p class="not" style="margin:0 0 4px">Kedi tezgaha ya da masaya çıkınca fotoğraf ve videoyla haber verir. Deneme'de Pixel bir fotoğraf çekip gönderir.</p>
+        <div class="satir"><span>Konu</span><b id="tbKonuY" class="secilir">-</b></div>
+        <div class="izgara3" style="margin-top:6px">
+          <button class="kucuk" id="tbKonuOlusturBtn">Oluştur</button>
+          <button class="kucuk" id="tbKonuKopyalaBtn">Kopyala</button>
+          <button class="kucuk" id="tbDenemeBtn">Deneme</button>
+        </div>
+        </div>
+      </div>
+    </details>
+
+    <h2 class="grupBaslik">Sistem</h2>
+    <details class="ayarBolum sadeceYonetici" id="ayGuncelleme">
+      <summary>Güncelleme</summary>
+      <div class="ayarIc">
+        <div class="panel">
+        <div class="satir" style="border-top:none"><span>Pixel</span><b id="gmPixel">—</b></div>
+        <button class="kucuk" id="gmSimdiBtn" style="width:100%;margin-top:6px">Pixel'i şimdi güncelle</button>
+        <p class="not" style="margin:6px 0 0">Stand Yükle'den sonra kendiliğinden olur; bu düğme yedek. Pixel 10 dk boyunca yarım dakikada bir yeni sürüme bakar ve gelince <b>izleniyor olsa da</b> hemen kurar (görüntü birkaç saniye kesilir). <span id="gmDurum"></span></p>
+        </div>
+      </div>
+    </details>
+    <details class="ayarBolum" id="ayBaglanti">
+      <summary>Bağlantı</summary>
+      <div class="ayarIc">
+    <div class="panel">
+      <div class="satir"><span>Oda kodu</span><b id="odaAd">—</b></div>
+      <div class="satir"><span>Yetki</span><b id="ykAd">—</b></div>
+      <div class="satir"><span>Mod</span><b id="rolAd">—</b></div>
+      <div class="sadeceYonetici">
+        <div class="satir"><span>Kart sürümleri</span><b id="surumAd">—</b></div>
+        <div class="satir"><span>Arama dinleme</span><b id="aramaDinlemeAd">—</b></div>
+      </div>
+      <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Bağlantı bilgilerini değiştir</button>
+    </div>
+      </div>
+    </details>
+    <details class="ayarBolum sadeceYonetici" id="kayitBolum">
+      <summary>Kayıt</summary>
+      <div class="ayarIc">
+        <div class="satir sadeceYonetici" style="border-top:none;padding:0 0 6px"><span>Kartların Serial Monitor komutları</span><button class="kucuk yardimBtn" id="kayitYardimBtn" aria-label="Serial Monitor komutları" aria-expanded="false">?</button></div>
     <div class="panel gizle" id="kayitYardim">
       <p class="not" style="margin-top:0">Kart bilgisayara USB ile bağlıyken Arduino IDE'de Serial Monitor'a (115200) yazılır. Çoğunun karşılığı bu sayfada zaten var. USB internet kartındayken Bluetooth kartının yazıları da orada [BT] ile görünür, ama harfler sadece USB takılı karta gider.</p>
       <div class="komutlar">
@@ -887,122 +1061,8 @@
       <p class="not gizle" id="tbGunlukNot" style="margin:8px 0 0">Son 14 günün ziyaretleri ve olayları. Pil satırlarında o arada hangi modda ne kadar kalındığı yazar (bekleme, Terbiyeci, Evi izle, takip); gece yarısı gün özeti her modun saatte ne kadar pil yediğini gösterir. Sekmeye her basışta Pixel'den yeniden istenir. Uzun takip için bu sekmede Temizle kapalı.</p>
       <div id="tbGunluk" class="gizle"><span class="not">Pixel'den isteniyor…</span></div>
     </div>
-    </div>
-
-    <div class="sadeceYonetici">
-      <h2>Bildirimler</h2>
-      <div class="panel">
-        <p class="not" style="margin:0 0 4px">Bildirimler telefonundaki ntfy uygulamasına gelir. Her biri için: Oluştur'a bas, Kopyala ile konuyu al, ntfy'de bu konuya abone ol, sonra Deneme'ye bas.</p>
-        <h3 class="bildBaslik">Gizlilik</h3>
-        <p class="not" style="margin:0 0 4px">Biri Evi izle'ye bağlanırken sorar.</p>
-        <div class="satir"><span>Konu</span><b id="gkKonu" class="secilir">yok</b></div>
-        <div class="izgara3" style="margin-top:6px">
-          <button class="kucuk" id="gkOlusturBtn">Oluştur</button>
-          <button class="kucuk" id="gkKopyalaBtn">Kopyala</button>
-          <button class="kucuk" id="gkDenemeBtn">Deneme</button>
-        </div>
-        <h3 class="bildBaslik">Terbiyeci</h3>
-        <p class="not" style="margin:0 0 4px">Kedi tezgaha ya da masaya çıkınca fotoğraf ve videoyla haber verir. Deneme'de Pixel bir fotoğraf çekip gönderir.</p>
-        <div class="satir"><span>Konu</span><b id="tbKonuY" class="secilir">-</b></div>
-        <div class="izgara3" style="margin-top:6px">
-          <button class="kucuk" id="tbKonuOlusturBtn">Oluştur</button>
-          <button class="kucuk" id="tbKonuKopyalaBtn">Kopyala</button>
-          <button class="kucuk" id="tbDenemeBtn">Deneme</button>
-        </div>
       </div>
-    </div>
-
-    <div class="sadeceYonetici">
-      <h2>Gizlilik</h2>
-      <div class="panel">
-        <p class="not" style="margin:0 0 6px">Başkası Evi izle'ye bağlanırken aşağıdaki durumlarda telefonuna ntfy bildirimi gelir. 15 sn içinde engellemezsen bağlanır. Bildirim konusu Bildirimler bölümünde.</p>
-        <label style="border-top:none">Gizlilik kuralı<input type="checkbox" id="gkAcik"></label>
-        <label>Evdeyken sor (XR karta bağlıysa)<input type="checkbox" id="gkEvde"></label>
-        <label>Hafta içi bu saatlerde sor (Florida saati)<input type="checkbox" id="gkHi"></label>
-        <div class="satir"><span>Başlangıç</span><input type="time" id="gkBas"></div>
-        <div class="satir"><span>Bitiş (ertesi sabah olabilir)</span><input type="time" id="gkBit"></div>
-        <label>Hafta sonu tüm gün sor<input type="checkbox" id="gkHs"></label>
-        <label>Stand sayfam açıkken sormadan bağlansın<input type="checkbox" id="gkSayfa"></label>
-        <label>Biri izleyip çıkınca sessiz özet gönder<input type="checkbox" id="gkOzet"></label>
-        <p class="not" style="margin:0 0 4px">Sen değil de başkası (ör. Seda) Evi izle'den çıkınca "Seda izledi · 4 dk" bildirimi gelir; ses ve titreşim yok, sadece listede durur. Saat ve evde kuralına bakmaz.</p>
-        <label>İzin süresi (kopup dönerse yeniden sorulmaz)<select id="gkSure"><option value="5">5 dk</option><option value="15">15 dk</option><option value="30">30 dk</option><option value="60">60 dk</option></select></label>
-        <p class="not" id="gkDurum"></p>
-        <div class="satir" style="margin-top:8px"><span>"Stand WhatsApp" kestirmesinin adresi</span><button class="kucuk" id="gsWaAdresBtn" style="width:auto">Kopyala</button></div>
-        <p class="not" style="margin:2px 0 0">Bu telefondaki adın için (<span id="gsWaAdresAd">-</span>). iPhone'daki kestirmeye yapıştırılır. Başka biri için adresin sonundaki <b>-ara-…</b> kısmına onun adını küçük harfle yaz (ör. -ara-seda).</p>
-      </div>
-    </div>
-
-    <div class="sadeceYonetici">
-      <h2>Terbiyeci</h2>
-      <div class="panel">
-        <p class="not" style="margin:0 0 6px">Pixel, kedinin tezgaha ya da masaya çıkmasını izler ve sana haber verir. Pixel bekleme modundayken ve kimse Evi izle'de değilken çalışır.</p>
-        <label style="border-top:none">Terbiyeci<input type="checkbox" id="tbAcik"></label>
-        <div class="satir"><span>Durum</span><b id="tbDurum">-</b></div>
-        <div class="satir"><span>Bugün</span><b id="tbBugunY">-</b></div>
-        <p class="not" id="tbUyari"></p>
-        <details class="tbAc">
-          <summary>Alanlar</summary>
-          <p class="not" style="margin:0 0 8px">Kırmızı alan, kedinin ayaklarının basacağı yerdir. Tezgah için tezgahın üst yüzeyini, masa için masanın kenarını boydan boya çiz. Yeri alana katma, yoksa yerdeki kedi ya da oyuncak da sayılır. Çizmek için önce Pixel'den görüntüleri al.</p>
-          <button class="kucuk genis" id="tbFotoBtn">Görüntüleri al</button>
-        <div id="tbCizim" class="gizle">
-          <p class="not">Görüntüler kilitli durur, yanlışlıkla dokunmak bir şey değiştirmez. Çiz'e bas, görüntünün üstünde parmağını sürükle; parmağını kaldırınca kilitlenir. Silmek için Çiz'e basıp görüntüye kısa dokun. Bitince Alanları kaydet'e bas.</p>
-          <div class="tbIkili">
-            <div><b>Tezgah (arka kamera)</b><canvas id="tbCanEnv"></canvas><button class="kucuk genis" id="tbSilEnv">Çiz</button></div>
-            <div><b>Masa (ön kamera)</b><canvas id="tbCanUser"></canvas><button class="kucuk genis" id="tbSilUser">Çiz</button></div>
-          </div>
-          <button class="genis" id="tbKaydetBtn" style="margin-top:8px">Alanları kaydet</button>
-        </div>
-        </details>
-        <details class="tbAc">
-          <summary>Kurallar</summary>
-          <label>Masada kedi kameraya çok yakınsa da say<input type="checkbox" id="tbBuyuk"></label>
-          <p class="not" style="margin:0 0 4px">Kedi ön kameranın önüne gelip görüntüyü kaplarsa, ayakları görünmese de sayılır.</p>
-          <label>Ne zaman çalışsın<select id="tbGunSec"><option value="hi">Hafta içi</option><option value="her">Her gün</option><option value="hs">Hafta sonu</option><option value="hep">Her zaman</option></select></label>
-          <div class="satir" id="tbBasSatir"><span>Başlangıç</span><input type="time" id="tbBas"></div>
-          <div class="satir" id="tbBitSatir"><span>Bitiş (ertesi sabah olabilir)</span><input type="time" id="tbBit"></div>
-          <p class="not" style="margin:0 0 4px">Terbiyeci sadece bu saatlerde çalışır (Pixel'in saati, Florida). Saat dışında kameralar kapalı kalır, Pixel dinlenir.</p>
-          <label>Pil koruması<select id="tbPil"><option value="0">Kapalı</option><option value="20">%20</option><option value="30">%30</option><option value="40">%40</option><option value="50">%50</option></select></label>
-          <p class="not" style="margin:0">Pixel şarjda değilken pil bu seviyeye inerse Terbiyeci durur ve sana haber verir. Şarja takınca kendiliğinden devam eder.</p>
-          <label>Nöbet (1 dk izle, 1 dk dinlen)<select id="tbHafif"><option value="pil">Pildeyken</option><option value="hep">Her zaman</option><option value="yok">Kapalı</option></select></label>
-          <p class="not" style="margin:0 0 4px">Nöbette kameralar 1 dk izler, 1 dk dinlenir; kedi görülürken ya da hareket varken dinlenmez. Bildirim en fazla 1 dk gecikebilir. "Pildeyken" seçiliyse şarjdayken kesintisiz izler. Her durumda görüntü küçük (320×240, saniyede 2 kare); kedi görülünce o kamera büyür ki fotoğraf ve video net olsun.</p>
-          <label>Evdeyken dur (XR karta bağlıysa)<input type="checkbox" id="tbEvde"></label>
-          <label>Sabah başlayınca haber ver<input type="checkbox" id="tbBasBildir"></label>
-          <p class="not" style="margin:0 0 4px">Terbiyeci günün ilk kez kendiliğinden başladığında bildirim gelir (elle açınca gelmez).</p>
-          <p class="not">Ayrıca her zaman: tanıma sadece hareket olunca çalışır, ev 2 dk karanlık kalırsa kameralar kapanır, Pixel çok zorlanırsa 5 dk mola verir.</p>
-          <label>Bir ziyarette en fazla bildirim<select id="tbBildirimSec"><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
-          <p class="not" style="margin:0">Kedi çıkınca fotoğraf ve video, 2. dakikada fotoğraf ve video, sonra 5., 10. ve 15. dakikada sadece fotoğraf (seçtiğin sayıya kadar). Kedi inince "indi" bildirimi her zaman gelir. Masa ve tezgah ayrı sayılır. Bildirim konusu Bildirimler bölümünde, günlük Kayıt'ın Terbiyeci sekmesinde. Terbiyeci'yi elle açınca saat dışında da 15 dk çalışır (geliştirme modu açıksa onun sonuna kadar), sonra saat düzenine döner.</p>
-        </details>
-      </div>
-    </div>
-
-    <div class="sadeceYonetici">
-      <h2>Güncelleme</h2>
-      <div class="panel">
-        <div class="satir" style="border-top:none"><span>Pixel</span><b id="gmPixel">—</b></div>
-        <button class="kucuk" id="gmSimdiBtn" style="width:100%;margin-top:6px">Pixel'i şimdi güncelle</button>
-        <p class="not" style="margin:6px 0 0">Stand Yükle'den sonra kendiliğinden olur; bu düğme yedek. Pixel 10 dk boyunca yarım dakikada bir yeni sürüme bakar ve gelince <b>izleniyor olsa da</b> hemen kurar (görüntü birkaç saniye kesilir). <span id="gmDurum"></span></p>
-      </div>
-    </div>
-
-    <h2>Bağlantı</h2>
-    <div class="panel">
-      <div class="satir"><span>Oda kodu</span><b id="odaAd">—</b></div>
-      <div class="satir"><span>Yetki</span><b id="ykAd">—</b></div>
-      <div class="satir"><span>Mod</span><b id="rolAd">—</b></div>
-      <div class="sadeceYonetici">
-        <div class="satir"><span>Kart sürümleri</span><b id="surumAd">—</b></div>
-        <div class="satir"><span>Arama dinleme</span><b id="aramaDinlemeAd">—</b></div>
-      </div>
-      <button class="genis kucuk" id="rolDegistirBtn" style="margin-top:6px">Bağlantı bilgilerini değiştir</button>
-    </div>
-
-    <div class="sadeceYonetici">
-      <h2>Bluetooth köprüsü (yedek)</h2>
-      <div class="panel">
-        <p class="not" style="margin-top:0" id="kopruNot">Sadece kart çalışmazsa: Android telefon (Chrome) standa kendisi bağlanır ve diğer telefonlar onun üzerinden kontrol eder. Kart açıkken kullanmayın.</p>
-        <button class="genis kucuk" id="kopruBtn" style="margin-top:8px">Bu telefonu köprü yap</button>
-      </div>
-    </div>
+    </details>
   </div>
 </div>
 
@@ -1413,7 +1473,7 @@
       }
       if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
       if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
-      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); gmArayuz(); return; }
+      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); gmArayuz(); try{ turUygula(); }catch(h){} return; }
       if(konu.slice(-8)==="/kamkapi"){ var kk=null; try{ kk=JSON.parse(veri.toString()); }catch(h){} kamKapiGeldi(kk); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       if(konu.slice(-6)==="/arama"){ gsMesaj(veri.toString()); return; }
@@ -2582,6 +2642,7 @@
   }
   window.addEventListener("resize",function(){ clearTimeout(uzakKayOlc._t); uzakKayOlc._t=setTimeout(uzakKayOlc,300); });
   function guncelle(){
+    try{ turUygula(); }catch(h){}
     var sunucuVar=istemci&&istemci.connected;
     goster("gSunucu",!kod?"oda kodu yok":(sunucuVar?"çevrimiçi":(sunucuHatasi||"çevrimdışı")),sunucuVar?"iyi":"kotu");
 
@@ -2595,7 +2656,7 @@
       });
       uzakYaz(aktifler.length?aktifler.join(", "):"kapalı",aktifler.length?"iyi":"soluk");
       padEl.classList.toggle("pasif",!standBagli&&!gbAktif());
-      if(gbAktif()) goster("gStand","V3 bağlı (Pixel)","iyi");
+      if(gbAktif()||gbBekci()) goster("gStand","V3 bağlı (Pixel)","iyi");
       E("btKutu").classList.add("gizle");
     } else {
       var taze=sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE;
@@ -2610,7 +2671,7 @@
         goster("gIzin",sonDurum.izin?"açık":"kapalı",sonDurum.izin?"iyi":"uyari");
       }
       padEl.classList.toggle("pasif",!(taze&&sonDurum.stand)&&!gbAktif());
-      if(gbAktif()) goster("gStand","V3 bağlı (Pixel)","iyi");
+      if(gbAktif()||gbBekci()) goster("gStand","V3 bağlı (Pixel)","iyi");
       pixelKutusu();
       E("sinirNot").classList.toggle("gizle",!(taze&&sonDurum.sinirde));
       var net=(sonDurum&&sonDurum.net)||null;
@@ -2683,6 +2744,32 @@
   var gbSonVardi="", gbSonGonder=0, gbEgmeYon=0, gbEgmeBas=0, gbEgmeKilit=false;
   var GB_YATAY_EN=250, GB_DIKEY_EN=150, GB_EGME_SURE=1e9;   // 26 Kas 3b: 2,5 sn kuralı kapandı, Pixel ±40° eğme sınırını ve yatay mekanik sınırı kendisi koruyor   // 26 Kas: hız sınırları; eğme 2,5 sn'den uzun aynı yöne gitmez
   function gbAktif(){ return !!(grAcik&&grYet&&grYet.gimbal&&grYet.gimbal.durum==="bagli"); }
+  // 27 Kas: Evi izle kapalıyken de Pixel'in bekçisi "gimbal bağlı" bildirir (uygulama v41+)
+  function gbBekci(){ return !!(bekciDurum&&bekciDurum.gb==="bagli"); }
+  // ---------- 27 Kas: stand türü (Otomatik / V3 / Mota) ----------
+  // Otomatik: Pixel gimbalı bağlı bildiriyorsa V3; Mota (kart ya da köprü) bağlıysa Mota; ikisi de yoksa son bilinen (yoksa V3).
+  function turSecim(){ var v=""; try{ v=localStorage.getItem("stand_tur")||""; }catch(h){} return v==="v3"||v==="mota"?v:"oto"; }
+  function standTur(){
+    var sec=turSecim(); if(sec!=="oto") return sec;
+    var motaVar=rol==="evde"?!!standBagli:!!(sonDurum&&Date.now()-sonDurumZaman<TAZE_SURE&&sonDurum.stand);
+    var t=gbAktif()||gbBekci()?"v3":motaVar?"mota":"";
+    if(t){ try{ localStorage.setItem("stand_sonTur",t); }catch(h){} return t; }
+    var son=""; try{ son=localStorage.getItem("stand_sonTur")||""; }catch(h){}
+    return son==="mota"?"mota":"v3";
+  }
+  var turSon="";
+  function turUygula(){
+    var t=standTur(), sec=turSecim();
+    document.body.classList.toggle("turV3",t==="v3"); document.body.classList.toggle("turMota",t==="mota");
+    var s=E("standTurSec"); if(s){ s.value=sec; s.options[0].textContent="Otomatik ("+(t==="v3"?"V3":"Mota")+")"; }
+    var y=E("ayarTurYazi"); if(y) y.textContent="· "+(t==="v3"?"V3 (gimbal)":"Mota");
+    if(t!==turSon){ if(turSon) yaz("Stand düzeni: "+(t==="v3"?"V3 (gimbal)":"Mota")+(sec==="oto"?" (otomatik)":"")+"."); turSon=t; }
+  }
+  E("standTurSec").addEventListener("change",function(){
+    var v=this.value; try{ if(v==="oto") localStorage.removeItem("stand_tur"); else localStorage.setItem("stand_tur",v); }catch(h){}
+    turUygula();
+  });
+  setTimeout(turUygula,0); setInterval(turUygula,5000);
   function gbHiz(v,en){ var a=Math.abs(v); if(a<0.12) return 0; return Math.round((v>0?1:-1)*(30+(Math.min(1,a)-0.12)/0.88*(en-30))); }
   // 26 Kas: 2 hücreli lityum pilin boşalma eğrisi (hücre başına volt → %); 6,54 V doğrusalda %0 çıkıyordu, gimbal ışığı ise henüz kırmızı sabitti
   var gbPilYuzde=function(mv){ var v=mv/2000, e=[[3.23,0],[3.27,5],[3.40,12],[3.54,20],[3.60,25],[3.70,35],[3.75,45],[3.80,55],[3.90,68],[4.00,80],[4.10,90],[4.20,100]]; if(v<=e[0][0]) return 0; for(var i=1;i<e.length;i++){ if(v<=e[i][0]){ var a=e[i-1],b=e[i]; return Math.round(a[1]+(v-a[0])/(b[0]-a[0])*(b[1]-a[1])); } } return 100; };
@@ -3641,6 +3728,7 @@
   })();
   function tbGunlukAc(){
     E("ayarAcBtn").onclick();
+    try{ E("kayitBolum").open=true; }catch(h){}
     kySekme="terbiyeci"; kyCiz();
     setTimeout(function(){ try{ E("kySekmeler").scrollIntoView({block:"start"}); }catch(h){} },50);
     tbGunlukIste();
@@ -3780,7 +3868,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 00:50";
+  var SAYFA_SURUM="27 Kas 01:00";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
