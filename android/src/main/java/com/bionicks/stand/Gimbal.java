@@ -42,8 +42,6 @@ final class Gimbal {
     private static final UUID SERVIS = UUID.fromString("0000ffe0-0000-1000-8000-00805f9b34fb");
     private static final UUID YAZ = UUID.fromString("0000ffe1-0000-1000-8000-00805f9b34fb");
     private static final UUID OKU = UUID.fromString("0000ffe2-0000-1000-8000-00805f9b34fb");
-    // 26 Kas 17:25: kullanılmayan ikinci cevap kanalı; "Kumanda öğren" için sadece telefon tarafında dinlenir (gimbala yazılmaz)
-    private static final UUID OKU2 = UUID.fromString("0000ffe4-0000-1000-8000-00805f9b34fb");
     private static final String AD_ONEK = "SV3";
 
     // Hohem Joy'un bağlanınca gönderdikleri (aynı sıra). Hareket bunlar gönderilince çalıştı.
@@ -78,9 +76,6 @@ final class Gimbal {
     private boolean taraniyor = false, calisiyor = false, hazir = false, yaziyor = false;
     private final ArrayDeque<byte[]> kuyruk = new ArrayDeque<>();
     // 26 Kas 20:00: "kumanda gibi" denemesi için FFE3 kanalı (Hohem Joy kullanmıyor) ve ayrı kuyruğu
-    private static final UUID YAZ3 = UUID.fromString("0000ffe3-0000-1000-8000-00805f9b34fb");
-    private BluetoothGattCharacteristic yazKar3 = null;
-    private final ArrayDeque<byte[]> kuyruk3 = new ArrayDeque<>();
     private long yazmaBasi = 0;
     private boolean servisAramaBasladi = false;
     private final java.io.ByteArrayOutputStream parca = new java.io.ByteArrayOutputStream();
@@ -177,8 +172,6 @@ final class Gimbal {
             o.put("gucKapatAc", g.aciKurtarma >= 3);
             o.put("aciYok", g.hazir && SystemClock.elapsedRealtime() - Math.max(g.a84Zaman, g.hazirZaman) > 3000);
             o.put("ayar", g.ayarYazi); o.put("ayarliyor", g.testAktif);
-            o.put("kg", g.kgYazi); o.put("kgFfe3", g.yazKar3 != null);
-            o.put("ogren", g.ogrYazi); o.put("ogreniyor", g.ogrAktif); o.put("ogrEvre", g.ogrEvre);
             if (g.solVar) o.put("sol", Math.round(g.sol));
             int[] a = g.a84;
             if (a != null && SystemClock.elapsedRealtime() - g.a84Zaman < 3000) {
@@ -400,15 +393,6 @@ final class Gimbal {
         });
     }
 
-    // Deneme için ham paket (onaltılık)
-    static void ham(final String hex) {
-        final Gimbal g = ben;
-        if (g == null) return;
-        final byte[] b = hexten(hex);
-        if (b == null) { Kayit.yaz("Gimbal: ham paket geçersiz."); return; }
-        g.h.post(() -> g.gonder(b));
-    }
-
     static void yenidenBaglan() {
         final Gimbal g = ben;
         if (g == null) return;
@@ -546,7 +530,6 @@ final class Gimbal {
             gatt = null;
             if (hazir) Kayit.yaz("Gimbal: bağlantı kapandı (" + neden + ").");
         }
-        if (ogrAktif && hazir) ogrKoptu = true;
         hazir = false; yazKar = null; kuyruk.clear(); yaziyor = false; hareketEdiyor = false;
         if (calisiyor) durum = "araniyor";
     }
@@ -587,13 +570,9 @@ final class Gimbal {
                 BluetoothGattCharacteristic o = s == null ? null : s.getCharacteristic(OKU);
                 if (y == null) { sonHata = "FFE1 bulunamadı"; kapat("FFE1 yok"); h.postDelayed(Gimbal.this::ara, 20000); return; }
                 yazKar = y;
-                yazKar3 = s.getCharacteristic(YAZ3);
                 // Hohem Joy cevap kanalını açmak için gimbala bir şey yazmıyor; gimbal cevapları kendisi yolluyor.
                 // Sadece telefonun tarafında dinlemeyi açıyoruz (gimbala yazma yok, kuyruğu kilitleyemez).
                 if (o != null) { try { g.setCharacteristicNotification(o, true); } catch (Exception e) { } }
-                BluetoothGattCharacteristic o2 = s == null ? null : s.getCharacteristic(OKU2);
-                if (o2 != null) { try { g.setCharacteristicNotification(o2, true); } catch (Exception e) { } }
-                if (ogrAktif) ogrYeniBag = true;
                 hazir = true; durum = "bagli"; sonHata = ""; hazirZaman = SystemClock.elapsedRealtime();
                 Kayit.yaz("Gimbal: bağlandı (" + ad + "), açılış paketleri gönderiliyor.");
                 for (String p : ACILIS) kuyruk.add(hexten(p));
@@ -610,31 +589,18 @@ final class Gimbal {
         @Override public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic k) {
             if (Build.VERSION.SDK_INT >= 33) return;     // yenisi çağrılır
             final byte[] v = k.getValue();
-            final boolean ikinci = OKU2.equals(k.getUuid());
-            h.post(() -> { kgYakala(ikinci ? "FFE4" : "FFE2", v); if (ikinci) ogrKaydet("FFE4:", v); else cevap(v); });
+            h.post(() -> cevap(v));
         }
 
         @Override public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic k, byte[] v) {
             final byte[] kopya = v == null ? null : v.clone();
-            final boolean ikinci = OKU2.equals(k.getUuid());
-            h.post(() -> { kgYakala(ikinci ? "FFE4" : "FFE2", kopya); if (ikinci) ogrKaydet("FFE4:", kopya); else cevap(kopya); });
+            h.post(() -> cevap(kopya));
         }
     };
 
     // Sıradaki paketi yaz (Android aynı anda tek yazma kabul eder)
     private void yazNext() {
         if (yaziyor || gatt == null || yazKar == null) return;
-        if (!kuyruk3.isEmpty() && yazKar3 != null) {
-            byte[] b3 = kuyruk3.poll();
-            boolean ok3;
-            try {
-                if (Build.VERSION.SDK_INT >= 33) ok3 = gatt.writeCharacteristic(yazKar3, b3, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) == 0;
-                else { yazKar3.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE); yazKar3.setValue(b3); ok3 = gatt.writeCharacteristic(yazKar3); }
-            } catch (Exception e) { ok3 = false; }
-            if (ok3) { yaziyor = true; yazmaBasi = SystemClock.elapsedRealtime(); giden++; }
-            else { kuyruk3.addFirst(b3); h.postDelayed(this::yazNext, 20); }
-            return;
-        }
         byte[] b = kuyruk.poll();
         if (b == null) return;
         boolean ok;
@@ -701,20 +667,19 @@ final class Gimbal {
                 // açı sorusu (00 84 cevabı) 200 ms'de bir
                 aciSay += (int) HAREKET_ARA;
                 // 26 Kas 17:25: açı sorusu kuyruğun en önüne (hareket paketlerinin arkasında beklemesin)
-                if (aciSay >= 150 && !taramaAktif && !deneAktif) { aciSay = 0; kuyruk.addFirst(hexten("AA550600078491FF")); yazNext(); }
+                if (aciSay >= 150) { aciSay = 0; kuyruk.addFirst(hexten("AA550600078491FF")); yazNext(); }
                 saniye += (int) HAREKET_ARA;
                 if (saniye >= 1000) {
                     saniye = 0;
                     nabizSay++;
                     gonder(hexten("AA550600074956FF"));
-                    if (nabizSay % 30 == 0 && !taramaAktif && !deneAktif) gonder(hexten("AA550600075764FF"));
+                    if (nabizSay % 30 == 0) gonder(hexten("AA550600075764FF"));
                 }
             }
             h.postDelayed(this, HAREKET_ARA);
         }
     };
     private void aciKontrol(long simdi) {
-        if (taramaAktif || deneAktif || ogrAktif) { hazirZaman = simdi; return; }   // öğrenirken (okuma, uyutma) açı kontrolü yok
         long son = Math.max(a84Zaman, hazirZaman);
         if (simdi - son < 6000 || simdi - aciKurtarmaZaman < 6000) return;
         aciKurtarmaZaman = simdi;
@@ -914,282 +879,6 @@ final class Gimbal {
         if (ongoru != eski && ayar != null) ayar.edit().putFloat("ongoru", (float) ongoru).apply();
     }
 
-    // ---------- 26 Kas 17:25: Kumanda öğren (sadece dinler, gimbala yeni bir şey göndermez) ----------
-    // Her adım: 4 sn "dokunmayın" (normalde gelenler), sonra 6–8 sn "şimdi basın". Basma penceresinde yeni gelen ya da
-    // içeriği değişen paketler adımın satırına yazılır. Açı (00 84) ve pil (00 49) cevapları sık geldiği için kaydedilmez.
-    // 26 Kas 18:20: adımlar kılavuzdaki gerçek tuş adlarıyla. Tür: 0 = dinle (siz basarsınız), 1 = tara (uygulama sorar, dokunmayın),
-    // 2 = uyut, 3 = uyandır (uygulama yakalanan bekleme paketini gönderir), 4 = ışık komutu dene (uygulama dener).
-    // Listeye girmeyenler (bilerek): Fonksiyon 5/7 kez ve yan tekerlek 5/7 kez (eşleşmeyi siler), Mod 5 kez (kalibrasyon),
-    // deklanşöre ve güç tuşuna uzun basış (kapatır).
-    // 26 Kas 18:45: okuma taraması gimbalı kilitledi ve kapattı (kod 147, sonra açılınca tekrar kapandı). Tarama ve deneme
-    // adımları KALDIRILDI; öğrenme yine sadece dinler. Işık ve bekleme denemeleri paneldeki tek paketlik düğmelerle yapılır.
-    private static final String[] OGR_TALIMAT = {
-        "Kumandada JOYSTICK'e UZUN basın: AI kameranın ışığı AÇILSIN",
-        "Kumandada AYAR tuşuna 1 kez basın (ışık parlaklığı değişir)",
-        "Kumandada AYAR tuşuna 2 kez basın (ışık rengi değişir)",
-        "Kumandada JOYSTICK'e UZUN basın: ışık KAPANSIN",
-        "Gimbalda YAN TEKERLEĞE UZUN basın (ışık açılır)",
-        "YAN TEKERLEĞİ yukarı çevirin (parlaklık)",
-        "YAN TEKERLEĞE 2 kez basın (renk)",
-        "YAN TEKERLEĞE UZUN basın (ışık kapanır)",
-        "Kumandada JOYSTICK'e 2 kez basın (zoom ↔ roll)",
-        "Kumandada AYAR tuşuna UZUN basın (roll döner)",
-        "Kumandada FONKSİYON tuşuna 2 kez basın (ortalar)",
-        "FONKSİYON tuşuna UZUN basın (kilit), sonra bırakın",
-        "Kumandada MOD tuşuna 1 kez basın (mod değişir)",
-        "MOD tuşuna 2 kez basın (dikey ↔ yatay)",
-        "MOD tuşuna 3 kez basın (180° roll)",
-        "Kumandada DEKLANŞÖR tuşuna 1 kez basın",
-        "Gimbalda GÜÇ tuşuna 2 kez basın (bekleme)",
-        "GÜÇ tuşuna yine 2 kez basın (uyanma)" };
-    private static final String[] OGR_AD = { "Joystick uzun (ışık aç)", "Ayar 1 kez (parlaklık)", "Ayar 2 kez (renk)", "Joystick uzun (ışık kapa)",
-        "Tekerlek uzun (ışık aç)", "Tekerlek yukarı", "Tekerlek 2 kez (renk)", "Tekerlek uzun (ışık kapa)",
-        "Joystick 2 kez", "Ayar uzun (roll)", "Fonksiyon 2 kez", "Fonksiyon uzun", "Mod 1 kez", "Mod 2 kez", "Mod 3 kez", "Deklanşör 1 kez",
-        "Güç 2 kez (bekleme)", "Güç 2 kez (uyanma)" };
-    private static final int[] OGR_TUR = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-    private static final int[] OGR_SURE = { 7, 7, 7, 7, 7, 7, 7, 7, 6, 8, 6, 7, 6, 6, 8, 6, 8, 10 };
-    private static final int OGR_SESSIZ = 4;
-    private volatile boolean ogrAktif = false; private volatile int ogrNo = 0, ogrEvre = 0, ogrKalan = 0;
-    private long ogrEvreBas = 0; private volatile String ogrYazi = "";
-    private boolean ogrKoptu = false, ogrYeniBag = false, ogrAtla = false; private int ogrBulunan = 0;
-    private final java.util.HashSet<String> ogrNormal = new java.util.HashSet<>(), ogrNormalGK = new java.util.HashSet<>();
-    private final java.util.LinkedHashMap<String, long[]> ogrPencere = new java.util.LinkedHashMap<>();   // paket → {kaç kez, ilk ms}
-
-    static void ogrenBasla() {
-        final Gimbal g = ben;
-        if (g == null) return;
-        g.h.post(() -> {
-            if (g.ogrAktif) return;
-            if (!g.hazir) { g.ogrYazi = "Başlamadı: gimbal bağlı değil."; Kayit.yaz("Kumanda öğren başlamadı: gimbal bağlı değil."); return; }
-            g.ogrAktif = true; g.ogrNo = 0; g.ogrBulunan = 0; g.ogrNormal.clear(); g.ogrNormalGK.clear();
-            for (int k = 0; k < 6; k++) g.tara[k].clear();
-            g.ogrSonuc.setLength(0); g.isikKomut = "";
-            Kayit.yaz("Kumanda öğren başladı (" + OGR_TALIMAT.length + " adım, ~4 dk). Gimbala bir şey gönderilmiyor, sadece dinleniyor.");
-            g.ogrEvreBasla(0);
-            g.h.postDelayed(g.ogrDongu, 200);
-        });
-    }
-    static void ogrenAtla() { final Gimbal g = ben; if (g != null) g.h.post(() -> { if (g.ogrAktif && g.ogrEvre == 1) g.ogrAtla = true; else if (g.ogrAktif) { g.ogrAtla = true; g.ogrEvreBasla(1); } }); }
-    static void ogrenDur() { final Gimbal g = ben; if (g != null) g.h.post(() -> { if (g.ogrAktif) g.ogrBitir("yarıda bitirildi"); }); }
-
-    private void ogrEvreBasla(int evre) {
-        ogrEvre = evre; ogrEvreBas = SystemClock.elapsedRealtime(); ogrPencere.clear();
-        if (evre == 0) { ogrKoptu = false; ogrYeniBag = false; ogrAtla = false; }
-    }
-
-    private final Runnable ogrDongu = new Runnable() { @Override public void run() {
-        if (!ogrAktif) return;
-        long n = SystemClock.elapsedRealtime();
-        int tur = OGR_TUR[ogrNo];
-        int sure = ogrEvre == 0 ? (tur == 0 ? OGR_SESSIZ : 1) : OGR_SURE[ogrNo];
-        long gecen = n - ogrEvreBas;
-        ogrKalan = (int) Math.max(1, (sure * 1000 - gecen + 999) / 1000);
-        String t = OGR_TALIMAT[ogrNo];
-        ogrYazi = (ogrNo + 1) + "/" + OGR_TALIMAT.length + " · " + (ogrEvre == 0 ? "Hazır olun, dokunmayın (" + ogrKalan + ")\nSıradaki: " + t : "ŞİMDİ: " + t + " (" + ogrKalan + ")");
-        if (ogrEvre == 0 && gecen >= sure * 1000L) {
-            for (String p : ogrPencere.keySet()) { ogrNormal.add(p); ogrNormalGK.add(gk(p)); }
-            ogrEvreBasla(1);
-            if (tur == 1) taramaBasla(taraNo(ogrNo));
-            else if (tur == 2) gonder(hexten("AA550E0000990301000000000000ABFF"));     // yakalanan "beklemeye geç"
-            else if (tur == 3) gonder(hexten("AA550E0000990302000000000000ACFF"));     // yakalanan "uyan"
-            else if (tur == 4) isikDene();
-        } else if (ogrEvre == 1 && (gecen >= sure * 1000L || ogrAtla || (tur == 1 && !taramaAktif && gecen > 1500) || (tur == 4 && !deneAktif && gecen > 1500))) {
-            if (tur == 1) taramaAktif = false;
-            if (tur == 4) deneAktif = false;
-            if (tur == 2 || tur == 3) {
-                boolean geldi = false; String bek = tur == 2 ? "AA550E0000990301" : "AA550E0000990302";
-                for (String p : ogrPencere.keySet()) if (p.startsWith(bek)) geldi = true;
-                String r = (tur == 2 ? "Uyutma" : "Uyandırma") + ": " + (geldi ? "gimbal cevap verdi ✓" : "gimbaldan cevap gelmedi");
-                Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". ");
-            }
-            if (tur == 0 || tur == 2 || tur == 3) ogrAdimYaz();
-            ogrNo++;
-            if (ogrNo >= OGR_TALIMAT.length) { ogrBitir("bitti"); return; }
-            ogrEvreBasla(0);
-        }
-        h.postDelayed(this, 200);
-    } };
-
-    private static String gk(String p) {   // "grup komut" (kanal öneki + AA55 L 00 G C)
-        int i = p.indexOf("AA55");
-        return i >= 0 && p.length() >= i + 12 ? p.substring(0, i) + p.substring(i + 8, i + 12) : p;
-    }
-
-    private void ogrKaydet(String kanal, byte[] v) {
-        if (!ogrAktif || v == null || v.length == 0) return;
-        StringBuilder sb = new StringBuilder(kanal);
-        for (byte x : v) sb.append(String.format("%02X", x & 0xFF));
-        String p = sb.toString();
-        long[] k = ogrPencere.get(p);
-        if (k == null) { if (ogrPencere.size() < 60) ogrPencere.put(p, new long[] { 1, SystemClock.elapsedRealtime() - ogrEvreBas }); }
-        else k[0]++;
-    }
-
-    private void ogrAdimYaz() {
-        StringBuilder sb = new StringBuilder();
-        int say = 0, fazla = 0;
-        for (java.util.Map.Entry<String, long[]> e : ogrPencere.entrySet()) {
-            String p = e.getKey();
-            if (ogrNormal.contains(p)) continue;
-            if (say >= 8) { fazla++; continue; }
-            long[] k = e.getValue();
-            if (sb.length() > 0) sb.append(" · ");
-            sb.append(p);
-            if (k[0] > 1) sb.append(" ×").append(k[0]);
-            sb.append(" +").append(String.format(java.util.Locale.US, "%.1f", k[1] / 1000.0).replace('.', ',')).append("sn");
-            if (ogrNormalGK.contains(gk(p))) sb.append(" (değişti)");
-            say++;
-        }
-        if (fazla > 0) sb.append(" · +").append(fazla).append(" paket daha");
-        if (say > 0) ogrBulunan++;
-        String ek = (ogrKoptu ? " [bu adımda bağlantı koptu]" : "") + (ogrYeniBag ? " [yeniden bağlandı; açılış cevapları karışmış olabilir]" : "");
-        Kayit.yaz("Öğren " + (ogrNo + 1) + "/" + OGR_TALIMAT.length + " " + OGR_AD[ogrNo] + ": " + (ogrAtla ? "atlandı" : say == 0 ? "yeni paket yok" : sb.toString()) + ek);
-    }
-
-    private void ogrBitir(String neden) {
-        ogrAktif = false; ogrPencere.clear(); taramaAktif = false; deneAktif = false;
-        String fark = taramaFarki();
-        if (fark.length() > 0) Kayit.yaz("Öğren okuma sonucu: " + fark);
-        ogrYazi = "Kumanda öğren " + neden + ". " + (isikKomut.length() > 0 ? "IŞIK KOMUTU BULUNDU. " : "") + ogrSonuc
-            + ogrBulunan + " adımda yeni paket var. Kaydı kopyalayıp Claude'a verin.";
-        Kayit.yaz(ogrYazi);
-    }
-
-    // ---------- 26 Kas 18:20: okuma taraması ----------
-    // Gimbala "07 xx" soruları sorulur (00..FF, açı ve pil hariç); her cevap komut numarasına göre saklanır. Işık kapalı/açık,
-    // parlaklık ve renk değişince hangi cevabın değiştiği bulunur. Soru göndermek bir ayarı değiştirmez (açı, pil, durum hep böyle).
-    @SuppressWarnings("unchecked")
-    private final java.util.HashMap<String, String>[] tara = new java.util.HashMap[] { new java.util.HashMap<String, String>(),
-        new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>(), new java.util.HashMap<String, String>() };
-    private volatile boolean taramaAktif = false, deneAktif = false; private int taramaKume = 0, taramaSira = 0;
-    private final StringBuilder ogrSonuc = new StringBuilder(); private String isikKomut = "";
-    private static int taraNo(int adim) { return adim == 0 ? 0 : adim == 1 ? 1 : adim == 3 ? 2 : adim == 5 ? 3 : 4; }
-
-    private void taramaBasla(int kume) {
-        if (kume >= 0) { Kayit.yaz("Öğren: okuma taraması kapalı (gimbalı kilitliyordu)."); return; }
-        taramaKume = kume; taramaSira = 0; tara[kume].clear(); taramaAktif = true;
-        h.postDelayed(taramaAdim, 300);
-    }
-
-    private final Runnable taramaAdim = new Runnable() { @Override public void run() {
-        if (!taramaAktif || !ogrAktif) return;
-        while (taramaSira < 256 && (taramaSira == 0x49 || taramaSira == 0x84 || taramaSira == 0x60 || taramaSira == 0x1A || taramaSira == 0x98 || taramaSira == 0x99)) taramaSira++;
-        if (taramaSira >= 256) { h.postDelayed(() -> { taramaAktif = false; Kayit.yaz("Öğren: okuma " + (taramaKume + 1) + " bitti, " + tara[taramaKume].size() + " cevap."); }, 1200); return; }
-        ogrYazi = (ogrNo + 1) + "/" + OGR_TALIMAT.length + " · " + OGR_TALIMAT[ogrNo] + " (" + (taramaSira * 100 / 256) + "%)";
-        gonder(paket(0x07, taramaSira, new int[0]));
-        taramaSira++;
-        h.postDelayed(this, 60);
-    } };
-
-    // paketIsle'den: tarama sürerken her cevabı "grup komut" anahtarıyla sakla
-    private void taramaKaydet(int grup, int komut, byte[] v) {
-        if (!taramaAktif) return;
-        if (grup == 0x00 && (komut == 0x84 || komut == 0x49 || komut == 0x60)) return;
-        StringBuilder sb = new StringBuilder();
-        for (byte x : v) sb.append(String.format("%02X", x & 0xFF));
-        tara[taramaKume].put(String.format("%02X %02X", grup, komut), sb.toString());
-    }
-
-    private static int[] veriOf(String hex) {
-        byte[] b = hexten(hex);
-        if (b == null || b.length < 8) return new int[0];
-        int[] d = new int[b.length - 8];
-        for (int i = 0; i < d.length; i++) d[i] = b[6 + i] & 0xFF;
-        return d;
-    }
-
-    // a ile b arasında değişen anahtarlar (kendiliğinden değişenler = 1. ve 2. okuma farkı hariç)
-    private java.util.ArrayList<String> degisen(int a, int b) {
-        java.util.ArrayList<String> l = new java.util.ArrayList<>();
-        java.util.TreeSet<String> k = new java.util.TreeSet<>(tara[a].keySet()); k.addAll(tara[b].keySet());
-        for (String x : k) {
-            String p0 = tara[0].get(x), p1 = tara[1].get(x);
-            if (p0 == null ? p1 != null : !p0.equals(p1)) continue;          // kendiliğinden değişiyor
-            String pa = tara[a].get(x), pb = tara[b].get(x);
-            if (pa == null || pb == null || !pa.equals(pb)) l.add(x);
-        }
-        return l;
-    }
-
-    private String taramaFarki() {
-        if (tara[0].isEmpty() || tara[2].isEmpty()) return "";
-        StringBuilder sb = new StringBuilder();
-        sb.append("cevap veren soru ").append(tara[0].size()).append(". ");
-        String[] ad = { "Işık açılınca", "Parlaklıkta", "Renkte" };
-        int[][] ab = { { 1, 2 }, { 2, 3 }, { 3, 4 } };
-        for (int i = 0; i < 3; i++) {
-            if (tara[ab[i][1]].isEmpty()) continue;
-            java.util.ArrayList<String> l = degisen(ab[i][0], ab[i][1]);
-            sb.append(ad[i]).append(" değişen: ");
-            if (l.isEmpty()) sb.append("yok. ");
-            else for (int k = 0; k < Math.min(4, l.size()); k++) {
-                String x = l.get(k);
-                sb.append(x).append(" ").append(tara[ab[i][0]].get(x)).append(" → ").append(tara[ab[i][1]].get(x)).append(k < Math.min(4, l.size()) - 1 ? "; " : ". ");
-            }
-        }
-        return sb.toString();
-    }
-
-    // ---------- 26 Kas 18:20: ışığı uygulamadan açmayı dene ----------
-    // Işık açılınca değişen her cevap için: "açık" hâlindeki veriyi aynı komut numarasıyla AI kamera grubundan (03) ve
-    // gimbal grubundan (00) gönder, sonra tekrar sor; cevap "açık"a döndüyse komut bulundu. Fabrika ayarı (1A), bekleme (98/99)
-    // ve hareket/mod/yön komutları denenmez.
-    private final java.util.ArrayList<String[]> denePlan = new java.util.ArrayList<>(); private int deneSira = 0;
-    private void isikDene() {
-        if (denePlan != null) { Kayit.yaz("Öğren: ışık denemesi kapalı."); return; }
-        denePlan.clear(); deneSira = 0;
-        java.util.ArrayList<String> l = tara[2].isEmpty() ? new java.util.ArrayList<String>() : degisen(1, 2);
-        int[] yasak = { 0x1A, 0x98, 0x99, 0x9A, 0x60, 0x7C, 0x79, 0x7A, 0xC1, 0xCB };
-        for (String x : l) {
-            int c = Integer.parseInt(x.substring(3, 5), 16);
-            boolean y = false; for (int z : yasak) if (z == c) y = true;
-            if (y || denePlan.size() >= 8) continue;
-            for (String gr : new String[] { "03", "00" }) denePlan.add(new String[] { gr, x.substring(3, 5), tara[2].get(x), tara[1].get(x), x });
-        }
-        if (denePlan.isEmpty()) { String r = "Işık denemesi: denenecek aday yok (ışık açılınca hiçbir cevap değişmedi)"; Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". "); return; }
-        deneAktif = true;
-        Kayit.yaz("Öğren: ışık için " + denePlan.size() + " deneme yapılacak.");
-        h.postDelayed(deneAdim, 500);
-    }
-
-    private final Runnable deneAdim = new Runnable() { @Override public void run() {
-        if (!deneAktif || !ogrAktif) return;
-        if (deneSira >= denePlan.size() * 2) {
-            deneAktif = false;
-            if (isikKomut.length() == 0) { String r = "Işık denemesi: hiçbir aday ışığı açmadı"; Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". "); }
-            return;
-        }
-        String[] d = denePlan.get(deneSira / 2);
-        int c = Integer.parseInt(d[1], 16);
-        if (deneSira % 2 == 0) {                                   // gönder
-            byte[] p = paket(Integer.parseInt(d[0], 16), c, veriOf(d[2]));
-            tara[5].remove(d[4]);
-            taramaKume = 5; taramaAktif = false;
-            gonder(p);
-            ogrYazi = (ogrNo + 1) + "/" + OGR_TALIMAT.length + " · " + OGR_TALIMAT[ogrNo] + " (" + (deneSira / 2 + 1) + "/" + denePlan.size() + ")";
-            Kayit.yaz("Öğren: deneme " + (deneSira / 2 + 1) + ": " + hex(p) + " gönderildi.");
-            deneSira++;
-            h.postDelayed(this, 800);
-        } else {                                                   // sor ve bak
-            tara[5].clear(); taramaKume = 5; taramaAktif = true;
-            gonder(paket(0x07, c, new int[0]));
-            h.postDelayed(() -> {
-                taramaAktif = false;
-                String cev = tara[5].get(d[4]);
-                if (cev != null && cev.equals(d[2]) && isikKomut.length() == 0) {
-                    isikKomut = hex(paket(Integer.parseInt(d[0], 16), c, veriOf(d[2])));
-                    String kapa = hex(paket(Integer.parseInt(d[0], 16), c, veriOf(d[3])));
-                    String r = "IŞIK KOMUTU BULUNDU: aç = " + isikKomut + ", kapa (tahmin) = " + kapa;
-                    Kayit.yaz("Öğren: " + r + "."); ogrSonuc.append(r).append(". ");
-                    gonder(hexten(kapa));
-                    deneSira = denePlan.size() * 2;
-                } else deneSira++;
-                h.post(deneAdim);
-            }, 700);
-        }
-    } };
-
-    private static String hex(byte[] b) { StringBuilder sb = new StringBuilder(); for (byte x : b) sb.append(String.format("%02X", x & 0xFF)); return sb.toString(); }
 
     private static int rampa(int simdiki, int hedef) {
         if (hedef == 0) return 0;
@@ -1247,7 +936,7 @@ final class Gimbal {
         byte[] b = parca.toByteArray();
         int i = 0;
         while (b.length - i >= 3) {
-            if ((b[i] & 0xFF) != 0xAA || (b[i + 1] & 0xFF) != 0x55) { if (ogrAktif) copBayt.write(b[i]); i++; continue; }   // başı bulana kadar at
+            if ((b[i] & 0xFF) != 0xAA || (b[i + 1] & 0xFF) != 0x55) { i++; continue; }   // başı bulana kadar at
             int boy = (b[i + 2] & 0xFF) + 2;
             if (boy < 8 || boy > 300) { i++; continue; }
             if (b.length - i < boy) break;                                                     // kalanı bekle
@@ -1258,9 +947,7 @@ final class Gimbal {
         }
         parca.reset();
         if (i < b.length && b.length - i < 600) parca.write(b, i, b.length - i);
-        if (ogrAktif && copBayt.size() > 0 && parca.size() == 0) { ogrKaydet("tanınmayan:", copBayt.toByteArray()); copBayt.reset(); }
     }
-    private final java.io.ByteArrayOutputStream copBayt = new java.io.ByteArrayOutputStream();
 
     private void paketIsle(byte[] v) {
         if (v == null || v.length < 8) return;
@@ -1269,8 +956,6 @@ final class Gimbal {
         if ((v[0] & 0xFF) != 0xAA || (v[1] & 0xFF) != 0x55) return;
         int grup = v[4] & 0xFF, komut = v[5] & 0xFF;
         int veriBoy = v.length - 8;            // AA 55 L 00 G C ... S FF
-        if (ogrAktif && !(grup == 0x00 && (komut == 0x84 || komut == 0x49))) ogrKaydet("", v);
-        if (taramaAktif) taramaKaydet(grup, komut, v);
         if (grup == 0x00 && komut == 0x49 && veriBoy >= 4) {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
         } else if (grup == 0x00 && komut == 0x84 && veriBoy >= 28) {
@@ -1288,75 +973,6 @@ final class Gimbal {
             if (m <= 3) { if (m != mod && mod >= 0) Kayit.yaz("Gimbal: mod " + MOD_AD[m] + " oldu."); mod = m; }
             if (hz <= 3) takipHizi = hz;
         }
-    }
-
-    // ---------- 26 Kas 20:00: "kumanda gibi" (Pixel, kumandanın tuş mesajını gimbala gönderir) ----------
-    // Kumanda (HR4) tuşa basınca kendi FFE2'sinden şunu gönderiyor (nRF Connect ile görüldü):
-    //   AA CC 09 00 A1 01 00 [tuş] [basış] [toplam] FF   (toplam = 09+00+A1+01+00+tuş+basış)
-    //   tuş: 0B joystick'e basma, 0C joystick yön (01 yukarı 02 aşağı 03 sol 04 sağ), 03 ayar, 02 fonksiyon, 01 mod,
-    //        0E/0D ve 05/04 üçgen ▲▼ (iki ayrı mod); basış: 01/02/03 = 1/2/3 kez, 1E = uzun başladı, 3C = bırakıldı.
-    // Gimbal bu mesajı telefondan kabul eder mi bilinmiyor; 4 yol denenir: yol 1 FFE1+AACC, 2 FFE1+AA55, 3 FFE3+AACC, 4 FFE3+AA55.
-    private volatile String kgYazi = ""; private long kgBas = 0; private final StringBuilder kgCevap = new StringBuilder(); private int kgCevapSay = 0;
-    private String kgAd = "";
-
-    private static byte[] kumandaPaket(int yol, int tus, int basis) {
-        int[] g = { 0x09, 0x00, 0xA1, 0x01, 0x00, tus & 0xFF, basis & 0xFF };
-        int t = 0; for (int x : g) t += x;
-        byte[] b = new byte[11];
-        b[0] = (byte) 0xAA; b[1] = (byte) (yol == 1 || yol == 3 ? 0xCC : 0x55);
-        for (int i = 0; i < 7; i++) b[2 + i] = (byte) g[i];
-        b[9] = (byte) t; b[10] = (byte) 0xFF;
-        return b;
-    }
-
-    // olay: "isik" (joystick uzun), "parlak" (ayar 1), "renk" (ayar 2), "jmod" (joystick 2), "u0E","u0D","u05","u04" (üçgenler)
-    static void kumandaGibi(final int yol, final String olay) {
-        final Gimbal g = ben;
-        if (g == null) return;
-        g.h.post(() -> {
-            if (!g.hazir) { g.kgYazi = "Gönderilmedi: gimbal bağlı değil."; return; }
-            if ((yol == 3 || yol == 4) && g.yazKar3 == null) { g.kgYazi = "Gönderilmedi: gimbalda FFE3 kanalı yok."; return; }
-            int[][] adim; String ad;
-            switch (olay) {
-                case "isik":   adim = new int[][] { { 0x0B, 0x1E, 0 }, { 0x0B, 0x3C, 1500 } }; ad = "Işık aç/kapat (joystick uzun)"; break;
-                case "parlak": adim = new int[][] { { 0x03, 0x01, 0 } }; ad = "Parlaklık (ayar 1 kez)"; break;
-                case "renk":   adim = new int[][] { { 0x03, 0x02, 0 } }; ad = "Renk (ayar 2 kez)"; break;
-                case "jmod":   adim = new int[][] { { 0x0B, 0x02, 0 } }; ad = "Üçgen modunu değiştir (joystick 2 kez)"; break;
-                case "u0E":    adim = new int[][] { { 0x0E, 0x1E, 0 }, { 0x0E, 0x3C, 150 } }; ad = "Üçgen ▲ (0E)"; break;
-                case "u0D":    adim = new int[][] { { 0x0D, 0x1E, 0 }, { 0x0D, 0x3C, 150 } }; ad = "Üçgen ▼ (0D)"; break;
-                case "u05":    adim = new int[][] { { 0x05, 0x1E, 0 }, { 0x05, 0x3C, 150 } }; ad = "Üçgen ▲ (05)"; break;
-                case "u04":    adim = new int[][] { { 0x04, 0x1E, 0 }, { 0x04, 0x3C, 150 } }; ad = "Üçgen ▼ (04)"; break;
-                default: return;
-            }
-            final String yolAd = "Yol " + yol + " (" + (yol <= 2 ? "FFE1" : "FFE3") + ", " + (yol == 1 || yol == 3 ? "AA CC" : "AA 55") + ")";
-            g.kgAd = ad + " · " + yolAd;
-            g.kgCevap.setLength(0); g.kgCevapSay = 0; g.kgBas = SystemClock.elapsedRealtime();
-            StringBuilder giden = new StringBuilder();
-            long gecikme = 0;
-            for (int[] a : adim) {
-                gecikme += a[2];
-                final byte[] p = kumandaPaket(yol, a[0], a[1]);
-                if (giden.length() > 0) giden.append(" + ");
-                giden.append(hex(p));
-                g.h.postDelayed(() -> { if (yol <= 2) g.gonder(p); else { g.kuyruk3.add(p); g.yazNext(); } }, gecikme);
-            }
-            g.kgYazi = "Gönderildi: " + g.kgAd + ". Gimbalın cevabı bekleniyor…";
-            Kayit.yaz("Kumanda gibi: " + g.kgAd + " → " + giden);
-            g.h.postDelayed(() -> {
-                String c = g.kgCevapSay == 0 ? "gimbal yeni bir cevap vermedi" : "gimbal " + g.kgCevapSay + " cevap verdi: " + g.kgCevap;
-                g.kgYazi = g.kgAd + " gönderildi; " + c + ". Işıkta ya da gimbalda bir değişiklik gördünüz mü?";
-                Kayit.yaz("Kumanda gibi sonuç: " + g.kgAd + ": " + c + ".");
-            }, gecikme + 2500);
-        });
-    }
-
-    // gönderdikten sonraki 2,5 sn içinde gelen her bildirimi (açı ve pil hariç) not et
-    private void kgYakala(String kanal, byte[] v) {
-        if (kgBas == 0 || v == null || SystemClock.elapsedRealtime() - kgBas > 4000) return;
-        String x = hex(v);
-        if (x.startsWith("AA55") && x.length() >= 12) { String gc = x.substring(8, 12); if (gc.equals("0084") || gc.equals("0049")) return; }
-        if (kgCevapSay < 6) { if (kgCevap.length() > 0) kgCevap.append(" · "); kgCevap.append(kanal).append(":").append(x); }
-        kgCevapSay++;
     }
 
     // ---------- paketler ----------

@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="26 Kas 16:55">
+<meta name="stand-surum" content="27 Kas 00:50">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -628,7 +628,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 26 Kas 16:55</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 00:50</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -978,8 +978,9 @@
     <div class="sadeceYonetici">
       <h2>Güncelleme</h2>
       <div class="panel">
-        <p class="not" style="margin:0 0 6px">Pixel günde bir kez GitHub'daki kamera sayfasının yeni sürümüne bakar, kimse izlemiyorken kendini yeniler. Geliştirme modunda her dakika bakar; 2 saat sonra kendisi kapanır.</p>
-        <label style="border-top:none">Geliştirme modu (2 saat)<span class="anahtarYan"><b id="gmDurum"></b><input type="checkbox" id="gmAcik"></span></label>
+        <div class="satir" style="border-top:none"><span>Pixel</span><b id="gmPixel">—</b></div>
+        <button class="kucuk" id="gmSimdiBtn" style="width:100%;margin-top:6px">Pixel'i şimdi güncelle</button>
+        <p class="not" style="margin:6px 0 0">Stand Yükle'den sonra kendiliğinden olur; bu düğme yedek. Pixel 10 dk boyunca yarım dakikada bir yeni sürüme bakar ve gelince <b>izleniyor olsa da</b> hemen kurar (görüntü birkaç saniye kesilir). <span id="gmDurum"></span></p>
       </div>
     </div>
 
@@ -1375,6 +1376,8 @@
       if(rol==="evde"){
         istemci.subscribe("comitok/"+kod+"/komut");
         istemci.subscribe("comitok/"+kod+"/var");
+        istemci.subscribe("comitok/"+kod+"/gelistirme");   // 27 Kas: Güncelleme bölümü (bu bilgisayarda da)
+        istemci.subscribe("comitok/"+kod+"/goruntu/b");    // Pixel bekçisinin durumu: uygulama sürümü
         sonYayinMetni="";
         durumYayinla();
       } else {
@@ -1410,7 +1413,7 @@
       }
       if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
       if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
-      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
+      if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); gmArayuz(); return; }
       if(konu.slice(-8)==="/kamkapi"){ var kk=null; try{ kk=JSON.parse(veri.toString()); }catch(h){} kamKapiGeldi(kk); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
       if(konu.slice(-6)==="/arama"){ gsMesaj(veri.toString()); return; }
@@ -1982,13 +1985,16 @@
   // ---------- geliştirme modu (22 Eki): Pixel kamera sayfası yeni sürüme her dakika bakar ----------
   // Sunucuda saklanan (retain) {bitis: zaman} mesajı; Pixel bağlanınca da alır. bitis 0 = kapalı.
   var gmBitis=0;
-  function gmGeldi(m){ gmBitis=Number(m&&m.bitis)||0; gmArayuz(); }
+  var gmSimdi=0;
+  function gmGeldi(m){ gmBitis=Number(m&&m.bitis)||0; gmSimdi=Number(m&&m.simdi)||0; gmArayuz(); }
   function gmArayuz(){
-    var d=E("gmDurum"), b=E("gmAcik"); if(!d||!b) return;
-    var kalan=gmBitis-Date.now();
-    b.checked=kalan>0;
-    if(kalan>0){ var dk=Math.ceil(kalan/60000); d.textContent=(dk>=60?Math.floor(dk/60)+" sa "+(dk%60)+" dk":dk+" dk")+" kaldı"; d.className="iyi"; }
+    var d=E("gmDurum"), p=E("gmPixel"); if(!d||!p) return;
+    var kalan=gmSimdi+600000-Date.now();
+    if(kalan>0){ d.textContent="Hızlı güncelleme açık: "+Math.ceil(kalan/60000)+" dk kaldı."; d.className="iyi"; }
     else { d.textContent=""; d.className=""; }
+    var b=bekciDurum;
+    if(b&&b.uyg){ p.textContent="uygulama v"+b.uyg+(b.indi?" · v"+b.indi+" indi, kuruluyor":""); p.className=b.indi?"uyari":""; }
+    else p.textContent="—";
   }
   setInterval(gmArayuz,30000);
   function gkArayuz(){
@@ -2030,11 +2036,11 @@
   ["gkAcik","gkEvde","gkHi","gkBas","gkBit","gkHs","gkSayfa","gkOzet","gkSure"].forEach(function(id){
     E(id).addEventListener("change",function(){ gkAyarYayinla(); });
   });
-  E("gmAcik").onchange=function(){
-    if(!(istemci&&istemci.connected)){ yaz("Geliştirme modu: sunucuya bağlı değil, tekrar deneyin."); gmArayuz(); return; }
-    var bitis=E("gmAcik").checked?Date.now()+2*3600000:0;
-    istemci.publish("comitok/"+kod+"/gelistirme",JSON.stringify({bitis:bitis}),{qos:0,retain:true});
-    gmBitis=bitis; gmArayuz(); yaz("Geliştirme modu "+(bitis?"açıldı (2 saat): Pixel her dakika yeni sürüme bakacak.":"kapatıldı."));
+  E("gmSimdiBtn").onclick=function(){
+    if(!(istemci&&istemci.connected)){ yaz("Güncelleme: sunucuya bağlı değil, tekrar deneyin."); return; }
+    var simdi=Date.now(), bitis=Math.max(gmBitis,simdi+2*3600000);
+    istemci.publish("comitok/"+kod+"/gelistirme",JSON.stringify({bitis:bitis,simdi:simdi}),{qos:0,retain:true});
+    gmBitis=bitis; gmSimdi=simdi; gmArayuz(); yaz("Pixel'e güncelle dendi: 10 dk boyunca yeni sürüme bakıp gelince hemen kuracak.");
   };
   // ---------- #gelistirme (27 Eki): Stand Yükle betiği sayfayı bu ekle açar ----------
   // Yöneticiyse geliştirme modunu 2 saate açar/tamamlar (asla kapatmaz). Ek adresten silinir;
@@ -2056,10 +2062,10 @@
       return;
     }
     var bitis=Date.now()+2*3600000;
-    istemci.publish("comitok/"+kod+"/gelistirme",JSON.stringify({bitis:bitis}),{qos:0,retain:true});
-    gmBitis=bitis; gmArayuz();
-    yaz("Geliştirme modu açıldı (2 saat, Stand Yükle): Pixel her dakika yeni sürüme bakacak.");
-    gkBildiri("Geliştirme modu açıldı (2 saat). Bu sekmeyi kapatabilirsin.",15000);
+    istemci.publish("comitok/"+kod+"/gelistirme",JSON.stringify({bitis:bitis,simdi:Date.now()}),{qos:0,retain:true});
+    gmBitis=bitis; gmSimdi=Date.now(); gmArayuz();
+    yaz("Stand Yükle: Pixel 10 dk boyunca yeni sürüme bakıp gelince hemen kuracak.");
+    gkBildiri("Pixel güncellemeye bakıyor (10 dk). Bu sekmeyi kapatabilirsin.",15000);
   }
   E("gkOlusturBtn").onclick=function(){
     if(gkA().konu&&!confirm("Yeni konu oluşturulursa ntfy uygulamasında yeni konuya tekrar abone olman gerekir. Devam edilsin mi?")) return;
@@ -3774,7 +3780,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="26 Kas 16:55";
+  var SAYFA_SURUM="27 Kas 00:50";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

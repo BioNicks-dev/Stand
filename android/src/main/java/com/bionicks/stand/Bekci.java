@@ -54,6 +54,10 @@ public class Bekci extends Service {
     // Uygulama 20: yeni sürüme bekçi bakar (sayfanın zamanlayıcıları ekran kapalıyken yavaşlıyor).
     // Geliştirme modunda 2 dk'da bir, normalde 6 saatte bir.
     private static volatile long gmBitis = 0;
+    // 27 Kas: hızlı güncelleme (Stand Yükle ya da "Pixel'i şimdi güncelle"): 10 dk boyunca 25-30 sn'de bir bakar,
+    // inince Pixel kullanılıyor olsa da hemen kurar.
+    private static volatile long hizliBitis = 0, sonHizliIstek = 0;
+    static boolean hizli() { return hizliBitis > System.currentTimeMillis(); }
     private long sonSurumBakis = 0;
     private static int uyandirilanSurum = 0, bekleyenYazilan = 0;
     private static final long PIL_ARA = 30 * 60 * 1000L;
@@ -129,7 +133,15 @@ public class Bekci extends Service {
             @Override public void mesaj(String k, String govde) {
                 if (k.equals(konu)) istekBak(govde);
                 else if (k.equals(onek + "arama")) Santral.mesaj(govde);
-                else if (k.equals(onek + "gelistirme")) { try { gmBitis = new org.json.JSONObject(govde).optLong("bitis", 0); } catch (Exception e) { gmBitis = 0; } }
+                else if (k.equals(onek + "gelistirme")) {
+                    long simdiIstek = 0;
+                    try { org.json.JSONObject j = new org.json.JSONObject(govde); gmBitis = j.optLong("bitis", 0); simdiIstek = j.optLong("simdi", 0); } catch (Exception e) { gmBitis = 0; }
+                    final long si = simdiIstek;
+                    if (si > 0 && si != sonHizliIstek && System.currentTimeMillis() - si < 600000L) {
+                        sonHizliIstek = si; hizliBitis = si + 600000L;
+                        h.post(() -> { Kayit.yaz("Hızlı güncelleme: 10 dk boyunca yarım dakikada bir yeni sürüme bakılacak, inince hemen kurulacak."); sonSurumBakis = 0; durumGonder(); });
+                    }
+                }
                 else Arama.mesaj(k.substring(onek.length()), govde);
             }
             @Override public void durum(boolean b, String neden) {
@@ -151,6 +163,9 @@ public class Bekci extends Service {
         try {
             o.put("b", "dinliyor");
             o.put("z", System.currentTimeMillis());
+            o.put("uyg", Guncelle.benimSurum(this));                       // 27 Kas: Stand sayfasının Güncelleme bölümü gösterir
+            if (Guncelle.hazirSurum > 0) o.put("indi", Guncelle.hazirSurum);
+            if (hizli()) o.put("hizli", hizliBitis);
             BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
             int y = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
             Intent pil = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
@@ -186,8 +201,9 @@ public class Bekci extends Service {
         if (b == null) return;
         b.h.post(() -> {
             if (surum == uyandirilanSurum) return;
+            b.durumGonder();                                              // Stand sayfası "v… indi" görsün
             boolean kamera = Santral.kameraMesgul && System.currentTimeMillis() - Santral.mesgulZaman < 15000;
-            if (Santral.mesgul() || kamera) { if (bekleyenYazilan != surum) { bekleyenYazilan = surum; Kayit.yaz("Yeni sürüm hazır; Pixel şu an kullanılıyor, boşalınca kurulacak."); } return; }
+            if (!hizli() && (Santral.mesgul() || kamera)) { if (bekleyenYazilan != surum) { bekleyenYazilan = surum; Kayit.yaz("Yeni sürüm hazır; Pixel şu an kullanılıyor, boşalınca kurulacak."); } return; }
             uyandirilanSurum = surum;
             uyandir(b, "Yeni uygulama sürümü (v" + surum + ") indi");
         });
@@ -252,7 +268,7 @@ public class Bekci extends Service {
             if (!calisiyor) return;
             long simdi = SystemClock.elapsedRealtime();
             if (bagli && simdi - sonPil > PIL_ARA) durumGonder();
-            long surumAra = gmBitis > System.currentTimeMillis() ? 2 * 60000L : 6 * 3600000L;
+            long surumAra = hizli() ? 25000L : gmBitis > System.currentTimeMillis() ? 2 * 60000L : 6 * 3600000L;
             if (sonSurumBakis == 0 || simdi - sonSurumBakis > surumAra) { sonSurumBakis = simdi; Guncelle.bak(Bekci.this); }
             else if (Guncelle.hazirSurum > 0) guncellemeIndi(Guncelle.hazirSurum);   // indiğinde Pixel meşguldüyse boşalınca
             if (Sayfa.w == null) Sayfa.hazirla(Bekci.this);

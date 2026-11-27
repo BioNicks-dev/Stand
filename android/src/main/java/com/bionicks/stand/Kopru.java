@@ -114,7 +114,6 @@ final class Kopru {
     @JavascriptInterface public void gimbalDur() { Gimbal.dur(); }
     @JavascriptInterface public void gimbalMod(int m) { Gimbal.mod(m); }
     @JavascriptInterface public void gimbalYon(int y) { Gimbal.yon(y); }
-    @JavascriptInterface public void gimbalHam(String hex) { Gimbal.ham(hex); }
     @JavascriptInterface public void gimbalYeniden() { Gimbal.yenidenBaglan(); }
     // Uygulama 29: açıya git (eğme -999 = değiştirme)
     @JavascriptInterface public void gimbalGit(double yatay, double egme, String ad) { Gimbal.git(yatay, egme <= -900 ? Double.NaN : egme, ad); }
@@ -123,11 +122,6 @@ final class Kopru {
     @JavascriptInterface public void gimbalSinirUnut() { Gimbal.sinirUnut(); }
     @JavascriptInterface public void gimbalTest() { Gimbal.hareketTesti(); }
     @JavascriptInterface public void gimbalDurGeri(int ms) { Gimbal.durGeri(ms); }
-    @JavascriptInterface public void gimbalKumandaGibi(int yol, String olay) { Gimbal.kumandaGibi(yol, olay); }
-    // 26 Kas 17:25: Kumanda öğren (sadece dinler)
-    @JavascriptInterface public void gimbalOgren() { Gimbal.ogrenBasla(); }
-    @JavascriptInterface public void gimbalOgrenAtla() { Gimbal.ogrenAtla(); }
-    @JavascriptInterface public void gimbalOgrenDur() { Gimbal.ogrenDur(); }
 
     @JavascriptInterface public void durdur() {
         Kayit.yaz("Uygulama elle durduruldu.");
