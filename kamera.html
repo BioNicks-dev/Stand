@@ -373,7 +373,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="27 Kas 01:37";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="27 Kas 02:03";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1610,7 +1610,7 @@
     else if(beklemede) m={d:"hazir"};
     else m={d:"ekran"};
     // 27 Kas: gimbal durumu da yayınlanır (stand sayfasındaki Gimbal kutusu için; Evi izle açık olmasa da görünsün)
-    try{ var gg=JSON.parse(APP.gimbalDurum()); m.gb={d:gg.durum==="bagli"?"bagli":"yok"}; if(gg.durum==="bagli"&&gg.pilMv>0) m.gb.p=gbPilYuzde(gg.pilMv); if(gg.aciYok) m.gb.a=1; }catch(h){}
+    try{ var gg=JSON.parse(APP.gimbalDurum()); m.gb={d:gg.durum==="bagli"?"bagli":"yok"}; if(gg.durum==="bagli"&&gg.pilMv>0) m.gb.p=gbPilYuzde(gg.pilMv); if(gg.durum==="bagli"&&gg.sarj) m.gb.s=1; if(gg.aciYok) m.gb.a=1; }catch(h){}
     if(pil){ m.pil={y:pil.y,s:pil.s}; var ph=pilHizi(); if(ph&&ph.o) m.pil.o=true; else if(ph) m.pil.h=Math.round(ph.h); }   // şarj (23 Eki), tüketim hızı (29 Eki)
     return m;
   }
@@ -2767,7 +2767,7 @@
   function gimbalOzet(){
     if(!gimbalVar()) return null;
     var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return null; }
-    return {durum:g.durum||"", pil:g.pilMv>0?g.pilMv:null, mod:(typeof g.mod==="number"&&g.mod>=0)?g.mod:null,
+    return {durum:g.durum||"", pil:g.pilMv>0?g.pilMv:null, sarj:!!g.sarj, mod:(typeof g.mod==="number"&&g.mod>=0)?g.mod:null,
       yatay:(typeof g.yatay==="number")?g.yatay:null, egme:(typeof g.egme==="number")?g.egme:null, gidiyor:!!g.gidiyor, vardi:g.vardi||null, sinir:!!g.sinir, tani:g.vardi&&g.tani?g.tani:null};
   }
   function gimbalUzakDur(){
@@ -2816,7 +2816,7 @@
       E("gbDurum").textContent=d+(g.ad?" ("+g.ad+")":"")+(g.hata?" · "+g.hata:"");
       E("gbDurum").className=g.durum==="bagli"?"iyi":(g.durum==="izinYok"||g.durum==="bluetoothKapali"?"kotu":"uyari");
       E("gbOzet").textContent=g.durum==="bagli"?"· bağlı":"· "+d;
-      E("gbPil").textContent=g.pilMv>0?("~%"+gbPilYuzde(g.pilMv)+" ("+(g.pilMv/1000).toFixed(2).replace(".",",")+" V)"):"-";
+      E("gbPil").textContent=g.pilMv>0?("~%"+gbPilYuzde(g.pilMv)+" ("+(g.pilMv/1000).toFixed(2).replace(".",",")+" V)"+(g.sarj?" · ⚡ şarjda":"")):"-";
       E("gbMod").textContent=g.modAd||"-";
       E("gbCevap").textContent=g.cevap?"geliyor":"yok";
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
