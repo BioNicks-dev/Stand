@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 01:32">
+<meta name="stand-surum" content="27 Kas 01:37">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -641,7 +641,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 01:32</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 01:37</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -1473,7 +1473,7 @@
         grMesaj(gm); return;
       }
       if(konu.slice(-10)==="/goruntu/p"){ kisiMesaj(veri.toString()); return; }
-      if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); return; }
+      if(konu.slice(-10)==="/goruntu/d"){ try{ pixelDurum=JSON.parse(veri.toString()); pixelDurumGeldi=Date.now(); }catch(h){} try{ gbKutuYaz(); }catch(h){} pixelKutusu(); return; }
       if(konu.slice(-10)==="/goruntu/b"){ try{ bekciDurum=JSON.parse(veri.toString()); bekciDurumGeldi=Date.now(); }catch(h){} pixelKutusu(); gmArayuz(); try{ turUygula(); }catch(h){} return; }
       if(konu.slice(-8)==="/kamkapi"){ var kk=null; try{ kk=JSON.parse(veri.toString()); }catch(h){} kamKapiGeldi(kk); return; }
       if(konu.slice(-6)==="/kayit"){ kayitGeldi(veri.toString()); return; }
@@ -2803,16 +2803,23 @@
   function gbGeri(){ if(!gbRtt.length) return 450; var l=gbRtt.slice().sort(function(a,b){ return a-b; }); return Math.min(1500,Math.round(l[Math.floor(l.length/2)]+150)); }
   function gbPing(){ if(gbAktif()) grGonder({t:"ping",n:Date.now()}); }
   function gbPong(m){ var d=Date.now()-Number(m.n); if(!(d>0&&d<5000)) return; gbRtt.push(d); if(gbRtt.length>7) gbRtt.shift(); }
+  // 27 Kas: ana ekrandaki Gimbal kutusu. Evi izle açıksa canlı veriden, değilse Pixel'in bildirdiğinden (pixelDurum.gb)
+  function gbKutuYaz(){
+    var a=gbAktif(), g=grYet&&grYet.gimbal, d=pixelDurum&&pixelDurum.d!=="kapali"?pixelDurum.gb:null, p=null, var_=null;
+    if(a) var_=true, p=g.pil?gbPilYuzde(g.pil):null;
+    else if(d&&d.d==="bagli") var_=true, p=(typeof d.p==="number")?d.p:null;
+    else if(d&&d.d==="yok") var_=false;
+    if(var_===null) goster("gGimbal","bilinmiyor","soluk");
+    else if(!var_) goster("gGimbal","bağlı değil","kotu");
+    else if(p===null) goster("gGimbal","bağlı","iyi");
+    else goster("gGimbal","pil ~%"+p+(!a&&d&&d.a?" · açı gelmiyor":""),p<10?"kotu":(p<20?"amber":"iyi"));
+  }
   function gbCiz(){
     var a=gbAktif(), g=grYet&&grYet.gimbal;
     if(a!==gbKonumCizildi) konumlariCiz();
     if(a&&!gbPingTik){ gbPing(); gbPingTik=setInterval(gbPing,5000); } else if(!a&&gbPingTik){ clearInterval(gbPingTik); gbPingTik=null; gbRtt=[]; }
     E("gbIzgara").classList.toggle("gizle",!a);
-    // 27 Kas: gimbal pili ana ekranda (%20 altı sarı, %10 altı kırmızı)
-    var gpy=a&&g&&g.pil?gbPilYuzde(g.pil):null;
-    if(!a) goster("gGimbal","bağlı değil","soluk");
-    else if(gpy===null) goster("gGimbal","bağlı","iyi");
-    else goster("gGimbal","pil ~%"+gpy,gpy<10?"kotu":(gpy<20?"amber":"iyi"));
+    gbKutuYaz();
     E("standIzgara").classList.toggle("gizle",false);   // 26 Kas 3b: Sol/Sağ 180 ve Başlangıç V3'te de çalışıyor
     if(!a) return;
     try{ guncelle(); }catch(h){}
@@ -3874,7 +3881,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 01:32";
+  var SAYFA_SURUM="27 Kas 01:37";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla

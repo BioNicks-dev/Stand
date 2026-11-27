@@ -373,7 +373,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="27 Kas 00:50";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="27 Kas 01:37";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -1609,6 +1609,8 @@
     else if(akis||kameraSoz) m={d:"kamera"};
     else if(beklemede) m={d:"hazir"};
     else m={d:"ekran"};
+    // 27 Kas: gimbal durumu da yayınlanır (stand sayfasındaki Gimbal kutusu için; Evi izle açık olmasa da görünsün)
+    try{ var gg=JSON.parse(APP.gimbalDurum()); m.gb={d:gg.durum==="bagli"?"bagli":"yok"}; if(gg.durum==="bagli"&&gg.pilMv>0) m.gb.p=gbPilYuzde(gg.pilMv); if(gg.aciYok) m.gb.a=1; }catch(h){}
     if(pil){ m.pil={y:pil.y,s:pil.s}; var ph=pilHizi(); if(ph&&ph.o) m.pil.o=true; else if(ph) m.pil.h=Math.round(ph.h); }   // şarj (23 Eki), tüketim hızı (29 Eki)
     return m;
   }
