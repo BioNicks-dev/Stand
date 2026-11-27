@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 02:13">
+<meta name="stand-surum" content="27 Kas 13:08">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -388,11 +388,18 @@
   #kKonumSerit button.ekle{border-color:#60a5fa;color:#bfdbfe;font-weight:600}
   #kKonumSerit .bos{color:#fff;font-size:13px;padding:8px 10px;background:rgba(0,0,0,.55);border-radius:12px;white-space:nowrap}
   body.konumSeritAcik.buyukDuzen #kBilgi{top:calc(108px + var(--gu))}
-  body.konumSeritAcik.buyukDuzen #kOda{top:calc(134px + var(--gu))}
-  body.konumSeritAcik.buyukDuzen #kSesKutu{top:calc(172px + var(--gu))}
+  body.konumSeritAcik.buyukDuzen #kOda{top:calc(154px + var(--gu))}
+  body.konumSeritAcik.buyukDuzen #kSesKutu{top:calc(192px + var(--gu))}
   #kBilgi.uyar{color:#ff9a9a;opacity:1}
   #kEkran #kBilgi{background:none;border:0;padding:2px 4px;margin:0;min-height:0;width:auto;font:inherit;font-size:12px;pointer-events:auto;z-index:4;cursor:pointer}
   #kBilgi:empty{display:none}
+  /* 27 Kas: Evi izle'de pil simgeleri (telefon, gimbal): azaldıkça kısalır, renk değiştirir, şarjda ⚡ */
+  #kBilgi{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left}
+  #kBilgi .pilSatir{display:flex;flex-wrap:wrap;gap:5px}
+  .pilK{--pc:#57c48c;display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:13px;background:rgba(0,0,0,.38);color:#fff;font-size:11.5px;line-height:1;white-space:nowrap}
+  .pilK.amber{--pc:#f59e0b} .pilK.kotu{--pc:#ff6b6b} .pilK.soluk{--pc:rgba(255,255,255,.55)}
+  .pilK .pg{width:13px;height:13px;flex:none} .pilK .pb{width:23px;height:11px;flex:none}
+  .pilK i{font-style:normal;font-weight:600} .pilK.kotu i,.pilK.amber i{color:var(--pc)}
   #kAyrinti{position:absolute;left:10px;right:auto;max-width:min(320px,80%);z-index:7;background:rgba(0,0,0,.82);color:#fff;font-size:13px;line-height:1.55;padding:10px 12px;border-radius:12px;bottom:28px}
   #kAyrinti.gizli{display:none}
   .kDugmeler button.ogreniyor{opacity:.55}
@@ -460,9 +467,9 @@
   body.buyukDuzen #kEkran .kDugmeler button.acik{background:rgba(255,255,255,.92);color:#111}
   body.buyukDuzen #kEkran .kDugmeler button:disabled{opacity:.35}
   body.buyukDuzen #kBilgi{top:calc(60px + var(--gu));left:calc(12px + var(--gs));bottom:auto}
-  body.buyukDuzen #kOda{top:calc(86px + var(--gu));left:calc(12px + var(--gs));right:auto;transform:none;max-width:calc(100% - var(--kw) - 48px - var(--gs) - var(--gsa))}
-  body.buyukDuzen #kSesKutu{top:calc(124px + var(--gu));left:calc(12px + var(--gs));transform:none}
-  body.buyukDuzen #kAyrinti{top:calc(124px + var(--gu));bottom:auto;left:calc(12px + var(--gs))}
+  body.buyukDuzen #kOda{top:calc(106px + var(--gu));left:calc(12px + var(--gs));right:auto;transform:none;max-width:calc(100% - var(--kw) - 48px - var(--gs) - var(--gsa))}
+  body.buyukDuzen #kSesKutu{top:calc(144px + var(--gu));left:calc(12px + var(--gs));transform:none}
+  body.buyukDuzen #kAyrinti{top:calc(144px + var(--gu));bottom:auto;left:calc(12px + var(--gs))}
   body.buyukDuzen #kKisiYuva{top:calc(60px + var(--gu));right:calc(12px + var(--gsa));left:auto;bottom:auto;gap:8px}
   body.buyukDuzen .kKisi,body.buyukDuzen #kBenYuva #kBenKutu{width:var(--kw);height:calc(var(--kw) * 4 / 3);border-radius:12px;border:1.5px solid rgba(255,255,255,.55)}
   body.buyukDuzen #kBenYuva{right:calc(12px + var(--gsa));bottom:12px;flex-direction:row-reverse;align-items:flex-end;gap:10px}
@@ -641,7 +648,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 02:13</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 13:08</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -2804,18 +2811,42 @@
   function gbPing(){ if(gbAktif()) grGonder({t:"ping",n:Date.now()}); }
   function gbPong(m){ var d=Date.now()-Number(m.n); if(!(d>0&&d<5000)) return; gbRtt.push(d); if(gbRtt.length>7) gbRtt.shift(); }
   // 27 Kas: ana ekrandaki Gimbal kutusu. Evi izle açıksa canlı veriden, değilse Pixel'in bildirdiğinden (pixelDurum.gb)
-  function gbKutuYaz(){
-    var a=gbAktif(), g=grYet&&grYet.gimbal, p=null, var_=null, sj=false;
+  // 27 Kas: gimbal durumu tek yerde. Ana ekrandaki kutu ile Evi izle'deki pil simgesi aynı kaynaktan okur:
+  // Evi izle açıksa canlı veri, değilse Pixel'in bildirdiği ya da bekçi (hangisi daha yeniyse)
+  function gbPilDurum(){
+    var a=gbAktif(), g=grYet&&grYet.gimbal, r={v:null,p:null,s:false,a:false,mv:0};
     var d=pixelDurum&&pixelDurum.d!=="kapali"&&pixelDurum.gb?pixelDurum.gb:null, dz=d?(Number(pixelDurum.z)||pixelDurumGeldi):0;
     var bk=bekciDurum&&bekciDurum.gb?bekciDurum:null, bz=bk?(Number(bk.z)||bekciDurumGeldi):0;
-    if(d&&bk&&bz>dz) d=null;   // 27 Kas: hangisi daha yeniyse o
-    if(a) var_=true, p=g.pil?gbPilYuzde(g.pil):null, sj=!!g.sarj;
-    else if(d) var_=d.d==="bagli", p=(var_&&typeof d.p==="number")?d.p:null, sj=!!d.s;
-    else if(bk){ var_=bk.gb==="bagli"; if(var_&&bk.gbMv>0) p=gbPilYuzde(bk.gbMv); sj=!!bk.gbS; }
-    if(var_===null) goster("gGimbal","bilinmiyor","soluk");
-    else if(!var_) goster("gGimbal","bağlı değil","kotu");
+    if(d&&bk&&bz>dz) d=null;   // hangisi daha yeniyse o
+    if(a){ r.v=true; if(g.pil){ r.mv=g.pil; r.p=gbPilYuzde(g.pil); } r.s=!!g.sarj; }
+    else if(d){ r.v=d.d==="bagli"; r.p=(r.v&&typeof d.p==="number")?d.p:null; r.s=!!d.s; r.a=!!d.a; }
+    else if(bk){ r.v=bk.gb==="bagli"; if(r.v&&bk.gbMv>0){ r.mv=bk.gbMv; r.p=gbPilYuzde(bk.gbMv); } r.s=!!bk.gbS; }
+    return r;
+  }
+  function gbKutuYaz(){
+    var r=gbPilDurum(), p=r.p, sj=r.s;
+    if(r.v===null) goster("gGimbal","bilinmiyor","soluk");
+    else if(!r.v) goster("gGimbal","bağlı değil","kotu");
     else if(p===null) goster("gGimbal","bağlı","iyi");
-    else goster("gGimbal",(sj?"⚡ ":"")+"pil ~%"+p+(!a&&d&&d.a?" · açı gelmiyor":""),sj?"iyi":(p<10?"kotu":(p<20?"amber":"iyi")));
+    else goster("gGimbal",(sj?"⚡ ":"")+"pil ~%"+p+(r.a?" · açı gelmiyor":""),sj?"iyi":(p<10?"kotu":(p<20?"amber":"iyi")));
+  }
+  // Evi izle pil simgeleri: telefon ve gimbal glifi + pil çubuğu (kısalır, renk: ≥%20 yeşil, <%20 turuncu, <%10 kırmızı, şarjda yeşil + ⚡)
+  var PIL_GLIF={
+    tel:'<svg class="pg" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="10.5" y1="18.2" x2="13.5" y2="18.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    gim:'<svg class="pg" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="4" width="6" height="9" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 5.5v6.5a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5V5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="9.5" y="15.5" width="5" height="7" rx="1.8" fill="currentColor"/></svg>'
+  };
+  function pilGovde(y,s){
+    var w=(typeof y!=="number")?0:Math.max(y>0?1.5:0,Math.round(18*Math.max(0,Math.min(100,y))/10)/10);
+    return '<svg class="pb" viewBox="0 0 26 12" aria-hidden="true"><rect x=".75" y=".75" width="22" height="10.5" rx="2.6" fill="none" stroke="currentColor" stroke-opacity=".75" stroke-width="1.5"/><rect x="23.8" y="3.8" width="1.7" height="4.4" rx=".8" fill="currentColor" fill-opacity=".75"/>'
+      +(w?'<rect x="2.5" y="2.5" width="'+w+'" height="7" rx="1.3" fill="var(--pc)"/>':'')
+      +(s?'<path d="M13.6 1.8 8.6 6.6h3L10.4 10.4l5.2-5h-3.1z" fill="#fff" stroke="#000" stroke-opacity=".4" stroke-width=".5" stroke-linejoin="round"/>':'')+'</svg>';
+  }
+  // tur: "tel" | "gim"; y: yüzde ya da null; s: şarjda; yak: yaklaşık (~); yan: yüzde yokken yazılacak sabit metin; sn: renk sınıfı (verilmezse seviyeden)
+  function pilK(tur,y,s,yak,yan,sn){
+    var yz=(typeof y==="number")?y:null;
+    sn=sn||(s?"iyi":(yz===null?"soluk":(yz<10?"kotu":(yz<20?"amber":"iyi"))));
+    var yazi=yz!==null?((yak?"~":"")+"%"+yz):(yan||"");
+    return '<span class="pilK '+sn+'">'+PIL_GLIF[tur]+((yz===null&&!s)?"":pilGovde(yz,s))+(yazi?'<i>'+yazi+'</i>':'')+'</span>';
   }
   function gbCiz(){
     var a=gbAktif(), g=grYet&&grYet.gimbal;
@@ -3885,7 +3916,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 02:13";
+  var SAYFA_SURUM="27 Kas 13:08";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
@@ -4096,14 +4127,22 @@
     var isi=grPx.isi||(grYet&&grYet.isi)||"", ms=grPx.ms;
     var dusuk=grCozW&&Math.max(grCozW,grCozH)<1280;
     // kısa satır: simgeler
-    if(p) parca.push((p.s?"⚡":(p.y<20?"🪫":"🔋"))+p.y+"%");
     var turS={"ev ağı":"🏠","internet":"🌐","aktarma":"☁"}[grTur]; if(turS) parca.push(turS);
     if(isi) parca.push((isi==="rahat"?"🟢":(isi==="zorlanıyor"?"🟡":"🔴"))+(typeof ms==="number"?" "+ms+" ms":""));
     if(dusuk) parca.push("⚠ "+Math.min(grCozW,grCozH)+"p");
-    E("kBilgi").textContent=parca.join(" · ");
-    E("kBilgi").classList.toggle("uyar",!!(p&&!p.s&&p.y<20)||isi==="çok zorlanıyor");
+    var gr=document.body.classList.contains("turV3")?gbPilDurum():{v:null,p:null,s:false,a:false,mv:0}, ph="";
+    if(p) ph+=pilK("tel",p.y,!!p.s,false);
+    if(gr.v===true){ ph+=pilK("gim",gr.p,gr.s,true,"bağlı"); if(gr.a) ph+='<span class="pilK amber"><i>açı yok</i></span>'; }
+    else if(gr.v===false) ph+=pilK("gim",null,false,false,"bağlı değil","kotu");
+    var kb=E("kBilgi"); kb.textContent="";
+    if(ph) kb.insertAdjacentHTML("beforeend",'<span class="pilSatir">'+ph+'</span>');
+    if(parca.length){ var ty=document.createElement("span"); ty.textContent=parca.join(" · "); kb.appendChild(ty); }
+    kb.setAttribute("aria-label","Ayrıntılar."+(p?" Telefon pili %"+p.y+(p.s?", şarjda":"")+".":"")+(gr.v===true?" Gimbal bağlı"+(gr.p!==null?", pil yaklaşık %"+gr.p:"")+(gr.s?", şarjda":"")+".":(gr.v===false?" Gimbal bağlı değil.":"")));
+    kb.classList.toggle("uyar",!!(p&&!p.s&&p.y<20)||!!(gr.v&&!gr.s&&gr.p!==null&&gr.p<20)||isi==="çok zorlanıyor");
     // ayrıntı kutusu
-    if(p) ayr.push("Pil: %"+p.y+(p.s?", şarjda":", şarjda değil"));
+    if(p) ayr.push("Telefon pili: %"+p.y+(p.s?", şarjda":", şarjda değil"));
+    if(gr.v===true) ayr.push("Gimbal: bağlı"+(gr.p!==null?", pil yaklaşık %"+gr.p+(gr.mv?" ("+(gr.mv/1000).toFixed(2).replace(".",",")+" V)":""):"")+(gr.s?", şarjda":", şarjda değil")+(gr.a?", açı gelmiyor":""));
+    else if(gr.v===false) ayr.push("Gimbal: bağlı değil");
     if(grTur) ayr.push("Bağlantı: "+({"ev ağı":"ev ağı (doğrudan)","internet":"internet (doğrudan)","aktarma":"sunucu üzerinden aktarma"}[grTur]||grTur));
     if(grCozW) ayr.push("Görüntü: "+grCozW+"×"+grCozH);
     var ks=(grYet&&grYet.surum)||grKamSurum;
