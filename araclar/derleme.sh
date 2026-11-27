@@ -5,8 +5,10 @@
 DEPO=BioNicks-dev/Stand
 for i in $(seq 1 40); do                      # en çok ~10 dakika bekler (40 x 15 sn)
   SATIR=$(gh api "repos/$DEPO/actions/workflows/apk.yml/runs?per_page=1" \
-    --jq '.workflow_runs[0] | "\(.run_number) \(.status) \(.conclusion) \(.id)"')
-  read NO DURUM SONUC KIMLIK <<< "$SATIR"
+    --jq '.workflow_runs[0] | "\(.run_number) \(.status) \(.conclusion) \(.id) \(.head_sha)"')
+  read NO DURUM SONUC KIMLIK SHA <<< "$SATIR"
+  # Yeni yüklemenin derlemesi henüz başlamadıysa eski sonucu söyleme, bekle
+  if [ "$SHA" != "$(git rev-parse HEAD)" ]; then sleep 15; continue; fi
   if [ "$DURUM" = "completed" ]; then
     if [ "$SONUC" = "success" ]; then echo "v$NO hazır. Pixel yarım dakikada kurar."
     else
