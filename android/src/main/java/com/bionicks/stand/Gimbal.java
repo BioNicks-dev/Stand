@@ -77,6 +77,10 @@ final class Gimbal {
     private BluetoothLeScanner tarayici;
     private boolean taraniyor = false, calisiyor = false, hazir = false, yaziyor = false;
     private final ArrayDeque<byte[]> kuyruk = new ArrayDeque<>();
+    // 26 Kas 20:00: "kumanda gibi" denemesi için FFE3 kanalı (Hohem Joy kullanmıyor) ve ayrı kuyruğu
+    private static final UUID YAZ3 = UUID.fromString("0000ffe3-0000-1000-8000-00805f9b34fb");
+    private BluetoothGattCharacteristic yazKar3 = null;
+    private final ArrayDeque<byte[]> kuyruk3 = new ArrayDeque<>();
     private long yazmaBasi = 0;
     private boolean servisAramaBasladi = false;
     private final java.io.ByteArrayOutputStream parca = new java.io.ByteArrayOutputStream();
@@ -173,6 +177,7 @@ final class Gimbal {
             o.put("gucKapatAc", g.aciKurtarma >= 3);
             o.put("aciYok", g.hazir && SystemClock.elapsedRealtime() - Math.max(g.a84Zaman, g.hazirZaman) > 3000);
             o.put("ayar", g.ayarYazi); o.put("ayarliyor", g.testAktif);
+            o.put("kg", g.kgYazi); o.put("kgFfe3", g.yazKar3 != null);
             o.put("ogren", g.ogrYazi); o.put("ogreniyor", g.ogrAktif); o.put("ogrEvre", g.ogrEvre);
             if (g.solVar) o.put("sol", Math.round(g.sol));
             int[] a = g.a84;
@@ -582,6 +587,7 @@ final class Gimbal {
                 BluetoothGattCharacteristic o = s == null ? null : s.getCharacteristic(OKU);
                 if (y == null) { sonHata = "FFE1 bulunamadı"; kapat("FFE1 yok"); h.postDelayed(Gimbal.this::ara, 20000); return; }
                 yazKar = y;
+                yazKar3 = s.getCharacteristic(YAZ3);
                 // Hohem Joy cevap kanalını açmak için gimbala bir şey yazmıyor; gimbal cevapları kendisi yolluyor.
                 // Sadece telefonun tarafında dinlemeyi açıyoruz (gimbala yazma yok, kuyruğu kilitleyemez).
                 if (o != null) { try { g.setCharacteristicNotification(o, true); } catch (Exception e) { } }
@@ -605,19 +611,30 @@ final class Gimbal {
             if (Build.VERSION.SDK_INT >= 33) return;     // yenisi çağrılır
             final byte[] v = k.getValue();
             final boolean ikinci = OKU2.equals(k.getUuid());
-            h.post(() -> { if (ikinci) ogrKaydet("FFE4:", v); else cevap(v); });
+            h.post(() -> { kgYakala(ikinci ? "FFE4" : "FFE2", v); if (ikinci) ogrKaydet("FFE4:", v); else cevap(v); });
         }
 
         @Override public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic k, byte[] v) {
             final byte[] kopya = v == null ? null : v.clone();
             final boolean ikinci = OKU2.equals(k.getUuid());
-            h.post(() -> { if (ikinci) ogrKaydet("FFE4:", kopya); else cevap(kopya); });
+            h.post(() -> { kgYakala(ikinci ? "FFE4" : "FFE2", kopya); if (ikinci) ogrKaydet("FFE4:", kopya); else cevap(kopya); });
         }
     };
 
     // Sıradaki paketi yaz (Android aynı anda tek yazma kabul eder)
     private void yazNext() {
         if (yaziyor || gatt == null || yazKar == null) return;
+        if (!kuyruk3.isEmpty() && yazKar3 != null) {
+            byte[] b3 = kuyruk3.poll();
+            boolean ok3;
+            try {
+                if (Build.VERSION.SDK_INT >= 33) ok3 = gatt.writeCharacteristic(yazKar3, b3, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) == 0;
+                else { yazKar3.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE); yazKar3.setValue(b3); ok3 = gatt.writeCharacteristic(yazKar3); }
+            } catch (Exception e) { ok3 = false; }
+            if (ok3) { yaziyor = true; yazmaBasi = SystemClock.elapsedRealtime(); giden++; }
+            else { kuyruk3.addFirst(b3); h.postDelayed(this::yazNext, 20); }
+            return;
+        }
         byte[] b = kuyruk.poll();
         if (b == null) return;
         boolean ok;
@@ -1271,6 +1288,75 @@ final class Gimbal {
             if (m <= 3) { if (m != mod && mod >= 0) Kayit.yaz("Gimbal: mod " + MOD_AD[m] + " oldu."); mod = m; }
             if (hz <= 3) takipHizi = hz;
         }
+    }
+
+    // ---------- 26 Kas 20:00: "kumanda gibi" (Pixel, kumandanın tuş mesajını gimbala gönderir) ----------
+    // Kumanda (HR4) tuşa basınca kendi FFE2'sinden şunu gönderiyor (nRF Connect ile görüldü):
+    //   AA CC 09 00 A1 01 00 [tuş] [basış] [toplam] FF   (toplam = 09+00+A1+01+00+tuş+basış)
+    //   tuş: 0B joystick'e basma, 0C joystick yön (01 yukarı 02 aşağı 03 sol 04 sağ), 03 ayar, 02 fonksiyon, 01 mod,
+    //        0E/0D ve 05/04 üçgen ▲▼ (iki ayrı mod); basış: 01/02/03 = 1/2/3 kez, 1E = uzun başladı, 3C = bırakıldı.
+    // Gimbal bu mesajı telefondan kabul eder mi bilinmiyor; 4 yol denenir: yol 1 FFE1+AACC, 2 FFE1+AA55, 3 FFE3+AACC, 4 FFE3+AA55.
+    private volatile String kgYazi = ""; private long kgBas = 0; private final StringBuilder kgCevap = new StringBuilder(); private int kgCevapSay = 0;
+    private String kgAd = "";
+
+    private static byte[] kumandaPaket(int yol, int tus, int basis) {
+        int[] g = { 0x09, 0x00, 0xA1, 0x01, 0x00, tus & 0xFF, basis & 0xFF };
+        int t = 0; for (int x : g) t += x;
+        byte[] b = new byte[11];
+        b[0] = (byte) 0xAA; b[1] = (byte) (yol == 1 || yol == 3 ? 0xCC : 0x55);
+        for (int i = 0; i < 7; i++) b[2 + i] = (byte) g[i];
+        b[9] = (byte) t; b[10] = (byte) 0xFF;
+        return b;
+    }
+
+    // olay: "isik" (joystick uzun), "parlak" (ayar 1), "renk" (ayar 2), "jmod" (joystick 2), "u0E","u0D","u05","u04" (üçgenler)
+    static void kumandaGibi(final int yol, final String olay) {
+        final Gimbal g = ben;
+        if (g == null) return;
+        g.h.post(() -> {
+            if (!g.hazir) { g.kgYazi = "Gönderilmedi: gimbal bağlı değil."; return; }
+            if ((yol == 3 || yol == 4) && g.yazKar3 == null) { g.kgYazi = "Gönderilmedi: gimbalda FFE3 kanalı yok."; return; }
+            int[][] adim; String ad;
+            switch (olay) {
+                case "isik":   adim = new int[][] { { 0x0B, 0x1E, 0 }, { 0x0B, 0x3C, 1500 } }; ad = "Işık aç/kapat (joystick uzun)"; break;
+                case "parlak": adim = new int[][] { { 0x03, 0x01, 0 } }; ad = "Parlaklık (ayar 1 kez)"; break;
+                case "renk":   adim = new int[][] { { 0x03, 0x02, 0 } }; ad = "Renk (ayar 2 kez)"; break;
+                case "jmod":   adim = new int[][] { { 0x0B, 0x02, 0 } }; ad = "Üçgen modunu değiştir (joystick 2 kez)"; break;
+                case "u0E":    adim = new int[][] { { 0x0E, 0x1E, 0 }, { 0x0E, 0x3C, 150 } }; ad = "Üçgen ▲ (0E)"; break;
+                case "u0D":    adim = new int[][] { { 0x0D, 0x1E, 0 }, { 0x0D, 0x3C, 150 } }; ad = "Üçgen ▼ (0D)"; break;
+                case "u05":    adim = new int[][] { { 0x05, 0x1E, 0 }, { 0x05, 0x3C, 150 } }; ad = "Üçgen ▲ (05)"; break;
+                case "u04":    adim = new int[][] { { 0x04, 0x1E, 0 }, { 0x04, 0x3C, 150 } }; ad = "Üçgen ▼ (04)"; break;
+                default: return;
+            }
+            final String yolAd = "Yol " + yol + " (" + (yol <= 2 ? "FFE1" : "FFE3") + ", " + (yol == 1 || yol == 3 ? "AA CC" : "AA 55") + ")";
+            g.kgAd = ad + " · " + yolAd;
+            g.kgCevap.setLength(0); g.kgCevapSay = 0; g.kgBas = SystemClock.elapsedRealtime();
+            StringBuilder giden = new StringBuilder();
+            long gecikme = 0;
+            for (int[] a : adim) {
+                gecikme += a[2];
+                final byte[] p = kumandaPaket(yol, a[0], a[1]);
+                if (giden.length() > 0) giden.append(" + ");
+                giden.append(hex(p));
+                g.h.postDelayed(() -> { if (yol <= 2) g.gonder(p); else { g.kuyruk3.add(p); g.yazNext(); } }, gecikme);
+            }
+            g.kgYazi = "Gönderildi: " + g.kgAd + ". Gimbalın cevabı bekleniyor…";
+            Kayit.yaz("Kumanda gibi: " + g.kgAd + " → " + giden);
+            g.h.postDelayed(() -> {
+                String c = g.kgCevapSay == 0 ? "gimbal yeni bir cevap vermedi" : "gimbal " + g.kgCevapSay + " cevap verdi: " + g.kgCevap;
+                g.kgYazi = g.kgAd + " gönderildi; " + c + ". Işıkta ya da gimbalda bir değişiklik gördünüz mü?";
+                Kayit.yaz("Kumanda gibi sonuç: " + g.kgAd + ": " + c + ".");
+            }, gecikme + 2500);
+        });
+    }
+
+    // gönderdikten sonraki 2,5 sn içinde gelen her bildirimi (açı ve pil hariç) not et
+    private void kgYakala(String kanal, byte[] v) {
+        if (kgBas == 0 || v == null || SystemClock.elapsedRealtime() - kgBas > 4000) return;
+        String x = hex(v);
+        if (x.startsWith("AA55") && x.length() >= 12) { String gc = x.substring(8, 12); if (gc.equals("0084") || gc.equals("0049")) return; }
+        if (kgCevapSay < 6) { if (kgCevap.length() > 0) kgCevap.append(" · "); kgCevap.append(kanal).append(":").append(x); }
+        kgCevapSay++;
     }
 
     // ---------- paketler ----------

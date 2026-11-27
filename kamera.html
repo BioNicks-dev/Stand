@@ -186,7 +186,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 18:45</span></h1>
+  <h1>Kamera <span class="not" id="surumYazi">· 26 Kas 20:05</span></h1>
 
   <div id="kurulum" class="gizli">
     <div class="bolum kart">
@@ -292,11 +292,25 @@
       <p class="not">Bir kez yapılır. Gimbal kendisi dört yöne gidip gelir; eğme yönünü ve bırakınca ne kadar kaydığını öğrenip kaydeder. Gimbal yeri değişince ya da hareket tuhaflaşınca tekrar yapılabilir.</p>
       <div id="gbOgrKutu" class="durum gizli" style="margin-top:8px;font-size:22px;line-height:1.35;white-space:pre-line;font-weight:bold"></div>
       <button id="gbOgren" type="button">Kumanda öğren (~4 dk)</button>
-      <div class="durum" style="margin-top:10px"><b>Tek paket denemeleri</b> (her biri tek bir yakalanmış mesaj gönderir; sonucu gözünüzle görün)</div>
-      <button id="gbIsikAc" type="button">AI kamera ışığını AÇ (deneme)</button>
-      <button id="gbIsikKapa" type="button">AI kamera ışığını KAPAT (deneme)</button>
-      <button id="gbUyut" type="button">Gimbalı UYUT (bekleme, deneme)</button>
-      <button id="gbUyandir" type="button">Gimbalı UYANDIR (deneme)</button>
+      <div id="gbKgKutu" style="margin-top:12px;padding:10px;border:2px solid #60a5fa;border-radius:10px">
+        <div style="font-weight:bold;font-size:18px">Kumanda gibi dene</div>
+        <p class="not">Pixel, kumandanın tuş mesajını gimbala gönderir. Önce bir YOL seçin, sonra "Işık aç/kapat"a basın ve AI kameranın ışığına bakın.
+        Işık değişmezse sonraki yolu seçip tekrar basın. Işığı değiştiren yolu bana söyleyin; diğer düğmeleri o yolla deneyin.</p>
+        <div id="gbKgYollar" class="gbSira" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0">
+          <button type="button" data-yol="1">Yol 1</button><button type="button" data-yol="2">Yol 2</button>
+          <button type="button" data-yol="3">Yol 3</button><button type="button" data-yol="4">Yol 4</button>
+        </div>
+        <div class="durum">Seçili: <b id="gbKgSecili">Yol 1</b></div>
+        <button type="button" data-olay="isik" style="font-weight:bold">Işık aç/kapat</button>
+        <button type="button" data-olay="parlak">Işık parlaklığı</button>
+        <button type="button" data-olay="renk">Işık rengi</button>
+        <button type="button" data-olay="jmod">Üçgen modunu değiştir (roll ↔ parlaklık ↔ zoom)</button>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+          <button type="button" data-olay="u0E">▲ (0E)</button><button type="button" data-olay="u0D">▼ (0D)</button>
+          <button type="button" data-olay="u05">▲ (05)</button><button type="button" data-olay="u04">▼ (04)</button>
+        </div>
+        <div class="durum" style="margin-top:8px;font-size:16px;white-space:pre-line">Sonuç: <b id="gbKgSonuc">-</b></div>
+      </div>
       <button id="gbOgrAtla" type="button" class="gizli">Bu tuş yok / atla</button>
       <button id="gbOgrDur" type="button" class="gizli">Öğrenmeyi bitir</button>
       <p class="not">Kumanda öğren gimbala bir şey göndermez, sadece dinler. Ekranda yazan tuşa basın; uygulama sonraki adıma kendisi geçer. Bitince Kaydı kopyala.</p>
@@ -374,7 +388,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="26 Kas 18:45";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="26 Kas 20:05";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2824,11 +2838,17 @@
     });
     E("gbOgrAtla").addEventListener("click",function(){ try{ APP.gimbalOgrenAtla(); }catch(h){} sonDokunma=Date.now(); setTimeout(guncelle,250); });
     // 26 Kas 18:45: kumanda öğren 1–2. turda yakalanan mesajlar (00 C1 03 30 ışık açıkken geldi; 00 C1 03 00'ı Hohem Joy açılışta gönderiyor)
-    function gbTek(ad,paketler){ if(typeof APP.gimbalHam!=="function") return; paketler.forEach(function(p,i){ setTimeout(function(){ try{ APP.gimbalHam(p); }catch(h){} },i*150); }); yaz("Gimbal denemesi: "+ad+" gönderildi. Ne oldu? (ışık / bekleme ışığı)"); }
-    E("gbIsikAc").addEventListener("click",function(){ gbTek("ışık aç",["AA550E0000C1033000000000000002FF","AA550E0007C1033000000000000009FF"]); });
-    E("gbIsikKapa").addEventListener("click",function(){ gbTek("ışık kapat",["AA550E0000C10300000000000000D2FF","AA550E0007C10300000000000000D9FF"]); });
-    E("gbUyut").addEventListener("click",function(){ gbTek("uyut",["AA550E0000990301000000000000ABFF"]); });
-    E("gbUyandir").addEventListener("click",function(){ gbTek("uyandır",["AA550E0000990302000000000000ACFF"]); });
+    // 26 Kas 20:00: kumanda gibi dene (yol seç, olay gönder; sonuç uygulamadan gelir)
+    var gbKgYol=1;
+    function gbKgYolCiz(){ E("gbKgSecili").textContent="Yol "+gbKgYol+" ("+(gbKgYol<=2?"FFE1":"FFE3")+", "+(gbKgYol%2?"AA CC":"AA 55")+")";
+      Array.prototype.forEach.call(E("gbKgYollar").querySelectorAll("button"),function(b){ b.className=Number(b.getAttribute("data-yol"))===gbKgYol?"secili":""; }); }
+    Array.prototype.forEach.call(E("gbKgYollar").querySelectorAll("button"),function(b){ b.addEventListener("click",function(){ gbKgYol=Number(b.getAttribute("data-yol")); gbKgYolCiz(); }); });
+    Array.prototype.forEach.call(E("gbKgKutu").querySelectorAll("button[data-olay]"),function(b){ b.addEventListener("click",function(){
+      if(typeof APP.gimbalKumandaGibi!=="function"){ E("gbKgSonuc").textContent="Bu düğme için uygulama güncellenmeli."; return; }
+      try{ APP.gimbalKumandaGibi(gbKgYol,b.getAttribute("data-olay")); }catch(h){}
+      E("gbKgSonuc").textContent="Gönderiliyor…"; setTimeout(guncelle,400); setTimeout(guncelle,3000); setTimeout(guncelle,4500);
+    }); });
+    gbKgYolCiz();
     E("gbOgrDur").addEventListener("click",function(){ try{ APP.gimbalOgrenDur(); }catch(h){} setTimeout(guncelle,300); });
     setInterval(function(){ if(gbOgreniyor) guncelle(); },400);   // öğrenirken geri sayım akıcı olsun
     function guncelle(){
@@ -2849,6 +2869,7 @@
       E("gbGiden").textContent=g.giden||0; E("gbGelen").textContent=g.gelen||0;
       E("gbAci").textContent=(typeof g.yatay==="number"?"yatay "+Math.round(g.yatay)+"°":"yatay ?")+" · "+(typeof g.egme==="number"?"eğme "+Math.round(g.egme)+"°":"eğme ?")+(typeof g.roll==="number"?" · roll "+g.roll+"°":"")+(g.gidiyor?" · gidiyor…":"")+(g.sinir?" · sınır biliniyor":" · sınır öğrenilmedi");
       if(typeof g.ayar==="string"&&g.ayar) E("gbAyar").textContent=g.ayar;
+      if(typeof g.kg==="string"&&g.kg) E("gbKgSonuc").textContent=g.kg;
       if(g.aciYok) E("gbAci").textContent=g.gucKapatAc?"gelmiyor · gimbalı güç tuşundan kapatıp açın":"gelmiyor · uygulama toparlamaya çalışıyor (15 sn)";
       E("gbTest").disabled=!!g.ayarliyor||g.durum!=="bagli"||gbOgreniyor;
       // durum, mod ya da pil (0,1 V adımla) değişince izleyenlere bildir
