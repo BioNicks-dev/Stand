@@ -62,7 +62,7 @@ public class Bekci extends Service {
     private long sonSurumBakis = 0;
     private boolean sonGbBagli = false;
     private static int uyandirilanSurum = 0, bekleyenYazilan = 0;
-    private static final long PIL_ARA = 30 * 60 * 1000L;
+    private static final long PIL_ARA = 5 * 60 * 1000L;   // 27 Kas: 30 dk → 5 dk (gimbal pili kamera sayfası kapalıyken de güncel kalsın)
 
     static void baslat(Context c) { c.startForegroundService(new Intent(c, Bekci.class)); }
 
@@ -133,7 +133,12 @@ public class Bekci extends Service {
         iKonu = "comitok/" + kod + "/goruntu/i";      // iPhone'lara giden mesajlar
         mq = new Mqtt(SUNUCU, 8883, true, KULLANICI, ss, konular, bKonu, "{\"b\":\"yok\"}", new Mqtt.Dinleyici() {
             @Override public void mesaj(String k, String govde) {
-                if (k.equals(konu)) istekBak(govde);
+                if (k.equals(konu) && govde.contains("\"t\":\"bkay\"")) {           // 27 Kas: uzaktan kayıt okuma (sayfa uyurken de)
+                    final Mqtt m2 = mq;
+                    final String cvp = "{\"t\":\"bkayCevap\",\"satirlar\":" + Kayit.son(80) + "}";
+                    if (m2 != null) ag.execute(() -> m2.yayinla(iKonu, cvp, false));
+                }
+                else if (k.equals(konu)) istekBak(govde);
                 else if (k.equals(onek + "arama")) Santral.mesaj(govde);
                 else if (k.equals(onek + "gelistirme")) {
                     long simdiIstek = 0;
