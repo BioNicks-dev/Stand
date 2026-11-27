@@ -51,6 +51,7 @@ public class Bekci extends Service {
     private BroadcastReceiver ekranAlici, sarjAlici;
     private final ExecutorService ag = Executors.newSingleThreadExecutor();   // ağ işleri ana iş parçacığında yapılmaz
     private long sonPil = 0;
+    private boolean sonGbS = false;
     // Uygulama 20: yeni sürüme bekçi bakar (sayfanın zamanlayıcıları ekran kapalıyken yavaşlıyor).
     // Geliştirme modunda 2 dk'da bir, normalde 6 saatte bir.
     private static volatile long gmBitis = 0;
@@ -167,6 +168,8 @@ public class Bekci extends Service {
             o.put("uyg", Guncelle.benimSurum(this));                       // 27 Kas: Stand sayfasının Güncelleme bölümü gösterir
             if (Guncelle.hazirSurum > 0) o.put("indi", Guncelle.hazirSurum);
             if (hizli()) o.put("hizli", hizliBitis);
+            if (Gimbal.pilKisa() > 0) o.put("gbMv", Gimbal.pilKisa());            // 27 Kas: kamera sayfası kapalıyken de pil
+            if (Gimbal.sarjKisa()) o.put("gbS", 1);                                  // ve şarj görünsün
             o.put("gb", Gimbal.durumKisa());                               // 27 Kas: "bagli" ise Stand sayfası V3 düzenini açar
             BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
             int y = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
@@ -269,7 +272,8 @@ public class Bekci extends Service {
         @Override public void run() {
             if (!calisiyor) return;
             long simdi = SystemClock.elapsedRealtime();
-            if (bagli && simdi - sonPil > PIL_ARA) durumGonder();
+            boolean gs = Gimbal.sarjKisa();                                     // 27 Kas: şarj değişince hemen bildir
+            if (bagli && (simdi - sonPil > PIL_ARA || gs != sonGbS)) { sonGbS = gs; durumGonder(); }
             boolean gbSimdi = "bagli".equals(Gimbal.durumKisa());          // 27 Kas: gimbal bağlanınca/kopunca Stand sayfasına haber
             if (bagli && gbSimdi != sonGbBagli) { sonGbBagli = gbSimdi; durumGonder(); }
             long surumAra = hizli() ? 25000L : gmBitis > System.currentTimeMillis() ? 2 * 60000L : 6 * 3600000L;

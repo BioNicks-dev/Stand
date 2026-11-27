@@ -147,6 +147,8 @@ final class Gimbal {
 
     // 27 Kas: bekçinin durumu için kısa bilgi (Stand sayfası, Evi izle kapalıyken de V3 düzenini seçebilsin)
     static String durumKisa() { Gimbal g = ben; return g == null ? "kapali" : g.durum; }
+    static int pilKisa() { Gimbal g = ben; return g == null ? -1 : g.pilMv; }            // 27 Kas: bekçi için
+    static boolean sarjKisa() { Gimbal g = ben; return g != null && g.sarj != null && g.sarj; }
 
     static String durumJson() {
         JSONObject o = new JSONObject();
