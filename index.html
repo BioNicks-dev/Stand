@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 23:31">
+<meta name="stand-surum" content="28 Kas 00:17">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -51,11 +51,16 @@
   #gbIzgara{grid-column:1 / -1;margin-top:8px}
   #gbIzgara .gbSira{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
   #gbIzgara .gbSira.uc{grid-template-columns:repeat(3,1fr)}
-  #gbKartSira{grid-template-columns:2fr 1fr 1.4fr 1fr!important}
-  #gbKartSira.isikKapali{grid-template-columns:1fr!important}
-  #gbKartSira.isikKapali .gbIsikEk{display:none}
-  #gbAiSira{grid-template-columns:1fr!important}
   #gbIzgara .gbAyrinti{margin-top:6px}
+  #kGbYan{position:absolute;right:calc(10px + var(--gsa,0px));top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:flex-end;gap:10px;z-index:4;transition:opacity .25s}
+  #kGbYan.gizle{display:none}
+  #kGbYan .gbYanSira{display:flex;flex-direction:row-reverse;gap:6px;align-items:center}
+  #kGbYan button{width:44px;height:44px;min-height:0;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.38);color:#fff;display:flex;align-items:center;justify-content:center;touch-action:none}
+  #kGbYan button.ek{width:40px;height:40px;display:none}
+  #kGbYan button.acik{background:rgba(255,255,255,.92);color:#111}
+  #kGbYan .gbYanSira.goster button.ek{display:flex}
+  body.sadeGoruntu #kGbYan{opacity:0 !important;transition:opacity 1s;pointer-events:none !important}
+  body.gzKilit #kGbYan{pointer-events:none !important}
   #gbIzgara .gbAyrinti summary{cursor:pointer;font-size:13px;opacity:.75;padding:4px 2px}
   #gbIzgara button{min-height:40px;padding:6px 2px;font-size:14px}
   #gbIzgara button.secili{border-color:var(--live);color:var(--live);font-weight:700}
@@ -513,6 +518,15 @@
   <symbol id="i-ev" viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h4.5v-5.5h3V20H18V9.5"/></symbol>
   <symbol id="i-isik" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
   <symbol id="i-takip" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="2.5"/></symbol>
+  <!-- 28 Kas: gimbal (AI kamera dolgu ışığı, roll) -->
+  <symbol id="i-dolgu" viewBox="0 0 24 24"><rect x="6.5" y="10" width="11" height="7" rx="2"/><path d="M12 3.5v3M5.2 6l1.8 1.8M18.8 6 17 7.8M9.5 20.5h5"/></symbol>
+  <symbol id="i-roll" viewBox="0 0 24 24"><rect x="9.5" y="7" width="5" height="10" rx="1.3" transform="rotate(25 12 12)"/><path d="M4.6 14.5A8 8 0 0 1 9 4.6M19.4 9.5A8 8 0 0 1 15 19.4"/><path d="M9 4.6 6.6 4.2M9 4.6 8.4 7M15 19.4l2.4.4M15 19.4l.6-2.4"/></symbol>
+  <symbol id="i-rsol" viewBox="0 0 24 24"><path d="M7.5 8.5A6.5 6.5 0 1 1 6 15"/><path d="M7.5 4v4.5H12"/></symbol>
+  <symbol id="i-rsag" viewBox="0 0 24 24"><path d="M16.5 8.5A6.5 6.5 0 1 0 18 15"/><path d="M16.5 4v4.5H12"/></symbol>
+  <symbol id="i-donus" viewBox="0 0 24 24"><path d="M5 13a7 7 0 0 1 13.4-2.8"/><path d="M18.6 6.5v3.9h-3.9"/><path d="M19 13a7 7 0 0 1-13.4 2.8"/><path d="M5.4 19.5v-3.9h3.9"/></symbol>
+  <symbol id="i-renk" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-eksi" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+  <symbol id="i-arti" viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></symbol>
   <symbol id="i-beni" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
 </svg>
 <!-- ============ GELEN ARAMA (sadece yonetici) ============ -->
@@ -620,6 +634,21 @@
     <div id="kKisiBuyuk" class="gizle"><video autoplay playsinline muted></video></div>
     <div id="kKisiYuva"></div>
     <div id="kKisiSesler" style="display:none"></div>
+    <!-- 28 Kas: V3 gimbal kısayolları (görüntünün sağ kenarı; kumanda kartı bağlıyken) -->
+    <div id="kGbYan" class="gizle">
+      <div class="gbYanSira" id="kGbIsik">
+        <button type="button" id="gbIsikBtn" aria-label="Gimbal ışığını aç veya kapat"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-dolgu"/></svg></button>
+        <button type="button" class="ek" data-p="-" aria-label="Işık parlaklığı azalt (basılı tut)"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-eksi"/></svg></button>
+        <button type="button" class="ek" id="gbRenkBtn" aria-label="Işık rengini değiştir"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-renk"/></svg></button>
+        <button type="button" class="ek" data-p="+" aria-label="Işık parlaklığı artır (basılı tut)"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arti"/></svg></button>
+      </div>
+      <div class="gbYanSira" id="kGbRoll">
+        <button type="button" id="gbRollAc" aria-label="Roll düğmelerini göster"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-roll"/></svg></button>
+        <button type="button" class="ek" data-k="-" aria-label="Roll sola (basılı tut: sürekli)"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rsol"/></svg></button>
+        <button type="button" class="ek" id="gbDonusBtn" aria-label="Dönüş çekimi: telefon yavaşça döner ve geri gelir"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-donus"/></svg></button>
+        <button type="button" class="ek" data-k="+" aria-label="Roll sağa (basılı tut: sürekli)"><svg class="ik" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rsag"/></svg></button>
+      </div>
+    </div>
     <div id="kPadYuva"></div>
     <div id="kZoomGosterge"></div>
     <div id="kAltYuva"></div>
@@ -654,7 +683,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 23:31</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 28 Kas 00:17</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -697,16 +726,6 @@
   </div>
   <div id="gbIzgara" class="gizle">
     <div class="gbBilgi" id="gbBilgi">Gimbal (V3)</div>
-    <!-- 27 Kas: kumanda kartı varken ışık (açıkken parlaklık/renk aynı satırda) ve roll -->
-    <div class="gbSira gizle" id="gbKartSira">
-      <button type="button" id="gbIsikBtn">Işık</button><button type="button" data-p="-" class="gbIsikEk" aria-label="Işık parlaklığı azalt (basılı tut)">−</button><button type="button" id="gbRenkBtn" class="gbIsikEk">Renk</button><button type="button" data-p="+" class="gbIsikEk" aria-label="Işık parlaklığı artır (basılı tut)">+</button>
-    </div>
-    <div class="gbSira uc gizle" id="gbRollSira">
-      <button type="button" data-k="-" aria-label="Roll sola (basılı tut: sürekli)">◀ Roll</button><button type="button" id="gbDonusBtn" aria-label="Roll 180 dönüş çekimi: telefon yavaşça döner ve geri gelir">Dönüş çekimi</button><button type="button" data-k="+" aria-label="Roll sağa (basılı tut: sürekli)">Roll ▶</button>
-    </div>
-    <div class="gbSira gizle" id="gbAiSira">
-      <button type="button" id="gbAiDurBtn" aria-label="Gimbalın AI kamerasının takibini durdur">AI takibini durdur</button>
-    </div>
     <details class="gbAyrinti" id="gbYonAc"><summary>Yön</summary>
     <div class="gbSira uc">
       <button type="button" data-y="1">Dikey</button><button type="button" data-y="0">Yatay</button><button type="button" data-y="2">Ters yatay</button>
@@ -2894,11 +2913,10 @@
     if(typeof g.roll==="number") b+=" · roll "+Math.round(g.roll)+"°";
     if(g.bekleme) b+=" · beklemede (güç tuşuyla uyanır)";
     if(g.ai===1) b+=" · AI kamera açık"; else if(g.ai===0) b+=" · AI kamera kapalı";   // 27 Kas: sadece gimbalın kesin bildirimleri
-    E("gbAiSira").classList.toggle("gizle",g.ai!==1);
-    E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g)); E("gbRollSira").classList.toggle("gizle",!(g.kart&&g.kart.g));
+    E("kGbYan").classList.toggle("gizle",!(g.kart&&g.kart.g));   // 28 Kas: kumanda kartı varken görüntünün sağ kenarında
     var ib=E("gbIsikBtn"), iv=g.kart&&typeof g.kart.i==="boolean"?g.kart.i:null;   // ışık durumu gimbalın kendi bildirimi; bilinmiyorsa sadece "Işık"
-    ib.textContent=iv===null?"Işık":(iv?"Işık açık":"Işık kapalı"); ib.classList.toggle("secili",iv===true);
-    E("gbKartSira").classList.toggle("isikKapali",iv!==true);   // parlaklık/renk sadece ışık açıkken (gimbal o zaman dinliyor)   // parlaklık/renk sadece ışık açıkken çalışır   // 27 Kas: kumanda kartı hazırsa ışık + roll
+    ib.classList.toggle("acik",iv===true); ib.setAttribute("aria-label",iv===null?"Gimbal ışığı":(iv?"Gimbal ışığı açık (kapat)":"Gimbal ışığı kapalı (aç)"));
+    E("kGbIsik").classList.toggle("goster",iv===true);   // parlaklık/renk sadece ışık açıkken (gimbal o zaman dinliyor)   // parlaklık/renk sadece ışık açıkken çalışır   // 27 Kas: kumanda kartı hazırsa ışık + roll
     E("gbBilgi").textContent=b;
     if(E("gbModlar")) Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
   }
@@ -2910,16 +2928,19 @@
   });
   // 27 Kas: kumanda kartı üzerinden ışık ve roll (dokun: küçük adım, basılı tut: sürekli; kart 1,5 sn tazelenmezse durur)
   E("gbIsikBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"isik",ad:benimAdim()}); bildiri("Gimbal ışığı",1500,"bilgi"); };
-  E("gbAiDurBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",aiDur:1,ad:benimAdim()}); bildiri("AI takibi durduruldu",1500,"bilgi"); };
+  // 28 Kas: roll düğmeleri roll simgesine dokununca açılır, 5 sn kullanılmazsa kapanır
+  var gbRollKapaZ=null;
+  function gbRollGoster(ac){ E("kGbRoll").classList.toggle("goster",ac); clearTimeout(gbRollKapaZ); if(ac) gbRollKapaZ=setTimeout(function(){ if(!gbRollTik) gbRollGoster(false); else gbRollGoster(true); },5000); }
+  E("gbRollAc").onclick=function(){ gbRollGoster(!E("kGbRoll").classList.contains("goster")); };
   var gbRollTik=null;
   function gbRollBit(){ if(!gbRollTik) return; clearInterval(gbRollTik); gbRollTik=null; grGonder({t:"gimbal",kart:"rollbit"}); }
-  E("gbDonusBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"donus",ad:benimAdim()}); bildiri("Dönüş çekimi",1500,"bilgi"); };
-  Array.prototype.forEach.call(E("gbRollSira").querySelectorAll("button[data-k]"),function(d){
+  E("gbDonusBtn").onclick=function(){ gbRollGoster(true); if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"donus",ad:benimAdim()}); bildiri("Dönüş çekimi",1500,"bilgi"); };
+  Array.prototype.forEach.call(E("kGbRoll").querySelectorAll("button[data-k]"),function(d){
     d.style.touchAction="none";
     d.addEventListener("pointerdown",function(o){
       if(!gbAktif()||!kontrolVarMi()) return;
       o.preventDefault(); try{ d.setPointerCapture(o.pointerId); }catch(h){}
-      gbRollBit();
+      gbRollBit(); gbRollGoster(true);
       var k="rollbas"+d.getAttribute("data-k");
       grGonder({t:"gimbal",kart:k,ad:benimAdim()});
       gbRollTik=setInterval(function(){ grGonder({t:"gimbal",kart:k}); },500);
@@ -2928,7 +2949,7 @@
   });
   // 27 Kas: ışık parlaklığı (basılı tut) ve renk; kumanda kaydından (ışık modunda üçgenler 10/11)
   E("gbRenkBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"renk",ad:benimAdim()}); };
-  Array.prototype.forEach.call(E("gbKartSira").querySelectorAll("button[data-p]"),function(d){
+  Array.prototype.forEach.call(E("kGbIsik").querySelectorAll("button[data-p]"),function(d){
     d.style.touchAction="none";
     d.addEventListener("pointerdown",function(o){
       if(!gbAktif()||!kontrolVarMi()) return;
@@ -3983,7 +4004,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 23:31";
+  var SAYFA_SURUM="28 Kas 00:17";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
