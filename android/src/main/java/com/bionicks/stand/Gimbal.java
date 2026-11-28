@@ -959,13 +959,16 @@ final class Gimbal {
     }
 
     private final java.util.HashMap<Integer, String> sonOlay = new java.util.HashMap<>();
+    private final java.util.HashMap<Integer, Long> sonOlayZaman = new java.util.HashMap<>();
     private void olayYaz(int grup, int komut, byte[] v) {
         StringBuilder sb = new StringBuilder();
         for (byte x : v) sb.append(String.format("%02X", x));
         String t = sb.toString();
         int an = (grup << 8) | komut;
-        if (t.equals(sonOlay.get(an))) return;
-        sonOlay.put(an, t);
+        long n = SystemClock.elapsedRealtime();
+        Long z = sonOlayZaman.get(an);
+        if (t.equals(sonOlay.get(an)) && z != null && n - z < 3000) return;   // aynısı 3 sn içinde tekrar ederse yazma
+        sonOlay.put(an, t); sonOlayZaman.put(an, n);
         Kayit.yaz("Gimbal bildirimi " + String.format("%02X %02X", grup, komut) + ": " + t);
     }
 
@@ -976,7 +979,8 @@ final class Gimbal {
         if ((v[0] & 0xFF) != 0xAA || (v[1] & 0xFF) != 0x55) return;
         int grup = v[4] & 0xFF, komut = v[5] & 0xFF;
         int veriBoy = v.length - 8;            // AA 55 L 00 G C ... S FF
-        if (komut == 0x2B || komut == 0xA5 || komut == 0x99 || komut == 0xEA) olayYaz(grup, komut, v);   // 27 Kas: AI/tuş/uyanma bildirimleri, değişince kayda
+        // 27 Kas: rutin olmayan bütün bildirimler kayda (AI kamera grup 03: 2B durum, 2C jest/takip olayı, 2A; 00 D1, A5, 99, EA ...)
+        if (!(grup == 0x00 && (komut == 0x49 || komut == 0x84 || komut == 0x57 || komut == 0x60 || komut == 0x7C))) olayYaz(grup, komut, v);
         if (grup == 0x00 && komut == 0x49 && veriBoy >= 4) {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
             // 27 Kas: pil paketinin ilk veri baytı şarj: 01 kablo takılı, 00 değil (iki takma, bir çıkarmayla doğrulandı)
