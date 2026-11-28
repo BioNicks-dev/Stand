@@ -397,7 +397,7 @@
 (function(){
   var SUNUCU_ADRES="wss://l08d16ff.ala.us-east-1.emqxsl.com:8084/mqtt", SUNUCU_KULLANICI="telefon";
   var BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SURUM="27 Kas 17:26";                       // sürüm damgası (iPhone'a da gider)
+  var SURUM="27 Kas 22:22";                       // sürüm damgası (iPhone'a da gider)
   var TURN_ADRES="free.expressturn.com:3478";     // ExpressTURN ücretsiz hesap (adres gizli değil; kullanıcı adı/şifre ayarlardan)
   var ZIL_SURE=3000, ZIL_ARA=300000;                 // zil 3 sn; 5 dk içinde tekrar çalmaz
   // Pixel uygulaması (22 Eki): sayfa "Stand Kamera" uygulamasının içinde açıldıysa uygulama kendini StandApp adıyla tanıtır.
@@ -2794,7 +2794,7 @@
     if(!gimbalVar()) return null;
     var g={}; try{ g=JSON.parse(APP.gimbalDurum()); }catch(h){ return null; }
     return {durum:g.durum||"", pil:g.pilMv>0?g.pilMv:null, sarj:!!g.sarj, mod:(typeof g.mod==="number"&&g.mod>=0)?g.mod:null,
-      yatay:(typeof g.yatay==="number")?g.yatay:null, egme:(typeof g.egme==="number")?g.egme:null, gidiyor:!!g.gidiyor, vardi:g.vardi||null, sinir:!!g.sinir, tani:g.vardi&&g.tani?g.tani:null, roll:(typeof g.roll==="number")?g.roll:null, kart:kartOzet()};
+      yatay:(typeof g.yatay==="number")?g.yatay:null, egme:(typeof g.egme==="number")?g.egme:null, gidiyor:!!g.gidiyor, vardi:g.vardi||null, sinir:!!g.sinir, tani:g.vardi&&g.tani?g.tani:null, roll:(typeof g.roll==="number")?g.roll:null, ai:(typeof g.ai==="number")?g.ai:-1, bekleme:!!g.bekleme, kart:kartOzet()};
   }
   function gimbalUzakDur(){
     if(gbUzakTik){ clearInterval(gbUzakTik); gbUzakTik=null; }
@@ -2808,6 +2808,7 @@
     if(m.git){ gimbalUzakDur(); try{ APP.gimbalGit(Number(m.git.yatay)||0, m.git.egme==null?-999:Number(m.git.egme), String(m.git.ad||"")); }catch(h){} yaz("Stand sayfası: gimbal "+(m.git.ad?"\""+m.git.ad+"\" konumuna":"hedefe")+" gidiyor"+(m.ad?" ("+m.ad+")":"")+"."); return; }
     if(m.goreli){ gimbalUzakDur(); try{ APP.gimbalGoreli(Number(m.goreli.y)||0, Number(m.goreli.e)||0); }catch(h){} return; }
     if(m.c180){ gimbalUzakDur(); try{ APP.gimbal180(m.c180>0?1:-1); }catch(h){} yaz("Stand sayfası: gimbal 180°"+(m.ad?" ("+m.ad+")":"")+"."); return; }
+    if(m.aiDur){ if(typeof APP.gimbalAiDur==="function"){ try{ APP.gimbalAiDur(); }catch(h){} } yaz("Stand sayfası: AI takibi durduruldu"+(m.ad?" ("+m.ad+")":"")+"."); return; }
     if(m.sinirUnut){ try{ APP.gimbalSinirUnut(); }catch(h){} return; }
     if(m.kart){ if(typeof APP.kartKomut==="function"){ try{ APP.kartKomut(String(m.kart)); }catch(h){} } if(m.kart==="isik") yaz("Stand sayfası: gimbal ışığı"+(m.ad?" ("+m.ad+")":"")+"."); return; }
     if(m.dur){

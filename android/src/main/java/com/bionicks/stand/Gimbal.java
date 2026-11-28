@@ -84,6 +84,11 @@ final class Gimbal {
     private volatile String durum = "kapali", ad = "", sonHata = "";
     private volatile int pilMv = -1, mod = -1, takipHizi = -1;
     private volatile Boolean sarj = null;
+    // 27 Kas: AI kamera ve bekleme (gimbalın kendi bildirimlerinden, kesin olanlar)
+    private volatile Boolean aiAcik = null;          // 03 2B / 00 98 01 = açık; 00 99 01 01 = kapandı
+    private volatile boolean bekleme = false;        // 00 99 03 01 = beklemede, 00 99 03 02 = uyandı
+    private long durZaman = 0, aiHizSon = 0;
+    static final int AI_HIZ = 3;                     // elle kullanım bitince takip hızı "çok hızlı" (AI kamera takibi için)
     private volatile long gelen = 0, giden = 0, sonCevap = 0;
     private volatile boolean izinYok = false;
 
@@ -172,6 +177,8 @@ final class Gimbal {
             if (!Double.isNaN(eg)) o.put("egme", Math.round(eg * 10) / 10.0);
             double rl = g.roll(); if (!Double.isNaN(rl)) o.put("roll", Math.round(rl));
             o.put("gidiyor", g.gitAktif);
+            o.put("ai", g.aiAcik == null ? -1 : (g.aiAcik ? 1 : 0));
+            o.put("bekleme", g.bekleme);
             if (g.sonTani.length() > 0) o.put("tani", g.sonTani);
             if (g.varisZaman > 0 && SystemClock.elapsedRealtime() - g.varisZaman < 4000) o.put("vardi", g.gitAd);
             o.put("sinir", g.solVar);
@@ -537,7 +544,7 @@ final class Gimbal {
             gatt = null;
             if (hazir) Kayit.yaz("Gimbal: bağlantı kapandı (" + neden + ").");
         }
-        hazir = false; yazKar = null; kuyruk.clear(); yaziyor = false; hareketEdiyor = false;
+        hazir = false; yazKar = null; kuyruk.clear(); yaziyor = false; hareketEdiyor = false; aiAcik = null; bekleme = false;
         if (calisiyor) durum = "araniyor";
     }
 
@@ -665,10 +672,18 @@ final class Gimbal {
                     // 26 Kas: önce "yüz ortada" yollamak sola ve yukarıda fazla gitmeye yol açıyordu
                     // (gimbalın merkezi tam 0 değil); doğrudan "yüz yok" ile dur.
                     hareketEdiyor = false;
+                    durZaman = simdi;
                     kuyruk.clear();
                     if (gitAktif) gitDurKalk++;
                     if (durYontem == 1) { gonder(takip(0, 0, YUZ, YUZ)); gonder(takip(0, 0, YUZ, YUZ)); }
                     gonder(takip(0, 0, 0, 0)); gonder(takip(0, 0, 0, 0)); gonder(takip(0, 0, 0, 0));
+                }
+                // 27 Kas: elle hareket (ve açılış) bittikten 3 sn sonra takip hızı çok hızlı: AI kamera takibi kaçırmasın.
+                // Joystick'e dokununca hareket başında yine seçili hız (istenenHiz) gönderiliyor.
+                long sonEl = Math.max(durZaman, hazirZaman);
+                if (!hareketEdiyor && !gitAktif && !testAktif && simdi - sonEl > 3000 && aiHizSon < sonEl) {
+                    aiHizSon = simdi;
+                    if (takipHizi != AI_HIZ) { gonder(paket(0x00, 0x7C, new int[] { 0, 0, mod >= 0 && mod <= 3 ? mod : 1, AI_HIZ })); takipHizi = AI_HIZ; }
                 }
                 // nabız: saniyede bir, 10 sn'de bir uzun nabız; 30 sn'de bir durum sorusu
                 // açı sorusu (00 84 cevabı) 200 ms'de bir
@@ -958,6 +973,15 @@ final class Gimbal {
         if (i < b.length && b.length - i < 600) parca.write(b, i, b.length - i);
     }
 
+    private void aiDegis(boolean acik) {
+        if (aiAcik != null && aiAcik == acik) return;
+        aiAcik = acik; Kayit.yaz(acik ? "Gimbal: AI kamera açık." : "Gimbal: AI kamera kapandı.");
+    }
+    // 27 Kas: AI kameranın takibini durdur (Hohem Joy'un da gönderdiği 03 2B 00 00)
+    static void aiDur() {
+        Gimbal g = ben; if (g == null) return;
+        g.h.post(() -> { g.gonder(paket(0x03, 0x2B, new int[] { 0, 0 })); Kayit.yaz("Gimbal: AI takibi durduruldu (uzaktan)."); });
+    }
     private final java.util.HashMap<Integer, String> sonOlay = new java.util.HashMap<>();
     private final java.util.HashMap<Integer, Long> sonOlayZaman = new java.util.HashMap<>();
     private void olayYaz(int grup, int komut, byte[] v) {
@@ -981,6 +1005,16 @@ final class Gimbal {
         int veriBoy = v.length - 8;            // AA 55 L 00 G C ... S FF
         // 27 Kas: rutin olmayan bütün bildirimler kayda (AI kamera grup 03: 2B durum, 2C jest/takip olayı, 2A; 00 D1, A5, 99, EA ...)
         if (!(grup == 0x00 && (komut == 0x49 || komut == 0x84 || komut == 0x57 || komut == 0x60 || komut == 0x7C))) olayYaz(grup, komut, v);
+        if (grup == 0x03 && komut == 0x2B) aiDegis(true);
+        else if (grup == 0x00 && komut == 0x98) aiDegis(true);
+        else if (grup == 0x00 && komut == 0x99 && veriBoy >= 2) {
+            int a = v[6] & 0xFF, b2 = v[7] & 0xFF;
+            if (a == 0x01 && b2 == 0x01) aiDegis(false);
+            else if (a == 0x03 && (b2 == 0x01 || b2 == 0x02)) {
+                boolean yeni = b2 == 0x01;
+                if (yeni != bekleme) { bekleme = yeni; Kayit.yaz(yeni ? "Gimbal: beklemeye girdi." : "Gimbal: uyandı."); Bekci.gimbalDegisti(); }
+            }
+        }
         if (grup == 0x00 && komut == 0x49 && veriBoy >= 4) {
             pilMv = ((v[8] & 0xFF) << 8) | (v[9] & 0xFF);     // muhtemelen pil gerilimi (mV), doğrulanmadı
             // 27 Kas: pil paketinin ilk veri baytı şarj: 01 kablo takılı, 00 değil (iki takma, bir çıkarmayla doğrulandı)

@@ -112,6 +112,7 @@ final class Kopru {
     @JavascriptInterface public String gimbalDurum() { return Gimbal.durumJson(); }
     @JavascriptInterface public void gimbalHareket(int x, int y) { Gimbal.hareket(x, y); }
     @JavascriptInterface public void gimbalDur() { Gimbal.dur(); }
+    @JavascriptInterface public void gimbalAiDur() { Gimbal.aiDur(); }
     @JavascriptInterface public void gimbalMod(int m) { Gimbal.mod(m); }
     @JavascriptInterface public void gimbalYon(int y) { Gimbal.yon(y); }
     @JavascriptInterface public void gimbalYeniden() { Gimbal.yenidenBaglan(); }

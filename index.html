@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 17:47">
+<meta name="stand-surum" content="27 Kas 22:22">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -648,7 +648,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 17:47</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 22:22</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -696,6 +696,9 @@
     </div>
     <div class="gbSira uc gizle" id="gbKartSira">
       <button type="button" data-k="-" aria-label="Roll sola (basılı tut: sürekli)">◀ Roll</button><button type="button" id="gbIsikBtn">Işık</button><button type="button" data-k="+" aria-label="Roll sağa (basılı tut: sürekli)">Roll ▶</button>
+    </div>
+    <div class="gbSira gizle" id="gbAiSira">
+      <button type="button" id="gbAiDurBtn" aria-label="Gimbalın AI kamerasının takibini durdur">AI takibini durdur</button>
     </div>
     <div class="gbSira uc gizle" id="gbIsikSira">
       <button type="button" data-p="-" aria-label="Işık parlaklığı azalt (basılı tut)">Parlaklık −</button><button type="button" id="gbRenkBtn">Renk</button><button type="button" data-p="+" aria-label="Işık parlaklığı artır (basılı tut)">Parlaklık +</button>
@@ -2881,6 +2884,9 @@
     if(g.pil) b+=" · pil ~%"+gbPilYuzde(g.pil)+" ("+(g.pil/1000).toFixed(2).replace(".",",")+" V)";
     if(g.sarj) b+=" · ⚡ şarjda";
     if(typeof g.roll==="number") b+=" · roll "+Math.round(g.roll)+"°";
+    if(g.bekleme) b+=" · beklemede (güç tuşuyla uyanır)";
+    if(g.ai===1) b+=" · AI kamera açık"; else if(g.ai===0) b+=" · AI kamera kapalı";   // 27 Kas: sadece gimbalın kesin bildirimleri
+    E("gbAiSira").classList.toggle("gizle",g.ai!==1);
     E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g));
     var ib=E("gbIsikBtn"), iv=g.kart&&typeof g.kart.i==="boolean"?g.kart.i:null;   // ışık durumu gimbalın kendi bildirimi; bilinmiyorsa sadece "Işık"
     ib.textContent=iv===null?"Işık":(iv?"Işık açık":"Işık kapalı"); ib.classList.toggle("secili",iv===true);
@@ -2896,6 +2902,7 @@
   });
   // 27 Kas: kumanda kartı üzerinden ışık ve roll (dokun: küçük adım, basılı tut: sürekli; kart 1,5 sn tazelenmezse durur)
   E("gbIsikBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"isik",ad:benimAdim()}); bildiri("Gimbal ışığı",1500,"bilgi"); };
+  E("gbAiDurBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",aiDur:1,ad:benimAdim()}); bildiri("AI takibi durduruldu",1500,"bilgi"); };
   var gbRollTik=null;
   function gbRollBit(){ if(!gbRollTik) return; clearInterval(gbRollTik); gbRollTik=null; grGonder({t:"gimbal",kart:"rollbit"}); }
   Array.prototype.forEach.call(E("gbKartSira").querySelectorAll("button[data-k]"),function(d){
@@ -3967,7 +3974,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 17:47";
+  var SAYFA_SURUM="27 Kas 22:22";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
