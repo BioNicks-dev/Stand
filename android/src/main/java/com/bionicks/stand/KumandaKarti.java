@@ -9,6 +9,11 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.os.ParcelUuid;
 import android.content.Context;
 import android.os.Build;
 import android.os.Handler;
@@ -22,6 +27,9 @@ import org.json.JSONObject;
 // 27 Kas: V3 kumanda köprüsü. Bluetooth kartı gimbalın kumandası gibi davranır; Pixel karta bağlanıp
 // ışık ve roll komutu yollar. Kart, gimbalın kumandaya yazdığı durum mesajlarını ("H ...") ve kendi
 // durumunu ("D g=1 ...") bildirir. Kart sabit adresle yayın yapar, Pixel onu bu adresle bulur.
+// 28 Kas: kart artık gerektiğinde kumandanın adresini kullanıyor (gimbal sadece hatırladığı kumanda
+// adresine bağlanıyor). Pixel kartı kayıtlı adreste 20 sn'de bulamazsa "HR4" adlı cihazları tarar,
+// köprü servisi olanı bulup yeni adresi kaydeder.
 @SuppressLint("MissingPermission")
 final class KumandaKarti {
     private static final String ADRES = "E3:24:17:02:5A:9C";
@@ -36,6 +44,9 @@ final class KumandaKarti {
     private BluetoothGattCharacteristic komutKar;
     private boolean calisiyor = false, hazir = false, yaziyor = false;
     private final ArrayDeque<byte[]> kuyruk = new ArrayDeque<>();
+    private String adres = ADRES;            // 28 Kas: kayıtlı kart adresi (değişebilir)
+    private BluetoothLeScanner tarayici;
+    private boolean tariyor = false;
     private volatile boolean gimbalKartta = false, kumandaKartta = false;
     private volatile int isik = -1;   // 27 Kas: gimbalın kumandaya bildirdiği ışık (tür 03 mesajı 13. bayt: 01 açık, 00 kapalı; denemeyle doğrulandı). -1 bilinmiyor
     private volatile long sonDurum = 0;
@@ -46,6 +57,7 @@ final class KumandaKarti {
         HandlerThread t = new HandlerThread("kumandaKarti");
         t.start();
         h = new Handler(t.getLooper());
+        adres = this.c.getSharedPreferences("stand", Context.MODE_PRIVATE).getString("kartAdres", ADRES);
     }
 
     static synchronized void baslat(Context c) {
@@ -92,14 +104,60 @@ final class KumandaKarti {
         if (a == null || !a.isEnabled()) { h.postDelayed(this::baglan, 30000); return; }
         try {
             BluetoothDevice d = Build.VERSION.SDK_INT >= 33
-                ? a.getRemoteLeDevice(ADRES, BluetoothDevice.ADDRESS_TYPE_RANDOM)
-                : a.getRemoteDevice(ADRES);
+                ? a.getRemoteLeDevice(adres, BluetoothDevice.ADDRESS_TYPE_RANDOM)
+                : a.getRemoteDevice(adres);
             // autoConnect: kart görününce Android kendisi bağlar (tarama gerekmez, pil yemez)
             gatt = d.connectGatt(c, true, cb, BluetoothDevice.TRANSPORT_LE);
-        } catch (Exception e) { gatt = null; h.postDelayed(this::baglan, 30000); }
+        } catch (Exception e) { gatt = null; h.postDelayed(this::baglan, 30000); return; }
+        h.removeCallbacks(aramaKontrol);
+        h.postDelayed(aramaKontrol, 20000);
     }
 
+    // 28 Kas: kayıtlı adreste bağlanılamadıysa kartı adından ("HR4") bulmaya çalış
+    private final Runnable aramaKontrol = new Runnable() { @Override public void run() {
+        if (!calisiyor || hazir || tariyor) return;
+        try {
+            BluetoothManager bm = (BluetoothManager) c.getSystemService(Context.BLUETOOTH_SERVICE);
+            BluetoothAdapter a = bm == null ? null : bm.getAdapter();
+            tarayici = a == null || !a.isEnabled() ? null : a.getBluetoothLeScanner();
+            if (tarayici == null) { h.postDelayed(this, 60000); return; }
+            ScanSettings st = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+            tarayici.startScan(null, st, taramaCb);
+            tariyor = true;
+            h.postDelayed(() -> { taramaBitir(); if (calisiyor && !hazir) h.postDelayed(KumandaKarti.this.aramaKontrol, 60000); }, 10000);
+        } catch (Exception e) { tariyor = false; h.postDelayed(this, 60000); }
+    } };
+
+    private void taramaBitir() {
+        if (!tariyor) return;
+        tariyor = false;
+        try { if (tarayici != null) tarayici.stopScan(taramaCb); } catch (Exception e) { }
+    }
+
+    private final ScanCallback taramaCb = new ScanCallback() {
+        @Override public void onScanResult(int tip, final ScanResult r) {
+            h.post(() -> {
+                if (!tariyor || hazir || r == null || r.getDevice() == null) return;
+                String ad = r.getScanRecord() == null ? null : r.getScanRecord().getDeviceName();
+                boolean servis = r.getScanRecord() != null && r.getScanRecord().getServiceUuids() != null
+                        && r.getScanRecord().getServiceUuids().contains(new ParcelUuid(SERVIS));
+                if (!servis && (ad == null || !ad.startsWith("HR4"))) return;
+                String yeni = r.getDevice().getAddress();
+                if (yeni == null || yeni.equalsIgnoreCase(adres)) return;   // zaten bu adresi bekliyoruz
+                taramaBitir();
+                adres = yeni;
+                c.getSharedPreferences("stand", Context.MODE_PRIVATE).edit().putString("kartAdres", adres).apply();
+                Kayit.yaz("Kumanda kartı: yeni adreste arandı (" + ad + " " + adres + ").");
+                kapat();
+                try { gatt = r.getDevice().connectGatt(c, true, cb, BluetoothDevice.TRANSPORT_LE); h.postDelayed(aramaKontrol, 20000); }
+                catch (Exception e) { gatt = null; h.postDelayed(KumandaKarti.this::baglan, 30000); }
+            });
+        }
+    };
+
     private void kapat() {
+        h.removeCallbacks(aramaKontrol);
+        taramaBitir();
         if (gatt != null) {
             try { gatt.disconnect(); } catch (Exception e) { }
             try { gatt.close(); } catch (Exception e) { }
@@ -134,7 +192,8 @@ final class KumandaKarti {
                 komutKar = k;
                 if (d != null) { try { g.setCharacteristicNotification(d, true); } catch (Exception e) { } }
                 hazir = true;
-                Kayit.yaz("Kumanda kartı: bağlandı.");
+                h.removeCallbacks(aramaKontrol); taramaBitir();
+                Kayit.yaz("Kumanda kartı: bağlandı (" + adres + ").");
                 kuyruk.add("merhaba".getBytes(StandardCharsets.UTF_8));   // kart Pixel'i tanısın, durumunu yollasın
                 yazNext();
             });
