@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="stand-surum" content="27 Kas 22:22">
+<meta name="stand-surum" content="27 Kas 23:31">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#14191a">
 <meta name="mobile-web-app-capable" content="yes">
@@ -51,6 +51,12 @@
   #gbIzgara{grid-column:1 / -1;margin-top:8px}
   #gbIzgara .gbSira{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
   #gbIzgara .gbSira.uc{grid-template-columns:repeat(3,1fr)}
+  #gbKartSira{grid-template-columns:2fr 1fr 1.4fr 1fr!important}
+  #gbKartSira.isikKapali{grid-template-columns:1fr!important}
+  #gbKartSira.isikKapali .gbIsikEk{display:none}
+  #gbAiSira{grid-template-columns:1fr!important}
+  #gbIzgara .gbAyrinti{margin-top:6px}
+  #gbIzgara .gbAyrinti summary{cursor:pointer;font-size:13px;opacity:.75;padding:4px 2px}
   #gbIzgara button{min-height:40px;padding:6px 2px;font-size:14px}
   #gbIzgara button.secili{border-color:var(--live);color:var(--live);font-weight:700}
   #gbIzgara .gbBilgi{font-size:13px;color:var(--ink-soft);text-align:center}
@@ -648,7 +654,7 @@
     <button class="ikon" id="ayarAcBtn" aria-label="Ayarlar ve kalibrasyon">⚙</button>
   </header>
   <div id="takilmaKutu" class="gizle" role="alert"><b>Bağlantı kurulamıyor</b><span id="takilmaYazi"></span></div>
-  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 22:22</p>
+  <p class="not" id="surumDamga" style="margin:-8px 0 8px;font-size:11px;opacity:.6">Sayfa: 27 Kas 23:31</p>
 
   <div class="anaUst" id="anaUst">
     <button class="genis vurgu kameraAc" id="kameraAcBtn">📷 Evi izle</button>
@@ -691,20 +697,22 @@
   </div>
   <div id="gbIzgara" class="gizle">
     <div class="gbBilgi" id="gbBilgi">Gimbal (V3)</div>
-    <div class="gbSira uc">
-      <button type="button" data-y="1">Dikey</button><button type="button" data-y="0">Yatay</button><button type="button" data-y="2">Ters yatay</button>
+    <!-- 27 Kas: kumanda kartı varken ışık (açıkken parlaklık/renk aynı satırda) ve roll -->
+    <div class="gbSira gizle" id="gbKartSira">
+      <button type="button" id="gbIsikBtn">Işık</button><button type="button" data-p="-" class="gbIsikEk" aria-label="Işık parlaklığı azalt (basılı tut)">−</button><button type="button" id="gbRenkBtn" class="gbIsikEk">Renk</button><button type="button" data-p="+" class="gbIsikEk" aria-label="Işık parlaklığı artır (basılı tut)">+</button>
     </div>
-    <div class="gbSira uc gizle" id="gbKartSira">
-      <button type="button" data-k="-" aria-label="Roll sola (basılı tut: sürekli)">◀ Roll</button><button type="button" id="gbIsikBtn">Işık</button><button type="button" data-k="+" aria-label="Roll sağa (basılı tut: sürekli)">Roll ▶</button>
+    <div class="gbSira uc gizle" id="gbRollSira">
+      <button type="button" data-k="-" aria-label="Roll sola (basılı tut: sürekli)">◀ Roll</button><button type="button" id="gbDonusBtn" aria-label="Roll 180 dönüş çekimi: telefon yavaşça döner ve geri gelir">Dönüş çekimi</button><button type="button" data-k="+" aria-label="Roll sağa (basılı tut: sürekli)">Roll ▶</button>
     </div>
     <div class="gbSira gizle" id="gbAiSira">
       <button type="button" id="gbAiDurBtn" aria-label="Gimbalın AI kamerasının takibini durdur">AI takibini durdur</button>
     </div>
-    <div class="gbSira uc gizle" id="gbIsikSira">
-      <button type="button" data-p="-" aria-label="Işık parlaklığı azalt (basılı tut)">Parlaklık −</button><button type="button" id="gbRenkBtn">Renk</button><button type="button" data-p="+" aria-label="Işık parlaklığı artır (basılı tut)">Parlaklık +</button>
+    <details class="gbAyrinti" id="gbYonAc"><summary>Yön</summary>
+    <div class="gbSira uc">
+      <button type="button" data-y="1">Dikey</button><button type="button" data-y="0">Yatay</button><button type="button" data-y="2">Ters yatay</button>
     </div>
-  </div>
-  <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
+    </details>
+    <p class="not uyari gizle" id="sinirNot" style="text-align:center">Dönüş sınırına gelindi: kablo sarılmasın diye stand bu yönde daha fazla dönmüyor.</p>
   </div>
 
   <div class="konumlar" id="konumlar"></div>
@@ -2887,10 +2895,10 @@
     if(g.bekleme) b+=" · beklemede (güç tuşuyla uyanır)";
     if(g.ai===1) b+=" · AI kamera açık"; else if(g.ai===0) b+=" · AI kamera kapalı";   // 27 Kas: sadece gimbalın kesin bildirimleri
     E("gbAiSira").classList.toggle("gizle",g.ai!==1);
-    E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g));
+    E("gbKartSira").classList.toggle("gizle",!(g.kart&&g.kart.g)); E("gbRollSira").classList.toggle("gizle",!(g.kart&&g.kart.g));
     var ib=E("gbIsikBtn"), iv=g.kart&&typeof g.kart.i==="boolean"?g.kart.i:null;   // ışık durumu gimbalın kendi bildirimi; bilinmiyorsa sadece "Işık"
     ib.textContent=iv===null?"Işık":(iv?"Işık açık":"Işık kapalı"); ib.classList.toggle("secili",iv===true);
-    E("gbIsikSira").classList.toggle("gizle",!(g.kart&&g.kart.g&&iv===true));   // parlaklık/renk sadece ışık açıkken çalışır   // 27 Kas: kumanda kartı hazırsa ışık + roll
+    E("gbKartSira").classList.toggle("isikKapali",iv!==true);   // parlaklık/renk sadece ışık açıkken (gimbal o zaman dinliyor)   // parlaklık/renk sadece ışık açıkken çalışır   // 27 Kas: kumanda kartı hazırsa ışık + roll
     E("gbBilgi").textContent=b;
     if(E("gbModlar")) Array.prototype.forEach.call(E("gbModlar").querySelectorAll("button"),function(d){ d.classList.toggle("secili",Number(d.getAttribute("data-m"))===g.mod); });
   }
@@ -2905,7 +2913,8 @@
   E("gbAiDurBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",aiDur:1,ad:benimAdim()}); bildiri("AI takibi durduruldu",1500,"bilgi"); };
   var gbRollTik=null;
   function gbRollBit(){ if(!gbRollTik) return; clearInterval(gbRollTik); gbRollTik=null; grGonder({t:"gimbal",kart:"rollbit"}); }
-  Array.prototype.forEach.call(E("gbKartSira").querySelectorAll("button[data-k]"),function(d){
+  E("gbDonusBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"donus",ad:benimAdim()}); bildiri("Dönüş çekimi",1500,"bilgi"); };
+  Array.prototype.forEach.call(E("gbRollSira").querySelectorAll("button[data-k]"),function(d){
     d.style.touchAction="none";
     d.addEventListener("pointerdown",function(o){
       if(!gbAktif()||!kontrolVarMi()) return;
@@ -2919,7 +2928,7 @@
   });
   // 27 Kas: ışık parlaklığı (basılı tut) ve renk; kumanda kaydından (ışık modunda üçgenler 10/11)
   E("gbRenkBtn").onclick=function(){ if(!gbAktif()||!kontrolVarMi()) return; grGonder({t:"gimbal",kart:"renk",ad:benimAdim()}); };
-  Array.prototype.forEach.call(E("gbIsikSira").querySelectorAll("button[data-p]"),function(d){
+  Array.prototype.forEach.call(E("gbKartSira").querySelectorAll("button[data-p]"),function(d){
     d.style.touchAction="none";
     d.addEventListener("pointerdown",function(o){
       if(!gbAktif()||!kontrolVarMi()) return;
@@ -3974,7 +3983,7 @@
   // ---------- ev kamerası (Pixel, kendi görüntü sistemi) ----------
   // Pixel'deki kamera.html ile WebRTC. EMQX sadece tanışma mesajlarını taşır: comitok/<oda>/goruntu/k (kameraya), /i (bize).
   var GR_BUZ=[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}];
-  var SAYFA_SURUM="27 Kas 22:22";
+  var SAYFA_SURUM="27 Kas 23:31";
   var grTurnVar=false, grKamSurum="";   // aktarma (TURN) bilgisi Pixel'den teklifle gelir; burada girilmez
   var grAcik=false, grPc=null, grIstekte=false, grBekleme=null, grOlcum=null, grYet=null;
   var grYedekTik=null, grYedekOldu=false, grKapaliYazildi=false;   // 23 Eki: teklif gelmezse isteği bir kez tekrarla
